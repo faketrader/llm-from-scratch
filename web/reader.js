@@ -3,14 +3,22 @@ const sidebar = $("#sidebar");
 $("#menu-toggle").addEventListener("click", () => {
   const open = sidebar.classList.toggle("open");
   $("#menu-toggle").setAttribute("aria-expanded", String(open));
+  if (open) showCurrentChapter();
 });
+function showCurrentChapter() {
+  const current = sidebar.querySelector('a[aria-current="page"]');
+  if (current && sidebar.clientHeight) {
+    sidebar.scrollTop += current.getBoundingClientRect().top - sidebar.getBoundingClientRect().top - 140;
+  }
+}
+requestAnimationFrame(showCurrentChapter);
 sidebar.addEventListener("click", (event) => {
   if (event.target.closest("a")) {
     sidebar.classList.remove("open");
     $("#menu-toggle").setAttribute("aria-expanded", "false");
   }
 });
-const links = [...document.querySelectorAll("nav a")];
+const links = [...document.querySelectorAll('nav[aria-label="本章目录"] a')];
 const headings = links.map((link) =>
   document.getElementById(decodeURIComponent(link.hash.slice(1))),
 );

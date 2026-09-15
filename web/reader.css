@@ -900,11 +900,18 @@ main h1 {
     font-size: 32px;
   }
 }
-.all-book-chapters > summary {
-  font-size: 12px;
+#sidebar .chapter-toc {
+  margin: 4px 0 12px 18px;
+  border-left: 1px solid var(--line);
+}
+#sidebar .chapter-toc a {
+  border-radius: 0;
+  font-size: 11px;
+  padding: 7px 9px;
+}
+#sidebar .chapter-toc a.active {
   color: var(--accent);
-  cursor: pointer;
-  padding: 10px 9px;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
+  border-left-color: var(--accent);
+  background: #f5f6f0;
+  font-weight: 650;
 }

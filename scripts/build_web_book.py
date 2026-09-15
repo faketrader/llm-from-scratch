@@ -425,16 +425,14 @@ class Publisher:
             "REFERENCES": bibliography,
         }.items():
             template = template.replace("@@" + key + "@@", value)
-        booknav = (
-            '<details class="all-book-chapters"><summary>全书章节</summary>'
-            + self.booknav(ch)
-            + "</details>"
-        )
-        template = template.replace(
-            '<nav aria-label="本章目录">',
-            '<a class="all-chapters-link" href="index.html">← 全书目录</a>'
-            + booknav
-            + '<div class="chapter-nav-label">本章目录</div><nav aria-label="本章目录">',
+        template = re.sub(
+            r'<nav aria-label="本章目录">[\s\S]*?</nav>',
+            lambda _: '<a class="all-chapters-link" href="index.html">← 全书目录</a>'
+            + '<nav class="all-book-navigation" aria-label="全书目录">'
+            + self.booknav(ch, toc)
+            + "</nav>",
+            template,
+            count=1,
         )
         n = ch["number"]
         pager = '<div class="chapter-pager">'
@@ -470,7 +468,7 @@ class Publisher:
         )
         print(f"{n:02d} {ch['title']}: {self.fig} figures", flush=True)
 
-    def booknav(self, current=None):
+    def booknav(self, current=None, toc=None):
         groups = []
         part = ""
         for ch in self.chapters:
@@ -478,14 +476,21 @@ class Publisher:
                 if part:
                     groups.append("</ol></details>")
                 part = ch["part"]
-                opened = " open" if current is None or current["part"] == part else ""
+                opened = " open"
                 groups.append(
                     f'<details class="book-part"{opened}><summary>{part}</summary><ol>'
                 )
             active = ' class="current" aria-current="page"' if current == ch else ""
             groups.append(
-                f'<li><a href="{ch["slug"]}"{active}><span>{ch["number"]:02d}</span>{ch["title"]}</a></li>'
+                f'<li><a href="{ch["slug"]}"{active}><span>{ch["number"]:02d}</span>{ch["title"]}</a>'
             )
+            if current == ch and toc:
+                groups.append(
+                    '<nav class="chapter-toc" aria-label="本章目录"><ol>'
+                    + "".join(toc)
+                    + "</ol></nav>"
+                )
+            groups.append("</li>")
         groups.append("</ol></details>")
         return (
             '<div class="book-navigation">'
@@ -561,7 +566,10 @@ def main():
     page = page.replace("<title>绪论 ·", "<title>全书目录 ·")
 
     def clean_extra(shell, title):
-        shell = re.sub(r'<nav aria-label="本章目录">[\s\S]*?</nav>', "", shell)
+        shell = re.sub(
+            r'<nav\b[^>]*aria-label="本章目录"[^>]*>[\s\S]*?</nav>', "", shell
+        )
+        shell = shell.replace(' class="current" aria-current="page"', "")
         shell = re.sub(
             r'<div class="chapter-current">[\s\S]*?</div>',
             '<div class="chapter-current"><strong>' + title + "</strong></div>",
