@@ -1,0 +1,29 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[lfs picture]
+
+\node[title] (t1) {Encoder-only};
+\node[block, below=of t1] (eattn) {双向 Self-Attention};
+\node[compute, below=of eattn] (effn) {FFN};
+\node[storage, below=of effn] (eout) {上下文表示\\\scriptsize $[N,S,E]$};
+\draw[data arrow] (eattn) -- (effn) -- (eout);
+\node[group, fit=(t1)(eattn)(effn)(eout), label={[title]below:BERT 类}] {};
+\node[title, right=28mm of t1] (t2) {Decoder-only};
+\node[block, below=of t2] (dattn) {因果 Self-Attention\\\scriptsize causal mask};
+\node[compute, below=of dattn] (dffn) {FFN};
+\node[storage, below=of dffn] (dout) {next-token logits\\\scriptsize $[N,T,V]$};
+\draw[data arrow] (dattn) -- (dffn) -- (dout);
+\node[group, fit=(t2)(dattn)(dffn)(dout), label={[title]below:GPT / Llama / Qwen}] {};
+\node[title, right=30mm of t2] (t3) {Encoder--Decoder};
+\node[block, below=of t3] (xenc) {Encoder\\\scriptsize 双向 Self-Attention};
+\node[storage, below=of xenc] (mem) {memory $[N,S,E]$};
+\node[block, below=of mem] (xdec) {Decoder\\\scriptsize 因果 Self-Attention\\\scriptsize + Cross-Attention};
+\node[storage, below=of xdec] (xout) {条件生成 logits\\\scriptsize $[N,T,V]$};
+\draw[data arrow] (xenc) -- (mem) -- (xdec) -- (xout);
+\node[group, fit=(t3)(xenc)(mem)(xdec)(xout), label={[title]below:T5 / BART / Marian}] {};
+
+\end{tikzpicture}
+\end{document}

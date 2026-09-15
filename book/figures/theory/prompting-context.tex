@@ -1,0 +1,31 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{tikz}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[lfs picture]
+  \node[interface] (zero) {Zero-shot};
+  \node[interface, below=7mm of zero] (few) {Few-shot ICL};
+  \node[interface, below=7mm of few] (cot) {CoT 提示};
+  \node[storage, right=15mm of zero] (zctx) {Instruction + Query};
+  \node[storage, right=15mm of few] (fctx) {Instruction + Examples + Query};
+  \node[storage, right=15mm of cot] (cctx) {要求或示范分步求解};
+  \node[compute, right=20mm of fctx] (model) {同一个冻结模型\\参数不变};
+  \node[interface, right=17mm of model] (completion) {Completion\\答案与可公开解释};
+
+  \draw[data arrow] (zero) -- (zctx);
+  \draw[data arrow] (few) -- (fctx);
+  \draw[data arrow] (cot) -- (cctx);
+  \draw[data arrow] (zctx.east) -- (model.west);
+  \draw[data arrow] (fctx.east) -- (model.west);
+  \draw[data arrow] (cctx.east) -- (model.west);
+  \draw[data arrow] (model) -- (completion);
+
+  \begin{scope}[on background layer]
+    \node[group, fit=(zero)(few)(cot), label={[title]above:提示策略}] {};
+    \node[group, fit=(zctx)(fctx)(cctx), label={[title]above:运行时上下文资产}] {};
+    \node[group, fit=(model), label={[title]above:模型参数域}] {};
+  \end{scope}
+\end{tikzpicture}
+\end{document}

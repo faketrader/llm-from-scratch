@@ -1,0 +1,31 @@
+\chapter{开放模型制品审计}
+\label{lab:E10_open_model}
+
+\noindent\textbf{配套文件：}\path{notebook/E10_open_model.ipynb}\par
+\noindent\textbf{教材关联：}\bookxrefshort{ch:rev-moe}、\bookxrefshort{ch:open-models}。
+
+\section*{实验目标}
+以文件证据核对结构，而非按品牌推断能力。
+
+\section*{准备及定位}
+先阅读本册实验总则，确认Notebook中的依赖与资产单元。原理计算、库接口迁移和真实模型训练可能具有不同资源要求，应分别记录设备、版本及运行范围。
+
+源码定位可从下列函数开始；应结合前置数据与配置单元阅读。
+\begin{itemize}
+\item \texttt{my\_rms\_norm}
+\item \texttt{my\_top\_k\_route}
+\item \texttt{my\_kv\_cache\_elements}
+\end{itemize}
+
+\section*{操作及观察}
+\begin{enumerate}
+\item 固定仓库修订及本地根目录，列出配置、分词器、权重索引和相关代码。
+\item 比较配置中的维度、注意力头与专家字段，核对权重头部和张量结构。
+\item 检查特殊词元、聊天模板、适配器和量化元数据的一致性。
+\item 导出审计清单，明确静态可证事实、缺失证据及需运行才能确认的项目。
+\end{enumerate}
+
+\section*{结果判读及提交}
+提交审计清单与文件哈希。仅解析配置不证明前向计算通过；不应为了查看仓库而默认执行自定义远程代码。
+
+提交时附上所执行单元范围、环境与制品身份、原始结果及失败说明。将未运行项目明确列出，不能用Notebook中已有输出替代本次执行证据。

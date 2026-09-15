@@ -1,0 +1,22 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[lfs picture]
+
+\node[storage] (x) {$x$\\\scriptsize $d_i$};
+\node[neutral, above right=10mm and 18mm of x] (w) {冻结权重 $W_0$\\\scriptsize $[d_o,d_i]$};
+\node[compute, below right=7mm and 18mm of x] (a) {可训练 $A$\\\scriptsize $[r,d_i]$};
+\node[compute, right=of a] (b) {可训练 $B$\\\scriptsize $[d_o,r]$};
+\node[interface, right=24mm of $(w)!0.5!(b)$] (add) {Add\\\scriptsize 基座 + $\frac{\alpha}{r}$ 增量};
+\node[storage, right=of add] (y) {$y$\\\scriptsize $d_o$};
+\draw[data arrow] (x) -- (w);
+\draw[data arrow] (x) -- (a) -- (b);
+\draw[data arrow] (w) -- node[label text, above]{ $xW^T$ } (add);
+\draw[residual] (b) -- node[label text, below]{ $\frac{\alpha}{r}x(BA)^T$ } (add);
+\draw[data arrow] (add) -- (y);
+\node[group, fit=(a)(b), label={[title]below:低秩 Adapter 分支}] {};
+
+\end{tikzpicture}
+\end{document}

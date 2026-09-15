@@ -1,0 +1,10 @@
+flowchart LR
+    P["Prompt tokens"] --> F["Prefill"]
+    F --> K["KV Cache"]
+    F --> L["最后位置 logits"]
+    L --> S["采样或贪心选择"]
+    S --> N["新 token"]
+    N --> D["单步 Decode"]
+    K --> D
+    D --> K
+    D --> L

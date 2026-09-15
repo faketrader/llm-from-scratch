@@ -1,0 +1,33 @@
+\chapter{推理训练}
+\label{lab:A30_reasoning_model}
+
+\noindent\textbf{配套文件：}\path{notebook/A30_reasoning_model.ipynb}\par
+\noindent\textbf{教材关联：}\bookxrefshort{ch:reinforcement-learning}、\bookxrefshort{ch:verifiable-reasoning}。
+
+\section*{实验目标}
+区分奖励构造、候选验证和计算分配。
+
+\section*{准备及定位}
+先阅读本册实验总则，确认Notebook中的依赖与资产单元。原理计算、库接口迁移和真实模型训练可能具有不同资源要求，应分别记录设备、版本及运行范围。
+
+源码定位可从下列函数开始；应结合前置数据与配置单元阅读。
+\begin{itemize}
+\item \texttt{my\_execute\_steps}
+\item \texttt{my\_masked\_causal\_lm\_loss}
+\item \texttt{my\_verify\_candidate}
+\end{itemize}
+
+\section*{操作及观察}
+\begin{enumerate}
+\item 检查推理轨迹中有效监督位置及最终答案提取。
+\item 构造可验证候选，比较步骤执行、拒绝采样和候选筛选结果。
+\item 分别计算奖励、优势与裁剪目标，明确验证器能证实的命题范围。
+\item 在固定总预算下比较候选数与验证成本，记录停止条件和未解任务。
+\item 选择一组可自动核验的题目，固定模型快照、提示、采样参数、输出上限与工具配置，只改变Notebook配置中的\texttt{reasoning\_effort}。分别运行\texttt{low}、\texttt{medium}和\texttt{high}；每个档位至少重复三次，并保留随机种子或服务端请求标识。
+\item 对每个档位记录最终正确率、验证通过率、可见输出词元、推理词元（若可取得）、端到端延迟、费用、超时、截断与错误。另做一次输出上限扫描，检查内部推理增加是否挤占可见答案预算。
+\end{enumerate}
+
+\section*{结果判读及提交}
+提交验证证据、失败类别、预算账本与推理强度对照表。若所用模型或运行时不支持某个档位，应保存能力说明或错误响应并将该组标为不适用，不能静默换档。验证器覆盖有限时，通过验证不能外推为一般正确；候选一致与外部可验证性不同。
+
+提交时附上所执行单元范围、环境与制品身份、原始结果及失败说明。将未运行项目明确列出，不能用Notebook中已有输出替代本次执行证据。

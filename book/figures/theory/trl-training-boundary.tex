@@ -1,0 +1,25 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[lfs picture]
+
+\node[storage] (data) {版本化 Dataset};
+\node[storage, below=of data] (model) {模型 ID + Tokenizer};
+\node[interface, below=of model] (peft) {可选 PEFT Config};
+\node[interface, below=of peft] (reward) {Reference / Reward\\Contract};
+\node[block, right=24mm of $(model)!0.5!(peft)$] (trl) {TRL Trainer\\\scriptsize SFTTrainer / DPOTrainer\\\scriptsize GRPOTrainer};
+\node[storage, above right=10mm and 22mm of trl] (ckpt) {Checkpoint / Adapter};
+\node[storage, below right=10mm and 22mm of trl] (state) {Trainer State\\\scriptsize 配置 / 指标 / 恢复点};
+\draw[data arrow] (data) -- (trl);
+\draw[data arrow] (model) -- (trl);
+\draw[control arrow] (peft) -- (trl);
+\draw[control arrow] (reward) -- (trl);
+\draw[data arrow] (trl) -- (ckpt);
+\draw[data arrow] (trl) -- (state);
+\node[group, fit=(data)(model)(peft)(reward), label={[title]above:冻结的输入契约}] {};
+\node[group, fit=(ckpt)(state), label={[title]above:可恢复训练制品}] {};
+
+\end{tikzpicture}
+\end{document}

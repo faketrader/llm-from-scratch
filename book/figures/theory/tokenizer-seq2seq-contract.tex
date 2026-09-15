@@ -1,0 +1,28 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[lfs picture]
+
+\node[storage] (src) {源文本};
+\node[storage, below=18mm of src] (tgt) {目标文本};
+\node[compute, right=of src] (tok) {Tokenizer};
+\node[compute, right=of tgt] (target) {\texttt{text\_target}};
+\node[storage, above right=7mm and 16mm of tok] (ids) {\texttt{input\_ids}\\\scriptsize $[B,S]$};
+\node[storage, below right=7mm and 16mm of tok] (mask) {\texttt{attention\_mask}\\\scriptsize $[B,S]$};
+\node[storage, right=of target] (labels) {\texttt{labels}\\\scriptsize $[B,T]$};
+\node[compute, right=of labels] (pad) {Label padding\\\scriptsize $\mapsto-100$};
+\node[block, right=28mm of $(ids)!0.5!(pad)$] (model) {Encoder--Decoder\\模型};
+\node[compute, right=of model] (loss) {Cross-Entropy\\Loss};
+\draw[data arrow] (src) -- (tok);
+\draw[data arrow] (tok) -- (ids);
+\draw[data arrow] (tok) -- (mask);
+\draw[data arrow] (tgt) -- (target) -- (labels) -- (pad);
+\draw[data arrow] (ids) -- (model);
+\draw[control arrow] (mask) -- (model);
+\draw[data arrow] (pad) -- (model);
+\draw[data arrow] (model) -- (loss);
+
+\end{tikzpicture}
+\end{document}

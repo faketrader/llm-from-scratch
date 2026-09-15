@@ -1,0 +1,315 @@
+\documentclass[../textbook.tex]{subfiles}
+\begin{document}
+\bookchapter{位置表示}{ch:position-representation}
+
+词元嵌入提供离散身份的连续表示，注意力机制则根据内容在可见位置之间交换信息；二者都不会自动规定一套独立、可控的位置坐标。\bookxref{ch:attention}已经建立缩放点积注意力，并证明无显式位置输入时的排列等变条件。本章由这一结构性质出发，解释顺序信息为什么仍需明确进入模型。
+
+本章先区分排列等变性与排列不变性，再推导可学习绝对位置、正弦位置编码和旋转位置编码，最后比较位置进入输入、注意力分数与查询键变换的不同方式。超出训练长度后的频率调整与能力评估将在\bookxref{ch:long-context}讨论。
+
+\section{位置表示的必要性}
+
+\subsection{等变性及不变性}
+设 $X\in\Real^{T\times d}$ 包含一条序列的向量。置换矩阵 $\Pi$ 的每行每列恰有一个一，其余元素为零，满足 $\Pi^{\mathsf T}\Pi=I$。$\Pi X$ 重排输入行。
+
+若序列变换 $F$ 满足
+\begin{equation}
+ F(\Pi X)=\Pi F(X),
+ \label{eq:rev7-equivariance}
+\end{equation}
+则称其具有\term{排列等变性}{Permutation Equivariance}{}：输入如何重排，输出就对应地重排。若某个汇总函数 $g$ 满足 $g(\Pi X)=g(X)$，则称其具有\term{排列不变性}{Permutation Invariance}{}。例如对所有行求和的不变性，与逐位置表示的等变性是不同性质。
+
+等变并不意味着输出不能依赖其他词元。它意味着在相同的无顺序规则下交换词元位置，模型只能相应地交换输出，不能仅凭交换后的数组行号获得原本不存在的顺序语义。对于“甲帮助乙”与“乙帮助甲”，仅把词元作为可交换元素处理，难以表达由顺序确定的角色差异。
+
+\subsection{无位置自注意力的排列等变性}
+\bookxref{ch:attention}已经证明：各位置共享投影、不含显式位置输入、无随机算子，并且可见性关系随内容同步置换时，自注意力满足式\eqref{eq:rev7-equivariance}。这项结论不是注意力计算的定义，而是由投影、行 Softmax 与加权汇总共同导出的结构性质。
+
+\subsection{掩码改变命题的前提}
+若注意力带加性掩码 $M$，允许位置取零，禁止位置取负无穷，则正确的等变关系为
+\begin{equation}
+ F(\Pi X;\Pi M\Pi^{\mathsf T})=\Pi F(X;M).
+\end{equation}
+也就是说，内容重排时，原来哪些位置允许互相读取的关系也要同步重排。每一行还必须有至少一个允许位置，否则归一化本身未定义。
+
+固定的下三角因果掩码已经携带了前后可见性信息。若仅交换词元而仍使用原下三角掩码，通常有 $\Pi M\Pi^{\mathsf T}\ne M$，上面的无位置等变证明不再适用。因此不能声称“只要没有显式位置编码，任何因果模型都完全不能感知顺序”。显式位置表示提供了额外的可控坐标机制，但掩码与边界本身也会影响顺序信息。
+
+加性位置向量矩阵记为 $P_{\mathrm{pos}}$。词元重排但位置固定时，输入变为 $\Pi X+P_{\mathrm{pos}}$，而非 $\Pi(X+P_{\mathrm{pos}})$。二者一般不同，这正是位置编码改变上述对称性的方式。若连位置向量也跟随词元一起移动，则只是重新编号同一组带坐标元素，并未实现“交换词元但保留位置”的操作。
+
+\section{绝对位置及正弦编码}
+
+\subsection{可学习位置表及加性组合}
+一种直接方法是为每个位置学习向量 $p_t\in\Real^d$，并形成
+\begin{equation}
+ x_t^{(0)}=\alpha E_{k_t,:}^{\mathsf T}+p_t.
+\end{equation}
+词元身份与位置拥有相同宽度，因而可以相加；它们不必分别占用互不重叠的坐标轴。模型通过下游变换学习如何利用这两类信号。若位置表只定义到 $T_{\max}-1$，超出范围后没有可直接读取的训练表项，必须明确新的构造方法。
+
+缩放系数 $\alpha$ 调整两类信号的相对尺度。原始 Transformer 使用 $\alpha=\sqrt d$，并以正弦函数构造位置向量\cite{vaswani2017attention}。这是一项与初始化和架构配套的选择，不是所有模型都必须照搬的常数。嵌入的参数尺度、归一化位置和位置表示方式改变后，应重新考察相加后的统计量。
+
+\subsection{多频率正弦及余弦}
+取偶数宽度 $d$，位置编号 $t=0,1,\ldots$，令
+\begin{equation}
+ \omega_r=10000^{-\frac{2r}{d}},\qquad r=0,\ldots,\frac{d}{2}-1.
+\end{equation}
+使用从零开始的分量索引，\term{正弦位置编码}{Sinusoidal Positional Encoding}{}的向量定义为
+\begin{equation}
+ (p_t)_{2r}=\sin(t\omega_r),\qquad
+ (p_t)_{2r+1}=\cos(t\omega_r).
+ \label{eq:rev7-sinusoidal}
+\end{equation}
+每一对分量描述同一个角频率下的二维相位。频率随 $r$ 几何递减，因此前面的维度变化较快，后面的维度变化较慢；这种组合提供多个距离尺度，而不是为每个位置单独分配参数。奇数宽度需要明确最后一维的处理，不能直接假定所有分量都能配成二维对。
+
+单个分量是周期函数；位置向量由多个频率共同构成。由每对分量的平方和为一，有 $\|p_t\|_2^2=\frac{d}{2}$，与 $t$ 无关。位置编码的范数保持不变，但不同位置之间的方向随频率组合变化。
+
+取 $d=4$，两个频率为 $1$ 和 $0.01$，便可直接计算：
+\begin{center}
+\begin{tabular}{rrrrr}
+\toprule $t$ & $\sin t$ & $\cos t$ & $\sin(0.01t)$ & $\cos(0.01t)$\\\midrule
+0 & 0 & 1 & 0 & 1\\
+1 & 0.841471 & 0.540302 & 0.010000 & 0.999950\\
+2 & 0.909297 & $-0.416147$ & 0.019999 & 0.999800\\
+\bottomrule
+\end{tabular}
+\end{center}
+相邻位置在快频率对中变化明显，在慢频率对中变化较小。表中数值来自式\eqref{eq:rev7-sinusoidal}的直接计算，不代表学习后某个维度已经承担特定语言功能。
+
+\subsection{相对位移的线性结构}
+对一个频率对，令 $s_t=(\sin(t\omega),\cos(t\omega))^{\mathsf T}$。由三角和角公式，
+\begin{align}
+ \sin((t+\Delta)\omega)
+ &=\sin(t\omega)\cos(\Delta\omega)+\cos(t\omega)\sin(\Delta\omega),\\
+ \cos((t+\Delta)\omega)
+ &=\cos(t\omega)\cos(\Delta\omega)-\sin(t\omega)\sin(\Delta\omega).
+\end{align}
+合并为矩阵形式：
+\begin{equation}
+ s_{t+\Delta}=
+ \begin{bmatrix}\cos(\Delta\omega)&\sin(\Delta\omega)\\
+ -\sin(\Delta\omega)&\cos(\Delta\omega)\end{bmatrix}s_t.
+ \label{eq:rev7-sinusoidal-shift}
+\end{equation}
+对所有频率使用分块对角矩阵，即得到 $p_{t+\Delta}=A_\Delta p_t$。变换只依赖位移 $\Delta$，不依赖起点 $t$。这给出了“相对位置具有线性结构”的精确含义。
+
+未经过其他投影时，两个位置向量的内积进一步满足
+\begin{align}
+ p_i^{\mathsf T}p_j
+ &=\sum_r\bigl[\sin(i\omega_r)\sin(j\omega_r)+\cos(i\omega_r)\cos(j\omega_r)\bigr]\\
+ &=\sum_r\cos((j-i)\omega_r).
+\end{align}
+但加性位置进入注意力后，完整分数不只包含这一个内积。若内容列向量为 $x_i,x_j$，简记 $A=W_QW_K^{\mathsf T}$，则未缩放分数为
+\begin{align}
+ (x_i+p_i)^{\mathsf T}A(x_j+p_j)
+ &=x_i^{\mathsf T}Ax_j+x_i^{\mathsf T}Ap_j
+   +p_i^{\mathsf T}Ax_j+p_i^{\mathsf T}Ap_j.
+\end{align}
+内容与位置交叉项、以及一般的投影 $A$，意味着这个完整分数不必只依赖位置差。正弦编码具有相对位移结构，与完整注意力分数严格只含相对位置，是两个不同命题。
+
+\subsection{可计算长度及可泛化长度}
+正弦函数可以在未出现过的位置继续求值，因而不会像有限查表那样立即发生索引越界。然而，模型可能只在有限相位组合和相对距离上接受训练。能够生成数值正确的位置向量，不等于后续层已经学会利用远超训练范围的信号。
+
+在有限精度下，相位乘法、三角函数求值和参数存储也会影响结果。不能把“不同位置近似独特”扩展为“任意长整数位置都能无误区分”的保证。长上下文能力需要结合训练分布、频率方案和实际任务检验，\bookxref{ch:long-context}将进一步处理这些问题。
+
+\section{旋转位置编码的构造}
+
+\subsection{查询键旋转}
+\term{旋转位置编码}{Rotary Position Embedding}{RoPE}把位置信息作用于投影后的查询和键\cite{su2021roformer}。先按不带旋转的位置内容计算 $q_i=W_Q^{\mathsf T}x_i$、$k_j=W_K^{\mathsf T}x_j$，其中此处 $x_i,x_j$ 为列向量，再令
+\begin{equation}
+ \widetilde q_i=R_iq_i,\qquad \widetilde k_j=R_jk_j.
+\end{equation}
+位置改变向量在若干二维平面中的方向，而不必向输入再增加一个独立的位置向量。标准的这一构造旋转查询和键，值向量仍按内容投影处理；若某个架构还对值应用变换，应按其实际定义另行分析。
+
+我们先从二维欧氏旋转本身推导，而不直接使用高维结果。角度为 $\theta$ 的逆时针旋转矩阵为
+\begin{equation}
+ R(\theta)=\begin{bmatrix}\cos\theta&-\sin\theta\\\sin\theta&\cos\theta\end{bmatrix}.
+ \label{eq:rev7-rotation}
+\end{equation}
+对列向量 $z=(z_0,z_1)^{\mathsf T}$，旋转后为
+\begin{equation}
+ R(\theta)z=\begin{bmatrix}z_0\cos\theta-z_1\sin\theta\\
+ z_0\sin\theta+z_1\cos\theta\end{bmatrix}.
+\end{equation}
+两分量并非各自独立缩放，而是交叉混合。漏掉其中的负号或交换配对维度，都会改变旋转方向和注意力分数。
+
+\subsection{正交性及旋转的组合}
+将式\eqref{eq:rev7-rotation}转置并相乘，利用 $\cos^2\theta+\sin^2\theta=1$，得到
+\begin{equation}
+ R(\theta)^{\mathsf T}R(\theta)=I,\qquad
+ R(\theta)^{\mathsf T}=R(-\theta).
+\end{equation}
+因此 $\|R(\theta)z\|_2=\|z\|_2$。旋转不会通过放大向量长度引入位置，而是通过相对方向改变交互。
+
+将两个旋转矩阵逐项相乘，可得
+\begin{align}
+ R(a)R(b)
+ &=\begin{bmatrix}
+ \cos a\cos b-\sin a\sin b&-(\cos a\sin b+\sin a\cos b)\\
+ \sin a\cos b+\cos a\sin b&\cos a\cos b-\sin a\sin b
+ \end{bmatrix}\\
+ &=R(a+b).
+\end{align}
+故 $R(a)^{\mathsf T}R(b)=R(b-a)$。这是 RoPE 内积只显式依赖位置差的代数基础，而不只是对旋转图形的直观描述。
+
+\begin{center}
+\begin{tikzpicture}[>=Stealth,every node/.style={font=\small}]
+\draw[->] (-.6,0)--(3,0) node[right]{$z_0$};
+\draw[->] (0,-.4)--(0,2.7) node[above]{$z_1$};
+\draw[->,thick] (0,0)--(2.4,.6) node[right]{$z$};
+\draw[->,thick] (0,0)--(1.12,2.2) node[above]{$R(\theta)z$};
+\draw[dashed] (2.4,.6) arc[start angle=14,end angle=63,radius=2.47];
+\draw[->] (.78,.20) arc[start angle=14,end angle=63,radius=.8];
+\node at (.75,.7) {$\theta$};
+\node[draw,rounded corners,align=left,text width=58mm] at (6.5,1.2)
+ {同一二维子空间中：\\长度保持不变；\\位置决定旋转角；\\查询和键的角度差\\由位置差决定。};
+\end{tikzpicture}
+\captionof{figure}{二维旋转的几何含义。图为结构示意，实线向量与虚线圆弧表示旋转关系，不是训练数据的投影。}
+\end{center}
+
+\subsection{相对内积推导}
+对频率 $\omega$，查询位置 $i$ 使用 $R(i\omega)$，键位置 $j$ 使用 $R(j\omega)$。于是
+\begin{align}
+ \widetilde q_i^{\mathsf T}\widetilde k_j
+ &=[R(i\omega)q_i]^{\mathsf T}[R(j\omega)k_j]\\
+ &=q_i^{\mathsf T}R(i\omega)^{\mathsf T}R(j\omega)k_j\\
+ &=q_i^{\mathsf T}R((j-i)\omega)k_j.
+ \label{eq:rev7-relative-dot}
+\end{align}
+令 $\Delta=j-i$，$q_i=(q_0,q_1)^{\mathsf T}$，$k_j=(k_0,k_1)^{\mathsf T}$。继续展开右侧，得到
+\begin{equation}
+ \widetilde q_i^{\mathsf T}\widetilde k_j
+ =(q_0k_0+q_1k_1)\cos(\Delta\omega)
+ +(q_1k_0-q_0k_1)\sin(\Delta\omega).
+ \label{eq:rev7-rope-expanded}
+\end{equation}
+第一项由普通内积调制，第二项由带方向的交叉组合调制。位置差为零时，正弦项消失，分数恢复为未旋转内积。位置差取反时，余弦项不变而正弦项变号，这说明位置信号可以区分方向。
+
+\begin{bookinsight}[旋转内积的相对位置性质]
+查询和键使用相同的频率组与配对约定时，$R_i^{\mathsf T}R_j=R_{j-i}$。因此保持内容向量不变并同时平移两个位置，不改变其旋转内积；改变内容、可见性或频率配置则不在这一恒等式的保证范围内。
+\end{bookinsight}
+
+这里的“相对”是对显式位置因素的陈述，内容向量 $q_i,k_j$ 仍然影响分数。对于深层网络，这些内容向量又可能已经依赖边界、掩码和先前上下文。因此不能把式\eqref{eq:rev7-relative-dot}解释为整网输出只依赖词元之间的距离，也不能推断任意移动整个输入后输出必然不变。
+
+\subsection{多频率高维扩展}
+若单头查询和键宽度 $d_k$ 为偶数，把坐标划分为 $\frac{d_k}{2}$ 个二维子空间。每对使用自己的频率 $\omega_r$，定义
+\begin{equation}
+ R_t=\operatorname{diag}\bigl(R(t\omega_0),\ldots,R(t\omega_{\frac{d_k}{2}-1})\bigr).
+\end{equation}
+这里 $\operatorname{diag}$ 表示把二维矩阵排成分块对角矩阵，而不是只取其对角元素。各块独立旋转，所以
+\begin{equation}
+ R_i^{\mathsf T}R_j=R_{j-i},\qquad
+ \widetilde q_i^{\mathsf T}\widetilde k_j
+ =\sum_{r=0}^{\frac{d_k}{2}-1}(q_i^{(r)})^{\mathsf T}R(\Delta\omega_r)k_j^{(r)}.
+\end{equation}
+一种基本频率配置写为 $\omega_r=\beta^{-\frac{2r}{d_k}}$，其中 $\beta>1$。频率基数、实际旋转维数与配对顺序都属于模型定义，不能仅凭隐藏维度猜测。
+
+若只旋转前 $d_r$ 个维度，且 $d_r$ 为偶数，则其余维度保持不变，分数分解为旋转部分与普通内积部分：
+\begin{equation}
+ \widetilde q_i^{\mathsf T}\widetilde k_j
+ =(q_i^{\mathrm{rot}})^{\mathsf T}R_\Delta k_j^{\mathrm{rot}}
+ +(q_i^{\mathrm{pass}})^{\mathsf T}k_j^{\mathrm{pass}}.
+\end{equation}
+频率指数的分母应与实际采用的方案一致。把全部头宽与旋转宽度静默互换，可能在张量形状正确的情况下改变所有频率。
+
+高维旋转通常可以逐对计算，无需物化 $d_k\times d_k$ 稠密矩阵。每个位置只需线性数量的乘加。相邻配对与前后半段配对可以通过固定的坐标置换建立等价关系，但同时必须变换投影权重的布局。只替换旋转程序而不处理已有权重，会得到不同函数。
+
+\begin{bookalgorithm}[逐对执行 RoPE]\label{alg:rev7-rope}
+\textbf{输入：}查询或键张量 $Z\in\Real^{B\times T\times d_k}$，位置编号 $I\in\mathbb Z^{B\times T}$，偶数旋转宽度 $d_r\le d_k$，频率 $\omega_0,\ldots,\omega_{\frac{d_r}{2}-1}$；各维度均为有限长度。此处采用相邻坐标配对。
+
+\textbf{输出：}同形张量 $\widetilde Z$。\textbf{状态：}输出数组和当前二维原始分量 $a,b$，二者在写回前均须保存。
+\begin{enumerate}
+\item 对每个样本索引 $b_0=1,\ldots,B$ 和位置列 $t=0,\ldots,T-1$，读取实际位置 $m=I_{b_0t}$。
+\item 对每对 $r=0,\ldots,\frac{d_r}{2}-1$，令 $\theta=m\omega_r$，$c=\cos\theta$，$s=\sin\theta$；保存 $a=Z_{b_0,t,2r}$、$b=Z_{b_0,t,2r+1}$。
+\item 写入 $\widetilde Z_{b_0,t,2r}=ac-bs$ 与 $\widetilde Z_{b_0,t,2r+1}=as+bc$。不得用已更新的第一分量代替原始 $a$。
+\item 将坐标 $d_r,\ldots,d_k-1$ 原样复制；全部样本、位置及配对处理完毕即停止。
+\end{enumerate}
+\textbf{不变量：}每对旋转前后平方和相同；未旋转坐标相同。对查询和键分别调用时，频率和配对必须一致，位置编号各取对应位置。
+
+按标量运算计，旋转计算量为 $O(BTd_r)$，输出存储为 $O(BTd_k)$；频率表为 $O(d_r)$。若预计算全部位置的三角函数，需另计表的存储。多头情况下对各头独立使用相同过程，并计入头数因子。
+\end{bookalgorithm}
+算法\ref{alg:rev7-rope}给出了与分块旋转矩阵等价的执行顺序。它没有构造稠密矩阵，也没有规定特定框架接口；数值例题将用独立内积公式核对其结果。
+
+\section{RoPE 梯度}
+
+\label{q:ch7:example:01}
+\subsection{相对位置分数}
+取一个二维子空间，频率 $\omega=1$，查询位置 $i=1$、键位置 $j=3$，内容向量为
+\begin{equation}
+ q_i=\begin{bmatrix}1\\2\end{bmatrix},\qquad
+ k_j=\begin{bmatrix}3\\-1\end{bmatrix}.
+\end{equation}
+角度以弧度计。分别执行旋转：
+\begin{align}
+ \widetilde q_i
+ &=\begin{bmatrix}\cos1-2\sin1\\\sin1+2\cos1\end{bmatrix}
+ \approx\begin{bmatrix}-1.142640\\1.922076\end{bmatrix},\\
+ \widetilde k_j
+ &=\begin{bmatrix}3\cos3+\sin3\\3\sin3-\cos3\end{bmatrix}
+ \approx\begin{bmatrix}-2.828857\\1.413353\end{bmatrix}.
+\end{align}
+直接相乘给出 $\widetilde q_i^{\mathsf T}\widetilde k_j\approx5.948935$。现在改用位置差 $\Delta=2$，普通内积为 $1\times3+2\times(-1)=1$，交叉组合为 $2\times3-1\times(-1)=7$，故
+\begin{equation}
+ q_i^{\mathsf T}R(2)k_j=\cos2+7\sin2\approx5.948935.
+\end{equation}
+两条计算路径相同。如果作为宽度为2的缩放点积注意力分数，还须除以 $\sqrt2$，得到约 $4.206532$。该缩放来自注意力定义，不属于旋转矩阵本身。
+
+将两个位置同时平移为 $i'=6,j'=8$，保持内容向量、频率与配对不变，差值仍为2，结果便保持不变。反过来，只改变键位置为 $j=1$，差值变为零，内积恢复为1。例题分别检验了公共平移性质与同位置性质。
+
+\subsection{旋转的反向传播}
+位置和频率固定时，$\widetilde q=R_iq$ 是一个线性变换。由\bookxref{ch:rev-tensors}的链式法则，若上游梯度为 $g=\frac{\partial\mathcal L}{\partial\widetilde q}$，则
+\begin{equation}
+ \frac{\partial\mathcal L}{\partial q}=R_i^{\mathsf T}g=R_{-i}g.
+\end{equation}
+反向使用逆旋转，且梯度范数保持不变。这一结论仅针对纯旋转模块；后续内积、Softmax 和其他层仍可能改变梯度尺度，不能据此声称完整注意力没有梯度消失或爆炸问题。
+
+令一个二维内积 $s=q^{\mathsf T}R(\Delta\omega)k$。若把 $\omega$ 当作可微实数参数，则
+\begin{equation}
+ \frac{\partial s}{\partial\omega}
+ =\Delta\left[-(q_0k_0+q_1k_1)\sin(\Delta\omega)
+ +(q_1k_0-q_0k_1)\cos(\Delta\omega)\right].
+\end{equation}
+这一表达式说明频率误差与距离尺度相关。基本 RoPE 中频率可以固定，不需要优化该导数；推导它是为了理解为什么位置很远时，小的频率变化也可能造成明显的相位偏移。
+
+\subsection{相对位置分数的非单调性}
+式\eqref{eq:rev7-rope-expanded}包含正弦与余弦，单个子空间的分数随距离振荡，而不必单调减小。例如 $q=k=(1,0)^{\mathsf T}$ 时，分数就是 $\cos(\Delta\omega)$，在一个周期内既下降又上升。
+
+多频率组合能够产生不同距离上的相位干涉，但其结果还受内容系数影响。因此不能将 RoPE 概括为“距离越远，任意查询和键的相关性就越低”。若讨论某种统计衰减或经验偏好，应另外说明向量分布、频率配置和测量条件；纯旋转恒等式本身不提供这样的逐样本保证。
+
+\section{位置方案的边界及一致性}
+
+\subsection{位置机制的作用层次}
+在已建立的公式上，可以区分三类设计：加性绝对位置在输入表示中形成 $E_{k_t,:}^{\mathsf T}+p_t$；相对分数项直接将一个依赖 $j-i$ 的量加到匹配分数；RoPE 则先变换查询和键，使内积显式包含相对位移。这些方法都能携带顺序信息，但它们修改的计算对象不同。
+
+例如直接加入相对偏置的分数可写为
+\begin{equation}
+ s_{ij}=\frac{q_i^{\mathsf T}k_j}{\sqrt{d_k}}+b_{j-i}.
+\end{equation}
+其中 $b_{j-i}$ 不必与内容相乘，而 RoPE 的相对作用与内容系数交织。位置方法的选择需要考虑训练长度、所需相对关系与既有权重；保持张量尺寸相同不足以证明替换后模型等价。
+
+\begin{center}
+\begin{tabularx}{\linewidth}{lXXX}
+\toprule 方法 & 位置作用对象 & 基本代数性质 & 需明确的边界\\\midrule
+可学习位置表 & 输入向量 & 每个位置独立参数 & 表范围与未训练位置\\
+正弦加性编码 & 输入向量 & 位移对应线性变换 & 完整分数含交叉项\\
+相对分数偏置 & 注意力分数 & 按相对位移增加项 & 位移索引与分组规则\\
+RoPE & 查询与键 & 旋转内积含相对位移 & 频率、配对与旋转宽度\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+这些类别描述位置如何进入某一项计算，并不要求整套架构只采用其中一种。模型可以只旋转查询和键的部分维度，也可以只在部分注意力层使用 RoPE；不执行显式位置向量相加或查询键旋转的序列模块，还可能通过因果可见性、递推状态、卷积或其他带顺序的计算路径利用先后关系。因此，“不使用 RoPE”“没有显式位置编码”与“模型不利用顺序”是三个不同判断。
+
+\subsection{位置编号的输入语义}
+向量的批量存储列号不一定等于模型位置。使用左侧填充时，一个有效词元在数组中的列号可能随同批其他样本而变化。如果模型预期有效词元从固定起点连续编号，应按有效位置生成相应编号；如果训练定义采用其他规则，则应复现该规则，不能以个人偏好更改。
+
+多个文档打包在同一数组中时，还需同时确定文档边界、可见性与位置是否重置。单独重置位置编号不会阻止跨文档读取；单独屏蔽跨文档注意力也不自动决定位置编号。这些约定共同定义前向函数。
+
+对于增量计算，若历史键已经按各自位置旋转，就应保留它们的位置语义。新查询不能在每个生成步都错误地重新编号为零，否则与历史键形成的角度差将改变。缓存索引、模型位置以及频率配置要相容；具体缓存结构将在推理部分展开。
+
+\subsection{位置构造规则}
+嵌入表依赖词表到编号的映射。同一形状的表若搭配不同编号顺序，就会读出错误词元向量；新增词元时也需同步处理输入表、输出投影与特殊符号。权重共享更要求这些对象指向同一语义集合。
+
+位置函数即使没有可训练参数，其频率基数、宽度、索引起点与缩放规则仍属于模型定义。可以保存完整的预计算位置表，也可以保存足以确定性重建它的配置；关键在于重载后计算相同，而不是规定所有实现必须使用同一种存储接口。
+\footnote{预计算的正弦表属于可重建状态。是否把它随权重保存是工程选择；若不保存，就必须保证构造公式、配置、精度与位置范围能被一致恢复。}
+
+验证应围绕具体性质展开：不含位置且可见性同步重排时满足等变关系；正弦位移满足式\eqref{eq:rev7-sinusoidal-shift}；RoPE 保持范数、满足相对内积并在统一平移下保持该内积。最后再检查位置编号、频率配置与重载前后的输出一致性。即使这些性质全部通过，也只证明位置计算与预期定义相容；长文本任务表现仍需独立证据。
+
+\chapterreferences
+\end{document}

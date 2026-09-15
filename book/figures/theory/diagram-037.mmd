@@ -1,0 +1,8 @@
+flowchart LR
+    P["预训练 ViT 权重"] --> B["加载 Encoder 主干"]
+    D["目标图像数据"] --> R["Resize / Normalize"]
+    R --> B
+    B --> H["替换分类头"]
+    H --> F["分阶段解冻并微调"]
+    F --> E["验证集选择 checkpoint"]
+    E --> A["保存权重 + 配置 + 预处理参数"]

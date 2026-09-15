@@ -1,0 +1,29 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[lfs picture]
+
+\node[storage] (batch) {Global Batch};
+\node[compute, right=of batch] (sampler) {Distributed Sampler};
+\node[storage, above right=10mm and 18mm of sampler] (mb1) {Micro-batch shard 1};
+\node[storage, below right=10mm and 18mm of sampler] (mb2) {Micro-batch shard 2};
+\node[block, right=of mb1] (r1s1) {Replica 1 / PP Stage 1\\\scriptsize TP shards};
+\node[block, right=of r1s1] (r1s2) {Replica 1 / PP Stage 2\\\scriptsize TP shards};
+\node[block, right=of mb2] (r2) {Replica 2\\\scriptsize same TP / PP layout};
+\node[interface, below=of r1s1] (cp) {可选 CP / SP\\\scriptsize 长上下文切分};
+\node[interface, below=of r1s2] (ep) {可选 EP\\\scriptsize MoE All-to-All};
+\node[compute, right=of r2] (sync) {DP Gradient Sync\\\scriptsize All-Reduce / Reduce-Scatter};
+\draw[data arrow] (batch) -- (sampler);
+\draw[data arrow] (sampler) -- (mb1) -- (r1s1) -- node[label text, above]{Pipeline P2P} (r1s2);
+\draw[data arrow] (sampler) -- (mb2) -- (r2);
+\draw[control arrow] (cp) -- (r1s1);
+\draw[control arrow] (ep) -- (r1s2);
+\draw[control arrow] (r1s2) -- (sync);
+\draw[control arrow] (r2) -- (sync);
+\node[group, fit=(mb1)(r1s1)(r1s2)(cp)(ep), label={[title]above:DP Replica 1：节点内优先 TP / EP}] {};
+\node[group, fit=(mb2)(r2), label={[title]below:DP Replica 2：独立物理 GPU 组}] {};
+
+\end{tikzpicture}
+\end{document}

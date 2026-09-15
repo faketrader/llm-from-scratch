@@ -1,0 +1,34 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{tikz}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[lfs picture]
+  \node[interface] (policy) {Version / Schema Registry / Policy};
+  \node[interface, right=17mm of policy] (orchestration) {Orchestration\\分区、调度、重试};
+  \node[neutral, right=17mm of orchestration] (lineage) {Lineage / Metrics / Retry};
+
+  \node[storage, below=24mm of policy] (object) {Object Storage};
+  \node[compute, right=13mm of object] (decode) {Decode / Validate\\Quarantine};
+  \node[compute, right=13mm of decode] (transform) {Partitioned Transform};
+  \node[compute, right=13mm of transform] (shuffle) {Shuffle / Dedup};
+  \node[storage, right=13mm of shuffle] (shards) {Training Block Shards};
+
+  \draw[control arrow] (policy) -- (orchestration);
+  \draw[control arrow] (orchestration) -- (lineage);
+  \draw[data arrow] (object) -- (decode);
+  \draw[data arrow] (decode) -- (transform);
+  \draw[data arrow] (transform) -- (shuffle);
+  \draw[data arrow] (shuffle) -- (shards);
+  \draw[control arrow] (orchestration) -- (decode);
+  \draw[control arrow] (orchestration) -- (transform);
+  \draw[control arrow] (orchestration) -- (shuffle);
+  \draw[data arrow] (shards.north) |- node[label text,above,near end]{阶段事件 / 指标} (lineage.east);
+
+  \begin{scope}[on background layer]
+    \node[group, fit=(policy)(orchestration)(lineage), label={[title]above:控制面}] {};
+    \node[group, fit=(object)(decode)(transform)(shuffle)(shards), label={[title]below:数据面}] {};
+  \end{scope}
+\end{tikzpicture}
+\end{document}

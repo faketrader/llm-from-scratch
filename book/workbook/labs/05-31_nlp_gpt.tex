@@ -1,0 +1,31 @@
+\chapter{自回归生成}
+\label{lab:31_nlp_gpt}
+
+\noindent\textbf{配套文件：}\path{notebook/31_nlp_gpt.ipynb}\par
+\noindent\textbf{教材关联：}\bookxrefshort{ch:rev-tokenization}、\bookxrefshort{ch:attention}、\bookxrefshort{ch:rev-autoregressive}。
+
+\section*{实验目标}
+验证未来信息不可见，以及采样策略改变输出分布的方式。
+
+\section*{准备及定位}
+先阅读本册实验总则，确认Notebook中的依赖与资产单元。原理计算、库接口迁移和真实模型训练可能具有不同资源要求，应分别记录设备、版本及运行范围。
+
+源码定位可从下列函数开始；应结合前置数据与配置单元阅读。
+\begin{itemize}
+\item \texttt{my\_encode}
+\item \texttt{my\_decode}
+\item \texttt{my\_get\_batch}
+\end{itemize}
+
+\section*{操作及观察}
+\begin{enumerate}
+\item 构造上下文与下一词元标签，手工核对首尾位置和有效目标数量。
+\item 检查因果注意力矩阵，并比较只改变未来词元时较早位置的输出。
+\item 固定模型与提示，比较temperature、top-k和beam search，记录随机种子与预算。
+\item 将输入与生成配置映射到Transformers接口，核对终止词元与最大生成长度。
+\end{enumerate}
+
+\section*{结果判读及提交}
+提交因果性差异、采样配置及生成样本。单条流畅输出不能证明训练有效；不同解码预算的质量不能直接归因于模型变化。
+
+提交时附上所执行单元范围、环境与制品身份、原始结果及失败说明。将未运行项目明确列出，不能用Notebook中已有输出替代本次执行证据。

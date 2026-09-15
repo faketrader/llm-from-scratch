@@ -1,0 +1,58 @@
+\workbookchapter{数学基础}
+
+\begin{exerciselist}
+\exerciseitem 保持验证器的接受率设定不变，将先验正确率从 $0.2$ 改为 $0.8$，计算通过后的正确率并解释变化。
+
+\begin{workbookanswers}
+令正确率为0.8，则通过概率为 $0.8\times0.9+0.2\times0.1=0.74$，后验正确率为 $\frac{0.72}{0.74}=\frac{36}{37}\approx0.972973$。验证器条件接受率未变，但错误候选的基数降低，因此通过集合更纯；不能只凭敏感度0.9确定后验。
+\end{workbookanswers}
+
+\exerciseitem 设 $p=(1,0)$，分别计算其对 $q=(\frac{1}{2},\frac{1}{2})$ 的交叉熵，以及反向 KL 散度。哪些量有限？
+
+\begin{workbookanswers}
+交叉熵为 $H(p,q)=-\log(\frac{1}{2})=\log 2$，所以有限。反向散度中，$q_2>0$ 而 $p_2=0$，第二项为
+\[
+\frac12\log\frac{\frac{1}{2}}{0}=+\infty.
+\]
+因此 $D_{\mathrm{KL}}(q\|p)=+\infty$。正向散度则为 $D_{\mathrm{KL}}(p\|q)=\log 2$，因为 $0\log(\frac{0}{q_2})$ 按连续延拓取零。
+\end{workbookanswers}
+
+\exerciseitem 对 $p=(0.6,0.4)$、$q=(0.7,0.3)$，验证交叉熵分解并比较两个方向的散度。
+
+\begin{workbookanswers}
+\[
+H(p)=-.6\log.6-.4\log.4\approx.673012,
+\quad H(p,q)=-.6\log.7-.4\log.3\approx.695594.
+\]
+两者之差为 $.6\log(\frac{6}{7})+.4\log(\frac{4}{3})\approx.0225824=D_{\mathrm{KL}}(p\|q)$。反向为 $.7\log(\frac{7}{6})+.3\log(\frac{3}{4})\approx.0216009$；一般不相等。
+\end{workbookanswers}
+
+\exerciseitem 将一个含四个目标的文档切成两个等长片段。什么条件下总词元损失保持不变？片段切断上下文后为什么未必保持？
+
+\begin{workbookanswers}
+设原四项损失为 $\ell_1,\ldots,\ell_4$。若目标、条件上下文、位置协议、参数、随机状态和权重均不变，切片后两段的损失和仍为四项之和；按有效词元合并平均仍为其四分之一。若第二段丢失前两词元上下文，$p(x_3\mid x_1,x_2)$ 变为另一条件分布，原有等式无须成立。还应避免额外EOS和重复监督改变目标集合。
+\end{workbookanswers}
+
+\exerciseitem 若一个模型将全部分数同时加上 $1000$，其理论概率应怎样变化？朴素实现可能发生什么数值问题？
+
+\begin{workbookanswers}
+$\frac{e^{z_j+1000}}{\sum_ke^{z_k+1000}}=\frac{e^{z_j}}{\sum_ke^{z_k}}$，理论概率不变。直接指数可能溢出，产生无穷比无穷。稳定计算先减去行最大值；对数损失使用log-sum-exp而非先求可能舍入为零的概率再取对数。
+\end{workbookanswers}
+
+\exerciseitem 设给定输入的真实正类概率为 $p\in(0,1)$，模型输出为 $q\in(0,1)$，正类权重 $w>0$。对条件期望损失 $L(q)=-wp\log q-(1-p)\log(1-q)$，求最优输出 $q^*$，并推导从 $q^*$ 恢复 $p$ 的反变换。取 $p=0.1,w=9$ 计算 $q^*$，解释为何提高少数类权重后不能直接把输出当作真实概率，并说明反变换的适用前提。
+
+\begin{workbookanswers}
+对 $q$ 求导得
+\[
+L'(q)=-\frac{wp}{q}+\frac{1-p}{1-q},\qquad
+L''(q)=\frac{wp}{q^2}+\frac{1-p}{(1-q)^2}>0.
+\]
+令一阶导数为零，得到唯一最优解及其反变换
+\[
+q^*=\frac{wp}{wp+1-p},\qquad
+p=\frac{q^*}{w-(w-1)q^*}.
+\]
+代入题设有 $q^*=0.5$，而真实正类概率为 $0.1$。加权改变了损失最优输出的含义；固定正权重时该变换对 $p$ 单调，但数值校准与排序是不同性质。反变换依赖权重已知、条件风险达到理想最优以及数据分布匹配。有限容量、优化误差或分布变化下，仍应在独立数据上检查校准，并按实际误判代价选择阈值。
+\end{workbookanswers}
+
+\end{exerciselist}

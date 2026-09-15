@@ -1,0 +1,31 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{tikz}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[lfs picture]
+  \node[storage] (source) {对象存储\\并行文件系统};
+  \node[compute, right=15mm of source] (cpu) {CPU 解析\\Tokenizer};
+  \node[compute, right=15mm of cpu] (gpu) {GPU / Accelerator\\训练或推理 Kernel};
+  \node[compute, above=14mm of gpu] (ranks) {其他 Rank};
+  \node[storage, below=15mm of gpu] (checkpoint) {持久化存储\\Checkpoint};
+  \node[neutral, right=17mm of gpu] (telemetry) {监控与日志\\指标 / Trace};
+  \node[interface, below=15mm of telemetry] (planner) {容量模型\\吞吐、内存、网络、恢复窗口};
+
+  \draw[data arrow] (source) -- node[label text,above]{数据吞吐} (cpu);
+  \draw[data arrow] (cpu) -- node[label text,above]{Batch} (gpu);
+  \draw[data arrow, <->] (gpu) -- node[label text,right]{Collective} (ranks);
+  \draw[data arrow] (gpu) -- node[label text,right]{Checkpoint} (checkpoint);
+  \draw[data arrow, <->] (gpu) -- (telemetry);
+  \draw[control arrow] (source) |- (planner);
+  \draw[control arrow] (checkpoint) -- (planner);
+  \draw[control arrow] (telemetry) -- (planner);
+
+  \begin{scope}[on background layer]
+    \node[group, fit=(source)(cpu), label={[title]above:主机与数据通路}] {};
+    \node[group, fit=(gpu)(ranks), label={[title]above:加速器与通信域}] {};
+    \node[group, fit=(checkpoint)(telemetry)(planner), label={[title]below:持久化与运维域}] {};
+  \end{scope}
+\end{tikzpicture}
+\end{document}

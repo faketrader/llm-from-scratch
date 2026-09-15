@@ -1,0 +1,11 @@
+flowchart LR
+    D["Micro-batch"] --> A["Autocast 前向"]
+    A --> L["Loss / accumulation_steps"]
+    L --> B["Backward 累积梯度"]
+    B --> Q{"达到累积步数？"}
+    Q -->|"否"| D
+    Q -->|"是"| C["梯度裁剪"]
+    C --> O["Optimizer Step"]
+    O --> S["LR Scheduler Step"]
+    S --> Z["Zero Grad"]
+    Z --> D

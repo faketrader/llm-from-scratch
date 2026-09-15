@@ -1,0 +1,13 @@
+flowchart LR
+    A["文本与数据版本"] --> B["DatasetDict"]
+    B --> C["Tokenizer 编码契约"]
+    C --> D["拼接与定长切块"]
+    D --> E["DataLoader"]
+    E --> F["Decoder-only 前向传播"]
+    F --> G["Next-token Loss"]
+    G --> H["反向传播"]
+    H --> I["AdamW 更新"]
+    I --> J["Warmup + Cosine"]
+    J --> E
+    I --> K["Checkpoint"]
+    K -.->|"恢复模型、优化器、调度器与数据位置"| E

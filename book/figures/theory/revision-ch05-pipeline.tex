@@ -1,0 +1,19 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex,amsmath}
+\usetikzlibrary{arrows.meta,positioning}
+\begin{document}
+\begin{tikzpicture}[>=Latex,font=\small,node distance=9mm and 10mm,
+ box/.style={draw=blue!55!black,rounded corners,fill=blue!4,align=center,text width=29mm,minimum height=12mm},
+ note/.style={draw=gray,fill=gray!6,align=center,text width=42mm,minimum height=12mm}]
+\node[box] (text) {原始文本\\字符与空白};
+\node[box,right=of text] (norm) {规范化与预分词\\保留或限制边界};
+\node[box,right=of norm] (token) {固定词元模型\\规则或概率};
+\node[box,right=of token] (post) {任务后处理\\边界与角色};
+\node[box,below=of post] (tensor) {编号与掩码\\模型输入};
+\node[note,below=of norm] (train) {训练语料及学习算法\\产生词表和参数};
+\node[note,below=of token] (decode) {普通词元连接并解码\\恢复规范化文本};
+\draw[->] (text)--(norm);\draw[->] (norm)--(token);\draw[->] (token)--(post);\draw[->] (post)--(tensor);
+\draw[->,dashed] (train.north east)--(token.south west);
+\draw[->] (token)--(decode);
+\end{tikzpicture}
+\end{document}

@@ -1,0 +1,158 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{mybook}[2026/09/11 My book style]
+% Reusable style for ctexbook with XeLaTeX, LuaLaTeX and subfiles.
+\RequirePackage{subfiles}
+\RequirePackage{iftex}
+\RequireTUTeX
+% Fonts and Chinese family commands use the ctex platform defaults.
+\RequirePackage[a4paper,inner=30mm,outer=24mm,top=26mm,bottom=26mm,headheight=16pt]{geometry}
+% 内侧 30 mm 已包含装订余量；边注只占外侧，不侵入装订沟。
+\setlength{\marginparwidth}{17mm}
+\setlength{\marginparsep}{3mm}
+\RequirePackage{siunitx}
+\sisetup{mode=match}
+\RequirePackage{graphicx,booktabs,tabularx}
+\RequirePackage{enumitem}
+\RequirePackage{longtable,array,calc,seqsplit,fvextra,caption}
+\RequirePackage{tikz}
+\usetikzlibrary{calc,positioning,fadings,shapes.geometric,arrows.meta,shadows,decorations.pathreplacing}
+
+\RequirePackage{newunicodechar}
+% 中文科技排版
+\newunicodechar{。}{．}
+% 数学符号风格
+\newunicodechar{≤}{\ensuremath{\leqslant}}
+\newunicodechar{≥}{\ensuremath{\geqslant}}
+
+% 项目全局视觉主题色彩定义
+\definecolor{LFSNavy}{HTML}{0F172A}      % Slate 900 典雅藏青
+\definecolor{LFSPrimary}{HTML}{1D4ED8}   % Blue 700 核心主蓝
+\definecolor{LFSCyan}{HTML}{0284C7}      % Sky 600 科技青蓝
+\definecolor{LFSTeal}{HTML}{0D9488}      % Teal 600
+\definecolor{LFSAmber}{HTML}{D97706}    % Amber 600 强调金橙
+\definecolor{LFSMuted}{HTML}{64748B}     % Slate 500 说明次阶
+\definecolor{LFSLight}{HTML}{F8FAFC}     % Slate 50 浅色底衬
+\definecolor{LFSBorder}{HTML}{CBD5E1}    % Slate 300 分割细线
+\RequirePackage[most]{tcolorbox}
+\RequirePackage{marginnote}
+% 颜色辅助识别，标题仍明确类别，保证灰度打印可读。
+\tcbset{
+  lfsbox/.style={
+    enhanced,breakable,colback=LFSLight,
+    colframe=LFSBorder,coltitle=LFSNavy,colbacktitle=LFSLight,
+    fonttitle=\bfseries,boxrule=.4pt,arc=1mm,left=2mm,right=2mm,
+    top=1.5mm,bottom=1.5mm,before skip=8pt,after skip=8pt
+  }
+}
+\newtcolorbox{bookinsight}[1][关键结论]{lfsbox,title={#1},borderline west={1pt}{0pt}{LFSPrimary}}
+\newtcolorbox{bookassumptions}[1][假设与适用范围]{lfsbox,title={#1},borderline west={1pt}{0pt}{LFSTeal}}
+\newcounter{bookalgorithm}[chapter]
+\renewcommand{\thebookalgorithm}{\thechapter.\arabic{bookalgorithm}}
+\newenvironment{bookalgorithm}[1][计算过程]{%
+  \refstepcounter{bookalgorithm}
+  \begin{tcolorbox}[lfsbox,title={算法\thebookalgorithm\quad #1}]%
+  }{
+  \end{tcolorbox}
+}
+% 首次定义突出中文规范名；英文全称与缩写保持常规字重，避免整段过度加粗。
+% 缩写参数可空。不把英文术语堆进脚注。
+\DeclareRobustCommand{\term}[3]{\textbf{#1}（#2\if\relax\detokenize{#3}\relax\else ，#3\fi）}
+% 用于不属于术语定义、但需要读者记住的短结论；不得包裹整段正文。
+\DeclareRobustCommand{\keyconcept}[1]{\textbf{#1}}
+% 短边注为辅助提示，不承载公式前提、引用或不可缺失的论证。
+\newcommand{\bookmargin}[1]{\marginnote{\raggedright\footnotesize\color{LFSNavy}#1}}
+% 图题使用非浮动位置，链接锚点落在图题处；表题统一置于表体上方。
+\captionsetup{hypcap=false}
+\captionsetup[table]{position=top}
+\newcommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\DeclareRobustCommand{\bookcode}[1]{\texttt{\seqsplit{#1}}}
+\DefineVerbatimEnvironment{verbatim}{Verbatim}{breaklines=true,fontsize=\small}
+% 表体统一使用小字号；表题继续由 caption 包独立控制。
+\AtBeginEnvironment{tabular}{\small}
+\AtBeginEnvironment{tabularx}{\small}
+\AtBeginEnvironment{longtable}{\small}
+\setcounter{tocdepth}{1}
+\RequirePackage{microtype}
+\RequirePackage{fancyhdr}
+\RequirePackage{emptypage} % 双页清页插入的空白页不显示页眉页脚。
+% 两册采用 openany 让章只换页；篇仍须从右页开始。
+\AddToHook{cmd/part/before}{\cleardoublepage}
+\RequirePackage[backend=biber,style=numeric,sorting=none]{biblatex}
+\newif\ifchaptercitations
+\AtEveryCitekey{\global\chaptercitationstrue}
+% 允许长网址在字母与数字间断行，保留完整可点击地址。
+\RequirePackage{xurl}
+\RequirePackage[unicode]{hyperref}
+\hypersetup{bookmarksnumbered=true,colorlinks=true,linkcolor=LFSPrimary,citecolor=LFSPrimary,urlcolor=LFSPrimary}
+\RequirePackage{bookmark}
+% 章间引用只写稳定标签：整书从实际标签取编号和标题，单章从自动生成的注册表回退。
+\newcommand{\bookxrefentry}[3]{%
+  \expandafter\gdef\csname bookxrefnumber@#1\endcsname{#2}%
+\expandafter\gdef\csname bookxreftitle@#1\endcsname{#3}}
+\NewDocumentCommand{\bookxref}{m O{}}{%
+  \ifcsname r@#1\endcsname
+  \hyperref[#1]{第\ref*{#1}章《\nameref*{#1}》}%
+  \else
+  \ifcsname bookxrefnumber@#1\endcsname
+  第\csname bookxrefnumber@#1\endcsname 章《\csname bookxreftitle@#1\endcsname》%
+  \else
+  \PackageWarning{mybook}{Unknown book cross-reference `#1'}\texttt{#1}%
+  \fi
+\fi#2}
+\NewDocumentCommand{\bookxrefshort}{m}{%
+  \ifcsname r@#1\endcsname
+  \hyperref[#1]{第\ref*{#1}章}%
+  \else
+  \ifcsname bookxrefnumber@#1\endcsname
+  第\csname bookxrefnumber@#1\endcsname 章%
+  \else
+  \PackageWarning{mybook}{Unknown short book cross-reference `#1'}\texttt{#1}%
+  \fi
+\fi}
+% 教材与习题默认必修；仅选修内容显式调用统一标记，不预留额外间距。
+\RequirePackage{etoolbox}
+\RequirePackage{manfnt}
+% 非浮动边注按实际页码选择外侧；左右页均靠近正文边界。
+% 稳定的底层排版宏允许配套册扩展 \optional 的语义，而不复制 xparse 命令入口。
+\newcommand{\lfsoptionalmark}{%
+  \marginnote[\raggedleft\small\textdbend]{\raggedright\small\textdbend}}
+\NewDocumentCommand{\optional}{}{\lfsoptionalmark}
+% 书末答案从对应题目标签取得章号、标题与题号；答案公式使用独立锚点。
+\RequirePackage{refcount}
+\newcommand*{\lfsanswerchapternumber}{}
+\NewDocumentCommand{\answerchapter}{m}{%
+  \edef\lfsanswerchapternumber{\getrefnumber{#1}}%
+  \section*{第\lfsanswerchapternumber 章\texorpdfstring{\quad}{ }\nameref*{#1}}%
+  \phantomsection\label{ans:#1}%
+  \addcontentsline{toc}{section}{第\lfsanswerchapternumber 章\texorpdfstring{\quad}{ }\nameref*{#1}}%
+  \setcounter{equation}{0}%
+  \renewcommand{\theequation}{答\lfsanswerchapternumber.\arabic{equation}}%
+\renewcommand{\theHequation}{answer.\lfsanswerchapternumber.\arabic{equation}}}
+\pdfstringdefDisableCommands{\def\bookcode#1{#1}}
+% \ctexset{part/name={第,篇},chapter={format=\centering\heiti\LARGE},section={format=\heiti\large},subsection={format=\heiti\normalsize}}
+\setlength{\parindent}{2em}
+% 普通行仍使用类默认行距；仅当行内公式使相邻行净空过小时增加间距。
+\setlength{\lineskiplimit}{2pt}
+\setlength{\lineskip}{3pt}
+\setlength{\emergencystretch}{2em}
+% 禁止同一条脚注跨页拆分；空间不足时由正文分页为完整脚注让位。
+\interfootnotelinepenalty=10000
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE]{\small\nouppercase{\leftmark}}
+\fancyhead[RO]{\small\nouppercase{\rightmark}}
+\fancyfoot[LE,RO]{\thepage}
+\fancypagestyle{plain}{\fancyhf{}\fancyfoot[LE,RO]{\thepage}\renewcommand{\headrulewidth}{0pt}}
+% Standalone chapters derive their number from the generated textbook registry.
+\NewDocumentCommand{\bookchapter}{mm}{%
+  \ifSubfilesClassLoaded{%
+    \ifcsname bookxrefnumber@#2\endcsname
+    \setcounter{chapter}{\numexpr\csname bookxrefnumber@#2\endcsname-1\relax}%
+    \else
+    \PackageError{mybook}{Unknown chapter label `#2'}{Run the chapter-reference generator before compiling this chapter.}%
+    \fi
+  }{}%
+\chapter{#1}\label{#2}}
+\newcommand{\practice}[1]{\par\medskip{\raggedright\small\noindent\textbf{关联实践：}\texttt{\detokenize{#1}}\par}}
+\newcommand{\chapterreferences}{\ifSubfilesClassLoaded{\ifchaptercitations\printbibliography[heading=subbibliography,title={参考文献}]\fi}{}}
+\endinput

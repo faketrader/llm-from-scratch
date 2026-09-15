@@ -329,3 +329,20 @@ TSWLatexianTemp*
 # option is specified. Footnotes are the stored in a file with suffix Notes.bib.
 # Uncomment the next line to have this generated file ignored.
 #*Notes.bib
+
+# Project outputs and generated reference caches
+/build/
+/book/*.generated.tex
+/book/workbook/*.generated.tex
+/notebook/target/
+**/__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.DS_Store
+.env
+.venv/
+
+# Reproducible figures and local browser tooling
+/book/figures/theory/*.pdf
+.playwright-cli/
+node_modules/

@@ -1,0 +1,23 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[lfs picture]
+
+\node[storage] (q) {$X_q$\\\scriptsize $[B,T,d]$};
+\node[storage, below=of q] (k) {$X_k$\\\scriptsize $[B,S,d]$};
+\node[compute, right=of q] (qproj) {$X_qW_Q$\\\scriptsize $[B,T,d]$};
+\node[compute, right=of k] (kvproj) {$X_kW_K,\ X_kW_V$\\\scriptsize $[B,S,d]$};
+\node[compute, right=18mm of $(qproj)!0.5!(kvproj)$] (split) {拆成 $H$ 个头\\\scriptsize $Q_h:[B,H,T,d_k]$\\\scriptsize $K_h,V_h:[B,H,S,d_k]$};
+\node[compute, right=of split] (attn) {并行 Scaled Dot-Product\\\scriptsize $\mathrm{softmax}(\frac{Q_hK_h^T}{\sqrt{d_k}}+M)V_h$};
+\node[compute, below=of attn] (concat) {Concat heads\\\scriptsize $[B,T,d]$};
+\node[compute, left=of concat] (wo) {输出投影 $W_O$};
+\node[storage, left=of wo] (out) {$Y$\\\scriptsize $[B,T,d]$};
+\draw[data arrow] (q) -- (qproj) -- (split);
+\draw[data arrow] (k) -- (kvproj) -- (split);
+\draw[data arrow] (split) -- (attn) -- (concat) -- (wo) -- (out);
+\node[group, fit=(attn)(concat), label={[title]right:各头独立归一化}] {};
+
+\end{tikzpicture}
+\end{document}

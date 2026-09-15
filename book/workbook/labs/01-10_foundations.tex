@@ -1,0 +1,31 @@
+\chapter{神经网络训练基础}
+\label{lab:10_foundations}
+
+\noindent\textbf{配套文件：}\path{notebook/10_foundations.ipynb}\par
+\noindent\textbf{教材关联：}\bookxrefshort{ch:rev-probability}、\bookxrefshort{ch:rev-tensors}、\bookxrefshort{ch:optimization-generalization}。
+
+\section*{实验目标}
+区分类别编码、概率输出和参数优化，建立可检验的训练基线。
+
+\section*{准备及定位}
+先阅读本册实验总则，确认Notebook中的依赖与资产单元。原理计算、库接口迁移和真实模型训练可能具有不同资源要求，应分别记录设备、版本及运行范围。
+
+源码定位可从下列函数开始；应结合前置数据与配置单元阅读。
+\begin{itemize}
+\item \texttt{my\_classification\_metrics}
+\item \texttt{my\_one\_hot}
+\item \texttt{my\_sigmoid}
+\end{itemize}
+
+\section*{操作及观察}
+\begin{enumerate}
+\item 先固定训练、验证划分，检查特征缩放仅在训练集拟合。
+\item 对照类别ID与One-hot，逐项核对行和及类别落点；用相同输入比较NumPy与PyTorch前向输出。
+\item 在两层MLP上记录输入、隐藏层、logits和标签形状，再运行训练与验证闭环。
+\item 冻结分类阈值后计算混淆结构、精确率和召回率；比较训练损失与留出表现。
+\end{enumerate}
+
+\section*{结果判读及提交}
+提交形状表、同输入差异、训练/验证指标及阈值来源。损失接口接收logits时不得预先使用Sigmoid；训练准确率不能代替泛化证据。
+
+提交时附上所执行单元范围、环境与制品身份、原始结果及失败说明。将未运行项目明确列出，不能用Notebook中已有输出替代本次执行证据。

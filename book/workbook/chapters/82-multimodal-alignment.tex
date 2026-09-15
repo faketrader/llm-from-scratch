@@ -1,0 +1,88 @@
+\workbookchapter{多模态建模}
+
+\begin{exerciselist}
+\exerciseitem 推导不重叠块投影与卷积等价所需的权重排列，说明增加补齐、重叠或不同步幅后哪些关系改变。
+
+\begin{workbookanswers}
+对行式投影$Z_{n,j}=\sum_{c,u,v}I_{c,g_hP_h+u,g_wP_w+v}W_{(c,u,v),j}+b_j$，令卷积核$K_{j,c,u,v}=W_{(c,u,v),j}$、步幅等于块大小、无填充即可逐项相等。增加填充改变边界像素与输出网格，重叠改变同像素被使用次数，步幅不等于块大小时不再是简单无重叠分割；仍可按相同窗口定义建立抽取与卷积的关系。
+\end{workbookanswers}
+
+\exerciseitem 一幅图像两边都放大1.5倍，块大小不变且尺寸仍可整除，推导词元数和完整自注意力位置对数的比例。
+
+\begin{workbookanswers}
+两边各增1.5倍，面积和视觉词元数增$1.5^2=2.25$倍；若只计视觉位置且无额外特殊词元，全自注意力位置对增$2.25^2=5.0625$倍。加入CLS或固定文本前缀后应计算$\frac{(2.25N+c)^2}{(N+c)^2}$，不能仍称精确5.0625倍。编码器重采样等额外开销另计。
+\end{workbookanswers}
+
+\exerciseitem 从按行、按列交叉熵分别推导式\tbobject{eq:mm-logit-grad}，说明 $R$ 和 $C$ 一般不相同。
+
+\begin{workbookanswers}
+行损失$\mathcal L_r=B^{-1}\sum_i[-S_{ii}+\log\sum_j e^{S_{ij}}]$导数为$\frac{R_{ij}-\delta_{ij}}{B}$。列损失同理为$\frac{C_{ij}-\delta_{ij}}{B}$；两者平均得$G_{ij}=\frac{R_{ij}+C_{ij}-2\delta_{ij}}{2B}$。行、列分母分别归一同图不同文与同文不同图，除特殊对称数据外不相同。
+\end{workbookanswers}
+
+\exerciseitem 将双样本例题温度改为0.5，重新计算损失、逻辑值梯度和对数缩放梯度；比较温度对概率和梯度链的影响。
+
+\begin{workbookanswers}
+$\tau=0.5$时S对角为2，$p=\frac{e^2}{1+e^2}\approx0.880797$。平均损失$\log(1+e^{-2})\approx0.126928$，逻辑值梯度对角$-\frac{1-p}{2}\approx-0.0596015$、非对角为正0.0596015。若对数缩放$a=\log(\frac{1}{\tau})$，$\frac{\partial\mathcal L}{\partial a}=\sum G_{ij}S_{ij}=-0.238406$。表示梯度还乘$\frac{1}{\tau}=2$；降低温度同时改变概率与链式缩放，不是把原梯度简单翻倍。
+\end{workbookanswers}
+
+\exerciseitem 推导向量归一化雅可比，验证其输出与单位向量正交，说明零向量处为何需要另行约定。
+
+\begin{workbookanswers}
+非零向量a，$u=\frac{a}{r},r=\|a\|$，微分$du=\frac{da}{r}-\frac{a(a^Tda)}{r^3}$，故$J=\frac{I-uu^T}{r}$。$u^TJ=0$，输出梯度在球面切空间，径向变化被去除。零向量处方向未定义，需明确带epsilon的归一化实现及其真实导数；不能继续使用$r=0$的该式。
+\end{workbookanswers}
+
+\exerciseitem\optional 构造一图多文本的正对集合，比较均匀多正对交叉熵与正对总概率损失的梯度方向。
+
+\begin{workbookanswers}
+取一图的两个正文本1、2及一个负文本3，预测$(0.8,0.1,0.1)$。均匀正对交叉熵目标$(0.5,0.5,0)$，梯度为$(0.3,-0.4,0.1)$，提升较弱正对。正对总概率损失$-\log(p_1+p_2)$的梯度为$p_j-\frac{\mathbf1_{j\in P}p_j}{0.9}$，即约$(-0.0889,-0.0111,0.1)$，提升两正对的总质量但不要求均衡。二者对应不同学习目标。
+\end{workbookanswers}
+
+\exerciseitem 在重采样例题中将查询改为0，计算输出及值梯度，并解释此时为何表现为平均但一般重采样并非平均。
+
+\begin{workbookanswers}
+Q为0时两个逻辑值均0，A为$(\frac{1}{2},\frac{1}{2})$，输出$Z=(1,2)$。一般值梯度$D_V=A^TD_Z$，即每行$\frac{D_Z}{2}$；本题沿用目标$Z^*=(1,2)$，因此$D_Z=0$，值及其余梯度全零。平均来自此次相同逻辑值，不是任意查询与键下重采样的固定行为。
+\end{workbookanswers}
+
+\exerciseitem\optional 对 $M<N_v$ 的固定注意力矩阵构造一个非零零空间扰动，说明固定映射的信息损失与非线性重采样器整体能力的区别。
+
+\begin{workbookanswers}
+取固定$A=(\frac{1}{2},\frac{1}{2})$，$M=1<N_v=2$，任意非零向量v使扰动$\Delta V=(v,-v)^T$满足$A\Delta V=0$。一般A的秩至多M，故每值通道有至少$N_v-M$维核。真实注意力A可能随输入变化，该固定核扰动不一定保持A；结论只证明局部固定线性值映射有信息压缩，不证明整个非线性网络对所有此类扰动均不敏感。
+\end{workbookanswers}
+
+\exerciseitem 根据表\tbobject{tab:mm-labels}写出输出逻辑值与目标的三个配对，解释把提示位置输出全部删除会丢失哪一个答案监督。
+
+\begin{workbookanswers}
+正确配对为位置4输出预测$A_1$，位置5输出预测$A_2$，位置6输出预测EOS。标签数组按目标位置存储后由因果损失移位，不能再重复移位。提示位置本身不作为目标，却产生第一个答案的预测；删除所有提示位置输出会丢掉$A_1$监督。视觉位置仍应被注意力读取，即使其直接目标被忽略。
+\end{workbookanswers}
+
+\exerciseitem 语言主干被冻结、连接器可训练时，画出必要梯度路径；说明在语言主干周围整体停止自动微分为何会改变训练。
+
+\begin{workbookanswers}
+路径为损失到答案逻辑值、穿过冻结语言主干的输入雅可比、到连接器输出及连接器参数。冻结只令语言参数不更新，不能把主干输出从计算图detach，否则连接器得不到损失梯度。若视觉编码器也冻结，可把其输出视为常量，但连接器及下游输入梯度仍需记录或重算；低内存方案不能删掉必要链式导数。
+\end{workbookanswers}
+
+\exerciseitem\optional 对3秒、16000样本/秒的音频，采用400样本窗口与160样本步长且不补齐，计算窗口数，再说明中心补齐为何改变结果。
+
+\begin{workbookanswers}
+样本数$3\times16000=48000$；不补齐窗口数 $1+\lfloor\frac{48000-400}{160}\rfloor=298$。若两端各补200样本且沿相同步长，数量变为$1+\lfloor\frac{48000}{160}\rfloor=301$，但实际工具可能另有边界约定，应核对。时间中心和有效观测长度也随补齐变化，不只是张量多三行。
+\end{workbookanswers}
+
+\exerciseitem\optional 构造持续0.2秒的事件，在0.8秒均匀采样间隔和随机相位假设下计算命中概率，并说明它与视觉识别正确率的关系。
+
+\begin{workbookanswers}
+随机相位下，长度d不超过采样间隔$\Delta$，命中相位区间长度d，所以$P(\text{命中})=\frac{d}{\Delta}=\frac{0.2}{0.8}=0.25$。它是帧包含事件的概率，识别正确还须乘相应条件概率；漏采事件不能由提升识别器直接恢复。相位非均匀或采样自适应时需重新建模。
+\end{workbookanswers}
+
+\exerciseitem\optional 用有偏移和漂移的两台设备设计时间戳校正，给出窗口代表时间和实际可用时刻的区别。
+
+\begin{workbookanswers}
+以参考时间$t$表示设备时间$t'=a t+b$，用至少两个分离的同步锚估计a、b，多锚可拟合并检查残差；校正$t=\frac{t'-b}{a}$。窗口$[t_0,t_1]$中心可代表事件位置，但编码器若读取到$t_1$，最早可用时刻不能早于$t_1$加处理延迟。时钟突跳或非线性漂移时分段拟合，不能一条直线覆盖全部会话。
+\end{workbookanswers}
+
+\exerciseitem 为视觉计数或声画匹配任务设计受控样本对、缺失模态对照和任务指标，说明仅验证输出变化为何不充分。
+
+\begin{workbookanswers}
+计数任务可保持背景、对象外观不变，仅改变对象个数，并标注正确整数；声画任务可保持语音内容但改变时间偏移。加入缺图、静音或错误模态对照，指标用计数准确率、绝对误差、匹配正确及同步误差，并以原场景分组。模型输出改变只证明敏感，可能对水印或噪声敏感；需变化方向与正确答案一致才支持利用模态信息。
+\end{workbookanswers}
+
+\end{exerciselist}

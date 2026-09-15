@@ -1,0 +1,13 @@
+flowchart TD
+    R{"主要约束"}
+    R -->|"通用质量与成熟生态"| L["LoRA 作为默认基线"]
+    R -->|"任务资产必须极小"| V{"是否允许虚拟 Token 开销"}
+    V -->|"允许"| P["Prompt / Prefix / P-Tuning"]
+    V -->|"不允许"| I["IA³ 或选择性参数训练"]
+    R -->|"需要任务模块强隔离"| A["Bottleneck Adapter"]
+    R -->|"训练显存是主瓶颈"| Q["QLoRA：量化基座 + LoRA"]
+    L --> E["固定数据、质量、显存和延迟验收"]
+    P --> E
+    I --> E
+    A --> E
+    Q --> E

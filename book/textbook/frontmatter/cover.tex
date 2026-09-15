@@ -1,0 +1,222 @@
+% 封面为物理第 1 页；背面由主入口的 cleardoublepage 留白。
+\thispagestyle{empty}
+\pdfbookmark[0]{封面}{front-cover}
+
+% 掩码与代码语法色彩（封面专用局部定义）
+\definecolor{MaskGray}{HTML}{F1F5F9}    % Slate 100 掩码底色
+\definecolor{PyKw}{HTML}{7C3AED}        % 关键字 紫色
+\definecolor{PyFunc}{HTML}{0284C7}      % 函数名 青蓝
+\definecolor{PyVar}{HTML}{1E293B}       % 变量 深灰
+\definecolor{PyOp}{HTML}{D97706}        % 操作符 琥珀橙
+\definecolor{PyComment}{HTML}{94A3B8}   % 注释 浅灰
+
+\begin{tikzpicture}[remember picture,overlay]
+  % 页面底衬纯白
+  \fill[white] (current page.north west) rectangle (current page.south east);
+
+  % 顶部深邃藏青基调与科技青蓝细线
+  \fill[LFSNavy] (current page.north west) rectangle ($(current page.north east)+(0,-62mm)$);
+  \fill[LFSCyan] ($(current page.north west)+(0,-62mm)$) rectangle ($(current page.north east)+(0,-64mm)$);
+
+  % 左侧书脊特征装饰条（8mm 装订侧视觉锚点）
+  \fill[LFSPrimary] (current page.north west) rectangle ($(current page.south west)+(8mm,0)$);
+
+  % 顶部中文主标题与副标题
+  \node[anchor=north west, text=white] (titleBlock)
+    at ($(current page.north west)+(26mm,-18mm)$) {
+      \begin{minipage}{0.8\paperwidth}
+        {\heiti\fontsize{34pt}{40pt}\selectfont\bfseries 大语言模型\par}
+        \vspace{3.5mm}
+        {\heiti\fontsize{18pt}{22pt}\selectfont\color{cyan!35} 从理论到实践\par}
+      \end{minipage}
+    };
+
+  % =========================================================================
+  % 中部核心视觉：纯净极简图形语言（去除非公式、非代码的冗余文字标签）
+  % 顶层：Transformer Block 宏观网络流（纯拓扑符号）
+  % 底层左：因果自注意力几何热图 + 注意力核心数学公式
+  % 底层右：Transformer 核心算子 PyTorch 代码窗口
+  % =========================================================================
+  \node[anchor=center] at ($(current page.center)+(-2mm,12mm)$) {
+    \begin{tikzpicture}
+      % -------------------------------------------------------------
+      % 1. 顶层：Transformer Block 架构流（极简纯符号）
+      % -------------------------------------------------------------
+      \begin{scope}[shift={(6mm, 35mm)}]
+        \tikzset{
+          hblock/.style={
+            draw=LFSBorder, fill=white, rounded corners=3pt, line width=0.65pt,
+            drop shadow={shadow xshift=0.4pt, shadow yshift=-0.6pt, opacity=0.07},
+            font=\fontsize{7pt}{8pt}\selectfont\sffamily\bfseries, text=LFSNavy, align=center,
+            inner xsep=6pt, inner ysep=3.5pt
+          },
+          hop/.style={
+            circle, draw=LFSCyan, fill=LFSLight, line width=0.7pt,
+            font=\small\bfseries, text=LFSCyan, inner sep=1pt
+          }
+        }
+
+        % 外框蓝图底衬
+        \draw[rounded corners=5pt, fill=LFSLight, draw=LFSBorder, line width=0.7pt,
+              drop shadow={shadow xshift=0.8pt, shadow yshift=-1.2pt, opacity=0.08}]
+          (-74mm, -10mm) rectangle (74mm, 10mm);
+
+        % 节点流水线（极简专业缩写，去掉所有冗长中文标签与副标题）
+        \node[font=\fontsize{7pt}{8pt}\ttfamily\bfseries\color{LFSMuted}] (hx_in) at (-66mm, -1.5mm) {$\mathbf{x}$};
+        \node[hblock, fill=LFSTeal!8, draw=LFSTeal!60] (hnorm1) at (-49mm, -1.5mm) {RMSNorm};
+        \node[hblock, fill=LFSPrimary!8, draw=LFSPrimary!70] (hattn) at (-26mm, -1.5mm) {Causal MHA};
+        \node[hop] (hadd1) at (-6mm, -1.5mm) {$+$};
+        \node[hblock, fill=LFSTeal!8, draw=LFSTeal!60] (hnorm2) at (13mm, -1.5mm) {RMSNorm};
+        \node[hblock, fill=LFSAmber!8, draw=LFSAmber!70] (hffn) at (36mm, -1.5mm) {SwiGLU FFN};
+        \node[hop] (hadd2) at (56mm, -1.5mm) {$+$};
+        \node[font=\fontsize{7pt}{8pt}\ttfamily\bfseries\color{LFSMuted}] (hx_out) at (67mm, -1.5mm) {$\mathbf{x}$};
+
+        % 主线流动
+        \draw[-{Latex[length=1.4mm]}, line width=0.7pt, LFSNavy] (hx_in) -- (hnorm1);
+        \draw[-{Latex[length=1.4mm]}, line width=0.7pt, LFSNavy] (hnorm1) -- (hattn);
+        \draw[-{Latex[length=1.4mm]}, line width=0.7pt, LFSNavy] (hattn) -- (hadd1);
+        \draw[-{Latex[length=1.4mm]}, line width=0.7pt, LFSNavy] (hadd1) -- (hnorm2);
+        \draw[-{Latex[length=1.4mm]}, line width=0.7pt, LFSNavy] (hnorm2) -- (hffn);
+        \draw[-{Latex[length=1.4mm]}, line width=0.7pt, LFSNavy] (hffn) -- (hadd2);
+        \draw[-{Latex[length=1.4mm]}, line width=0.7pt, LFSNavy] (hadd2) -- (hx_out);
+
+        % 残差支路 1（纯拓扑线条，去掉文字）
+        \draw[-{Latex[length=1.2mm]}, line width=0.65pt, LFSCyan]
+          (-59mm, -1.5mm) -- (-59mm, 6mm) -- (-6mm, 6mm) -- (hadd1.north);
+
+        % 残差支路 2（纯拓扑线条，去掉文字）
+        \draw[-{Latex[length=1.2mm]}, line width=0.65pt, LFSCyan]
+          (3mm, -1.5mm) -- (3mm, 6mm) -- (56mm, 6mm) -- (hadd2.north);
+
+        % 下钻连接虚线：从 MHA 指向下方因果热图
+        \draw[dashed, line width=0.75pt, LFSCyan!80, -{Latex[length=1.6mm]}]
+          (hattn.south) -- (-26mm, -17mm);
+      \end{scope}
+
+      % -------------------------------------------------------------
+      % 2. 底层左侧：因果自注意力几何热图 + 注意力核心数学公式
+      % -------------------------------------------------------------
+      \begin{scope}[shift={(-50mm, 8mm)}]
+        \def\sz{0.58}
+        \def\N{7}
+
+        % 1. 上三角掩码区
+        \foreach \i in {1,...,\N} {
+          \foreach \j in {1,...,\N} {
+            \ifnum \j > \i
+              \fill[MaskGray] ({(\j-1)*\sz}, {-(\i-1)*\sz}) rectangle ++(\sz, -\sz);
+              \draw[white, line width=0.5pt] ({(\j-1)*\sz}, {-(\i-1)*\sz}) rectangle ++(\sz, -\sz);
+            \fi
+          }
+        }
+
+        % 2. 下三角真实注意力权重
+        \foreach \i/\j/\val in {
+          1/1/0.95,
+          2/1/0.38, 2/2/0.88,
+          3/1/0.46, 3/2/0.18, 3/3/0.82,
+          4/1/0.40, 4/2/0.12, 4/3/0.24, 4/4/0.78,
+          5/1/0.48, 5/2/0.10, 5/3/0.16, 5/4/0.28, 5/5/0.80,
+          6/1/0.36, 6/2/0.08, 6/3/0.12, 6/4/0.20, 6/5/0.38, 6/6/0.74,
+          7/1/0.42, 7/2/0.08, 7/3/0.10, 7/4/0.16, 7/5/0.22, 7/6/0.32, 7/7/0.82
+        } {
+          \fill[LFSPrimary, opacity=\val] ({(\j-1)*\sz}, {-(\i-1)*\sz}) rectangle ++(\sz, -\sz);
+          \draw[white, line width=0.5pt] ({(\j-1)*\sz}, {-(\i-1)*\sz}) rectangle ++(\sz, -\sz);
+        }
+
+        % 外轮廓框
+        \draw[draw=LFSBorder, line width=0.7pt] (0, 0) rectangle (\N*\sz, -\N*\sz);
+
+        % 阶梯因果分界线
+        \draw[LFSCyan, line width=1.8pt, line cap=butt, line join=round]
+          (1*\sz, 0)
+          \foreach \k in {1,...,5} {
+            -- (\k*\sz, -\k*\sz) -- ({(\k+1)*\sz}, -\k*\sz)
+          }
+          -- (6*\sz, -6*\sz) -- (7*\sz, -6*\sz);
+
+        % 极简坐标指示（仅保留位置符号，去掉冗余文字）
+        \draw[-{Latex[length=1.6mm]}, LFSCyan, line width=0.7pt] (0, 0.28) -- (\N*\sz, 0.28)
+          node[above=0.5pt, midway, font=\fontsize{6pt}{7pt}\sffamily\color{LFSMuted}] {$j \to$};
+        \draw[-{Latex[length=1.6mm]}, LFSPrimary, line width=0.7pt] (-0.28, 0) -- (-0.28, -\N*\sz)
+          node[left=1.5pt, midway, font=\fontsize{6pt}{7pt}\sffamily\color{LFSMuted}] {$i \downarrow$};
+
+        % 掩码标注胶囊（数学符号）
+        \node[fill=white, draw=LFSBorder!80, drop shadow={shadow xshift=0.5pt, shadow yshift=-0.5pt, opacity=0.08}, rounded corners=2pt, inner xsep=4pt, inner ysep=2pt]
+          at (\N*\sz*0.68, -\N*\sz*0.28) {
+            \fontsize{5.5pt}{6.5pt}\selectfont\color{LFSMuted} $M_{ij}=-\infty$
+          };
+
+        % 下方核心数学公式底座胶囊（理论基石）
+        \path (0, -\N*\sz) ++(0.5*\N*\sz, -8mm) node[
+          fill=white, draw=LFSBorder, drop shadow={shadow xshift=1pt, shadow yshift=-1.5pt, opacity=0.1},
+          rounded corners=4.5pt, inner xsep=8pt, inner ysep=5pt, line width=0.7pt
+        ] {
+          \scriptsize $\mathrm{Attention}(Q,K,V) = \mathrm{softmax}\left(\dfrac{QK^\top}{\sqrt{d_k}} + M\right) V$
+        };
+      \end{scope}
+
+      % -------------------------------------------------------------
+      % 居中转化指示箭头（理论 -> 实践，纯符号）
+      % -------------------------------------------------------------
+      \draw[-{Latex[length=2.6mm]}, LFSCyan, line width=1.3pt] (-3mm, -12mm) -- (6mm, -12mm);
+
+      % -------------------------------------------------------------
+      % 3. 底层右侧：Transformer 核心算子 PyTorch 代码窗口（工程实践）
+      % -------------------------------------------------------------
+      \begin{scope}[shift={(10mm, 8mm)}]
+        \node[anchor=north west, fill=LFSLight, draw=LFSBorder, drop shadow={shadow xshift=1.2pt, shadow yshift=-1.8pt, opacity=0.1}, rounded corners=5pt, line width=0.8pt, inner sep=0]
+          at (0, 0.4) {
+            \begin{minipage}{68mm}
+              % 窗口顶部控制栏
+              \vspace{2.2mm}
+              \hspace{3mm}
+              \tikz{
+                \fill[red!50] (0,0) circle (1.5pt);
+                \fill[yellow!70!orange] (3.2mm,0) circle (1.5pt);
+                \fill[green!50!black] (6.4mm,0) circle (1.5pt);
+              }
+              \hspace{2.5mm}
+              {\tiny\ttfamily\color{LFSMuted} causal\_attention.py}
+              \par
+              \vspace{1.8mm}
+              {\color{LFSBorder!60}\hrule height 0.4pt}
+              \vspace{2.5mm}
+
+              % 代码主体（精炼纯粹，无冗余中文注释）
+              \hspace{3.2mm}
+              \begin{minipage}{62mm}
+                \fontsize{6.8pt}{10.5pt}\ttfamily
+                \textcolor{PyKw}{def} \textcolor{PyFunc}{causal\_attention}(q, k, v, mask=\textcolor{PyKw}{None}):\par
+                \quad scores = (q @ k.transpose(-\textcolor{PyOp}{2}, -\textcolor{PyOp}{1}))\par
+                \quad scores = scores / math.sqrt(d\_k)\par
+                \vspace{1.2mm}
+                \quad \textcolor{PyKw}{if} mask \textcolor{PyKw}{is not} \textcolor{PyKw}{None}:\par
+                \quad\quad scores = scores.masked\_fill(\par
+                \quad\quad\quad mask == \textcolor{PyOp}{0}, -\textcolor{PyOp}{1e9})\par
+                \vspace{1.2mm}
+                \quad weights = torch.softmax(scores, dim=-\textcolor{PyOp}{1})\par
+                \quad \textcolor{PyKw}{return} weights @ v\par
+              \end{minipage}
+              \vspace{3.5mm}
+            \end{minipage}
+          };
+      \end{scope}
+
+    \end{tikzpicture}
+  };
+
+  % 著者信息与出版规范
+  \node[anchor=north west, inner sep=0] at ($(current page.north west)+(26mm,-226mm)$) {
+    \begin{minipage}{0.78\paperwidth}
+      {\LARGE\bfseries\heiti \bookauthor\quad 著\par}
+    \end{minipage}
+  };
+
+  % 底部出版规范版本标注
+  \node[anchor=south, text=LFSMuted, font=\normalsize\sffamily] at ($(current page.south)+(4mm,22mm)$) {
+    第 1 版
+  };
+
+\end{tikzpicture}
+\null\newpage

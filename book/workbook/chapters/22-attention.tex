@@ -1,0 +1,70 @@
+\workbookchapter{注意力机制}
+
+\begin{exerciselist}
+\exerciseitem 设 $Q\in\Real^{5\times8}$、$K\in\Real^{7\times8}$、$V\in\Real^{7\times3}$，写出分数、权重与输出的形状。为什么不能沿查询轴做本章定义的归一化？
+
+\begin{workbookanswers}
+$QK^{\mathsf T}$ 为 $5\times7$，逐键归一化A仍为 $5\times7$，$AV$ 为 $5\times3$。每个查询需要一组对七个键的概率；沿查询轴归一化使每个键在五个查询间分配质量，通常不能保证某个查询权重和为1，定义了另一运算。
+\end{workbookanswers}
+
+\exerciseitem 当查询和键各坐标方差均为 $4$ 且满足独立零均值条件时，推导未经缩放与除以 $\sqrt{d_k}$ 后的分数方差。为什么缩放后不一定是单位方差？
+
+\begin{workbookanswers}
+每个独立乘积 $q_rk_r$ 均值0、方差 $4\times4=16$，跨维协方差为零，故点积方差 $16d_k$。除 $\sqrt{d_k}$ 后方差除以 $d_k$，得到16。缩放消除了维数因子，不自动把输入尺度标准化。
+\end{workbookanswers}
+
+\exerciseitem 对本章单头例题，去掉因果掩码，计算第一行权重及输出。再将第三个值向量替换为零，比较第一行输出变化。
+
+\begin{workbookanswers}
+第一行分数为 $(c,0,c)$，$c=\frac{1}{\sqrt2}$。令 $r=\frac{e^c}{2e^c+1}$、$s=\frac{1}{2e^c+1}$，权重 $(r,s,r)\approx(.401112,.197776,.401112)$，输出为 $(2r,2s+2r)\approx(.802224,1.197776)$。第三个值置零但QK固定时，输出变为 $(r,2s)\approx(.401112,.395552)$；权重不变，差值是原来的 $rV_3$。
+\end{workbookanswers}
+
+\exerciseitem 证明 Softmax 雅可比满足 $J\mathbf1=0$，并解释这一性质与分数常数平移不变性的关系。
+
+\begin{workbookanswers}
+$J=\operatorname{diag}(a)-aa^{\mathsf T}$，所以 $J\mathbf1=a-a(a^{\mathsf T}\mathbf1)=0$。对分数加常数c时指数分子分母共同乘 $e^c$，概率精确不变；全一方向是该不变性的微分表示。雅可比因此至少有一个零特征方向。
+\end{workbookanswers}
+
+\exerciseitem\optional 对第二查询的局部损失 $\mathcal L=o_{2,1}$，手算 $\overline K_1,\overline K_2$。用中心差分验证其中一个坐标，明确扰动时哪些变量保持固定。
+
+\begin{workbookanswers}
+令 $\alpha=\frac{1}{1+e^c}$。第二查询为 $(0,1)$，分数梯度为 $(\alpha(1-\alpha),-\alpha(1-\alpha))$，故 $\overline K_1=(0,\frac{\alpha(1-\alpha)}{\sqrt2})$、$\overline K_2=-\overline K_1$。仅扰动 $K_{1,2}$ 为t，固定Q、V及其余K，损失变为 $f(t)=\frac{1}{[1+\exp(c-\frac{t}{\sqrt2})]}$。中心差分 $\frac{[f(\varepsilon)-f(-\varepsilon)]}{2\varepsilon}$ 趋向 $.1563986$；这不是同时改变自注意力源X的总导数。
+\end{workbookanswers}
+
+\exerciseitem 若唯一查询绝对位置是 $8$，键位置为 $0$ 至 $8$，写出正确因果允许集合。说明直接使用 $1\times9$ 左上对齐下三角掩码会遗漏哪些位置。
+
+\begin{workbookanswers}
+唯一查询处于绝对位置8，允许集合为 $\{0,1,\ldots,8\}$。左上对齐的 $1\times9$ 下三角仅保留键0，错误删除1至8。应按绝对位置比较，或使用已验证具有正确右下对齐语义的接口，不能仅根据矩阵形状生成掩码。
+\end{workbookanswers}
+
+\exerciseitem 设 $H_q=24,H_{kv}=6,d_h=64$，一个样本缓存 $2048$ 个位置，每元素两字节，计算一层键值存储量，以及与 MHA 的比例。
+
+\begin{workbookanswers}
+每层需 $2\times2048\times6\times64\times2=3145728$ 字节，即3MiB。MHA把KV头改为24得到12MiB；GQA为四分之一。未计分页、尺度、对齐及其他状态，也不意味总推理时延必然缩短四倍。
+\end{workbookanswers}
+
+\exerciseitem\optional 若两个头的 $A$ 相同而 $V$ 不同，它们的输出是否必然相同？若两个头的 $K,V$ 相同而 $Q$ 不同呢？分别给出反例或证明。
+
+\begin{workbookanswers}
+相同A不同V：一个键权重1时分别取 $V_1=0,V_2=1$，输出不同。相同K、V不同Q：取标量键 $(0,1)$、值 $(0,1)$，查询分别0和1，输出分别 $\frac{1}{2}$ 和 $\frac{e}{1+e}$。反之，特定退化V也可能使不同权重输出相同，所以“不同”也非必然。
+\end{workbookanswers}
+
+\exerciseitem\optional 证明权重 Dropout 后行和的期望仍为一，并计算独立掩码下该行和的方差。由此解释为什么训练时观测到行和偏离一不必然表示 Softmax 实现错误。
+
+\begin{workbookanswers}
+条件于固定A，$S=\sum_j\frac{m_jA_{ij}}{q}$，其中独立 $m_j\sim\mathrm{Bernoulli}(q)$。$\mathbb ES=\sum_jA_{ij}=1$，方差为 $\sum_j\frac{A_{ij}^2q(1-q)}{q^2}=(1-q)\sum_j\frac{A_{ij}^2}{q}$。单次掩码下S不必为1；诊断时应区分Softmax之前、之后及Dropout之后的张量。
+\end{workbookanswers}
+
+\exerciseitem 构造一个全屏蔽的合法查询与一个仅用于填充的无效查询，分别说明应如何处理。为什么把分数设为统一的大负数不是正确通用方案？
+
+\begin{workbookanswers}
+一个需回答但检索候选全被权限过滤的有效查询，其允许集为空，应报无可用键或按显式协议回退；不能伪造注意力分布。一个只为矩形批次补齐的无效查询可直接输出零并屏蔽损失。把全行设成同一有限负数会归一化为均匀权重；全为负无穷直接求Softmax又可能产生NaN，两者都不能替代语义判断。
+\end{workbookanswers}
+
+\exerciseitem 固定查询头数 $h_q=32$、头维度及序列长度，将键值头数由32改为8。分别判断键值投影输出、KV 缓存和注意力分数数量如何变化。解释为何缓存缩小四倍不能推出端到端时延缩短四倍，并列出验证实际收益应固定的条件。
+
+\begin{workbookanswers}
+键值投影的输出宽度和 KV 缓存元素数均变为原来的四分之一；每个查询头仍对历史位置计算注意力分数，因此固定序列长度时分数数量不变。查询投影、输出投影与前馈计算也不会随 KV 头数按同比例缩小。实际访存收益依赖内核是否复用共享 KV，端到端时间还包含调度与其他算子。比较时应固定硬件、精度、输入输出长度分布、并发和质量要求，分别测量缓存峰值、预填充及解码时间。结构变化通常需要相应权重适配和质量评估，不能把现有 MHA 权重视作无损可替换的 GQA 权重。
+\end{workbookanswers}
+
+\end{exerciselist}

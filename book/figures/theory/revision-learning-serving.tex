@@ -1,0 +1,21 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex,amsmath}
+\usetikzlibrary{arrows.meta,positioning}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[lfs picture,node distance=10mm and 8mm]
+\node[storage,text width=22mm] (data) {数据构建\\语料与划分};
+\node[compute,text width=24mm,right=of data] (train) {目标与优化\\参数更新};
+\node[storage,text width=23mm,right=of train] (model) {模型制品\\权重与协议};
+\node[block,text width=24mm,right=of model] (eval) {独立评估\\质量与代价};
+\node[interface,text width=22mm,below=18mm of data] (request) {用户请求\\输入与身份};
+\node[block,text width=24mm,right=of request] (context) {检索与编排\\证据与状态};
+\node[compute,text width=23mm,right=of context] (serve) {推理执行\\资源与缓存};
+\node[interface,text width=24mm,right=of serve] (answer) {输出与工具\\核验及执行};
+\draw[data arrow] (data)--(train);\draw[data arrow] (train)--(model);\draw[data arrow] (model)--(eval);
+\draw[data arrow] (request)--(context);\draw[data arrow] (context)--(serve);\draw[data arrow] (serve)--(answer);
+\draw[data arrow] (model)--(serve);
+\draw[control arrow] (answer)--(eval);
+\draw[control arrow] (eval.north)--++(0,10mm)-|node[above,pos=.5]{评估反馈用于下一轮修订}(train.north);
+\end{tikzpicture}
+\end{document}

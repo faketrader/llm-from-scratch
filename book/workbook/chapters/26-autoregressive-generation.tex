@@ -1,0 +1,70 @@
+\workbookchapter{自回归语言建模}
+
+\begin{exerciselist}
+\exerciseitem 对序列 $(\mathrm{BOS},a,b,\mathrm{EOS})$，分别写出数据侧移位与损失侧移位的输入、目标和有效位置。说明两个接口连续使用会把目标变成什么。
+
+\begin{workbookanswers}
+数据侧移位：输入 $(\mathrm{BOS},a,b)$，目标 $(a,b,\mathrm{EOS})$，三个位置有效。损失侧移位：输入和标签均可提供 $(\mathrm{BOS},a,b,\mathrm{EOS})$，内部用前三个logit对后三个标签，BOS不作为目标，最后输入位置无后继监督。若先数据移位再让损失内部移位，BOS位置被用于预测b，a位置预测EOS，实际变成跨两步目标并丢失边界项。
+\end{workbookanswers}
+
+\exerciseitem 给定 $p(a\mid c)=0.7$、$p(b\mid c,a)=0.5$、$p(\mathrm{EOS}\mid c,a,b)=0.8$，计算完整响应 $(a,b)$ 的概率、负对数似然及按三个目标平均的损失。若遗漏 EOS，比较对象发生了什么变化？
+
+\begin{workbookanswers}
+概率为 $.7\times.5\times.8=.28$，负对数似然 $-\log.28\approx1.272966$，平均三目标损失约.424322。遗漏EOS得到前缀概率.35，表示生成了a、b但尚未规定此处结束；这不是同一完整响应事件。
+\end{workbookanswers}
+
+\exerciseitem 对式\tbobject{eq:ar-temperature}证明正温度保持排序。最大分数并列时，为什么温度趋零的极限与某个确定并列规则的贪心输出不完全相同？
+
+\begin{workbookanswers}
+对 $\tau>0$，$z_i>z_j$ 当且仅当 $\frac{z_i}{\tau}>\frac{z_j}{\tau}$，指数单调且共享分母，因此排序保持。若有m个并列最大值，其他分数严格较小，$\tau\to0^+$ 时概率在这m项上各趋 $\frac{1}{m}$。确定贪心按固定规则只输出一项，因此分布极限与确定规则的单点输出不相同。
+\end{workbookanswers}
+
+\exerciseitem 对概率 $(0.4,0.3,0.2,0.1)$，计算阈值 $\rho=0.5$ 与 $\rho=0.95$ 的核集合及最终分布。指出“累计超过阈值的项全部移除”会造成的错误。
+
+\begin{workbookanswers}
+$\rho=.5$ 时前一项.4不足，前两项.7达到门槛，集合为前两项，概率 $(\frac{4}{7},\frac{3}{7},0,0)$。$\rho=.95$ 时前三项.9不足，须保留四项，概率不变。删除首个跨过门槛的词元会留下累计不足阈值的集合；第一项即跨门槛时甚至可能错误得到空集。
+\end{workbookanswers}
+
+\exerciseitem\optional 用图\tbobject{fig:ar-beam-tree}计算四条路径的对数分数，并分别模拟宽度一与宽度二的算法\tbobject{alg:ar-beam}。明确并列规则与已完成候选是否继续占据束位置。
+
+\begin{workbookanswers}
+四条完整路径对数为 $\log.30\approx-1.203973$、同值、$\log.36\approx-1.021651$、$\log.04\approx-3.218876$。规定并列优先EOS，完成候选继续占束位。$K=1$先保留a，再保留a-EOS；$K=2$先保留a、b，再保留b-EOS与a-EOS，两者都完成，最优为b-EOS。若并列选a-c，下一步必EOS，得分仍不变；明确并列规则后可复现。
+\end{workbookanswers}
+
+\exerciseitem\optional 说明原始对数概率为何具有扩展上界。再构造一条前缀，使长度归一化后的分数在继续生成后反而上升。
+
+\begin{workbookanswers}
+每个后继对数概率不大于0，所以任何扩展分数 $s'\le s$，原前缀分数是其后代原始分数上界。若用平均对数分数，前缀长度1、分数−2，追加概率 $e^{-.1}$ 后得−2.1，平均由−2升至−1.05。故不能把原始分数的单调上界直接用于长度归一化剪枝。
+\end{workbookanswers}
+
+\exerciseitem\optional 若每步 EOS 概率为固定 $\epsilon\in(0,1)$，推导生成步数的分布与期望。随后解释将 EOS 永久排除出 Top-k 集合会怎样改变终止性质。
+
+\begin{workbookanswers}
+把EOS一步计入T，$P(T=t)=(1-\epsilon)^{t-1}\epsilon$，$t\ge1$。由尾和公式 $\mathbb ET=\sum_{t\ge0}P(T>t)=\sum_{t\ge0}(1-\epsilon)^t=\frac{1}{\epsilon}$；非EOS词元数期望为 $\frac{1-\epsilon}{\epsilon}$。永久截断EOS会使实际采样分布的终止概率为零，必须依赖长度上限等外部条件停止，这不再是同一分布。
+\end{workbookanswers}
+
+\exerciseitem 某批次有三个请求，其中一个已命中 EOS。说明其后应如何管理完成状态、填充位置与缓存，为什么不能仅让它继续生成后再删去文本。
+
+\begin{workbookanswers}
+为每个请求保存独立完成标记，完成后不再采样有效词元或增加有效长度；若静态批次仍需占位，填充输出不得成为后续真实条件。动态压缩批次时同步重排请求ID、缓存块和位置。继续生成再裁文本会多用计算、改变随机数消费和缓存长度，甚至触发工具调用；输出裁剪不能替代执行停止。
+\end{workbookanswers}
+
+\exerciseitem 构造一个跨两个词元解码边界的停止串，说明逐词元独立字符串比较为何可能遗漏它。
+
+\begin{workbookanswers}
+停止串可取 \texttt{END}，相邻两个解码片段分别为 \texttt{E} 与 \texttt{ND}，各自都不等于完整停止串。需要在累积解码流中保留足够长的后缀并与新片段共同匹配；字节级词元还应处理不完整字符的增量解码状态。命中后按协议决定是否保留停止串，且匹配策略须与模型EOS分开记录。
+\end{workbookanswers}
+
+\exerciseitem 教师强制精确对应序列最大似然，为什么模型仍可能在自由生成中退化？分别从有限数据、解码变换和终止规则举例，避免将它们统称为暴露偏差。
+
+\begin{workbookanswers}
+有限数据与模型误差使生成前缀偏离训练支持，此为训练与访问分布错配的一种来源；截断或极低温度还可能放大重复、删去正确候选，这是解码分布变化；EOS被屏蔽或最大长度过短则属终止协议错误。教师强制正确实现最大似然，并不保证有限模型无误差；应分别用前缀扰动、固定模型解码对比和停止回归定位，而非统一归咎一种机制。
+\end{workbookanswers}
+
+\exerciseitem 给定证据只说明“系统于2024年发布”，回答却称“系统由甲于2023年发布”，并附上一个证据包中不存在的条目编号。分别判定其中的事实错误、上下文矛盾、无依据生成和虚构归因；再说明降低温度为何不能修复这些问题，并给出至少两项系统级控制。
+
+\begin{workbookanswers}
+“2023年”与证据给出的2024年冲突，既是相对于该证据的上下文矛盾；若2024年也是目标范围内的有效事实，它同时构成事实错误。“由甲”没有证据支持，属于无依据生成；引用证据包中不存在的条目属于虚构归因。降低温度只把概率集中到原有高分路径，若这些声明原本得分最高，错误会更稳定。控制可包括限定只能依据证据作答、验证声明到来源的映射、对年份和实体做规则或工具核验，以及证据不足时删除该声明或拒答。
+\end{workbookanswers}
+
+\end{exerciselist}

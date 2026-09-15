@@ -1,0 +1,31 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{tikz}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[lfs picture]
+  \node[storage] (cases) {冻结评测样本\\输入、参考答案、切片、风险级别};
+  \node[storage, below=10mm of cases] (preds) {冻结预测\\文本、分数、生成配置};
+  \coordinate (inputmid) at ($(cases.east)!0.5!(preds.east)$);
+  \node[compute, anchor=west] (normalizer) at ($(inputmid)+(18mm,0)$) {版本化标准化器};
+  \node[compute, above right=8mm and 17mm of normalizer] (det) {确定性指标\\Decision / EM / Token F1};
+  \node[compute, below right=8mm and 17mm of normalizer] (gen) {生成式检查\\事实 / 禁止项 / 引用 / 安全};
+  \node[storage, right=18mm of $(det)!0.5!(gen)$] (percase) {逐样本结果\\指标、标签、证据};
+  \node[interface, right=17mm of percase] (gate) {切片与统计\\置信区间 / 发布门禁};
+
+  \draw[data arrow] (cases.east) -- node[label text,above]{冻结契约} (normalizer.west);
+  \draw[data arrow] (preds.east) -- node[label text,below]{冻结输出} (normalizer.west);
+  \draw[data arrow] (normalizer.east) |- (det.west);
+  \draw[data arrow] (normalizer.east) |- (gen.west);
+  \draw[data arrow] (det.east) -- (percase.west);
+  \draw[data arrow] (gen.east) -- (percase.west);
+  \draw[data arrow] (percase) -- (gate);
+
+  \begin{scope}[on background layer]
+    \node[group, fit=(cases)(preds), label={[title]above:冻结输入域}] {};
+    \node[group, fit=(normalizer)(det)(gen), label={[title]above:评测计算域}] {};
+    \node[group, fit=(percase)(gate), label={[title]above:审计与决策域}] {};
+  \end{scope}
+\end{tikzpicture}
+\end{document}

@@ -1,0 +1,37 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{tikz}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[lfs picture]
+  \node[compute] (services) {Gateway / Router\\Scheduler / Worker};
+  \node[neutral, right=16mm of services] (collector) {OpenTelemetry\\Collector};
+  \node[storage, above right=7mm and 18mm of collector] (metrics) {指标后端与告警};
+  \node[storage, right=18mm of collector] (logs) {结构化日志后端};
+  \node[storage, below right=7mm and 18mm of collector] (traces) {分布式追踪后端};
+  \node[interface, right=18mm of metrics] (slo) {SLO 与容量看板};
+  \node[interface, right=18mm of logs] (incident) {事件调查};
+  \node[interface, right=18mm of traces] (traceview) {链路诊断};
+  \node[decision, right=20mm of incident] (decision) {扩缩容\\发布门禁};
+
+  \draw[data arrow] (services) -- node[label text,above]{trace / metric / log} (collector);
+  \draw[data arrow] (collector) -- (metrics);
+  \draw[data arrow] (collector) -- (logs);
+  \draw[data arrow] (collector) -- (traces);
+  \draw[data arrow] (metrics) -- (slo);
+  \draw[data arrow] (logs) -- (incident);
+  \draw[data arrow] (traces) -- (traceview);
+  \draw[control arrow] (slo) -- (decision);
+  \draw[control arrow] (incident) -- (decision);
+  \draw[control arrow] (traceview) -- (decision);
+  \coordinate (feedback) at ($(services.south)+(0,-12mm)$);
+  \draw[control arrow] (decision.south) |- node[label text,below,near start]{期望状态调整} (feedback) -- (services.south);
+
+  \begin{scope}[on background layer]
+    \node[group, fit=(services)(collector), label={[title]above:信号采集}] {};
+    \node[group, fit=(metrics)(logs)(traces)(slo)(incident)(traceview), label={[title]above:观测与诊断}] {};
+    \node[group, fit=(decision), label={[title]above:控制反馈}] {};
+  \end{scope}
+\end{tikzpicture}
+\end{document}

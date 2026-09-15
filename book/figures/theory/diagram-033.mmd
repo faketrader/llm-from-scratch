@@ -1,0 +1,12 @@
+flowchart TD
+    A[读取模型 Config 与目标运行时版本] --> B{隐藏维度与 GQA 分组是否合法}
+    B -->|否| X[拒绝：模型结构契约不成立]
+    B -->|是| C{Query Head 能被 TP 整除}
+    C -->|否| Y[标准 Head Parallel 不可用<br/>评估 Padding、自定义分片或 PP]
+    C -->|是| D{KV Head 能被 TP 整除}
+    D -->|是| E[Q/K/V 均匀分片]
+    D -->|否| F{运行时支持且 TP 能按 KV Head 成组复制}
+    F -->|是| G[复制 KV Head<br/>重算显存与吞吐]
+    F -->|否| Z[拒绝该 TP 配置或降低 TP]
+    E --> H[实测质量、峰值显存、通信占比、TTFT 与 TPOT]
+    G --> H

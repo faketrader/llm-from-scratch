@@ -1,0 +1,44 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{tikz}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[lfs picture]
+  \node[risk] (user) {用户与调用方};
+  \node[interface, right=15mm of user] (entry) {身份认证\\配额与入口策略};
+  \node[compute, right=14mm of entry] (orchestrator) {LLM 编排层};
+  \node[interface, right=14mm of orchestrator] (output) {输出策略\\结构校验};
+  \node[interface, right=14mm of output] (response) {受控响应};
+
+  \node[compute, below=23mm of orchestrator] (model) {模型服务};
+  \node[compute, left=16mm of model] (rag) {RAG 检索层};
+  \node[compute, right=16mm of model] (tool) {工具网关};
+  \node[storage, below=13mm of rag] (tenant) {租户数据\\向量索引};
+  \node[storage, below=13mm of model] (identity) {密钥与服务身份};
+  \node[storage, below=13mm of tool] (business) {业务系统};
+
+  \node[risk, left=18mm of rag] (external) {外部网页、文件、邮件\\不可信内容};
+  \node[risk, below=9mm of external] (supply) {模型 / Tokenizer\\Adapter / 容器};
+
+  \draw[data arrow] (user) -- (entry);
+  \draw[data arrow] (entry) -- (orchestrator);
+  \draw[data arrow] (orchestrator) -- (output);
+  \draw[data arrow] (output) -- (response);
+  \draw[data arrow] (orchestrator) -- (model);
+  \draw[data arrow] (orchestrator) -- (rag);
+  \draw[data arrow] (orchestrator) -- (tool);
+  \draw[data arrow] (model) |- (output);
+  \draw[data arrow] (rag) -- (tenant);
+  \draw[data arrow] (tool) -- (business);
+  \draw[control arrow] (identity) -- (tool);
+  \draw[control arrow] (external) -- node[label text,above]{不可信输入} (rag);
+  \draw[control arrow] (supply) -- node[label text,above]{供应链输入} (model);
+
+  \begin{scope}[on background layer]
+    \node[group, fit=(entry)(orchestrator)(output), label={[title]above:应用信任域}] {};
+    \node[group, fit=(model)(rag)(tool)(tenant)(identity)(business), label={[title]below:受控执行域}] {};
+    \node[group, draw=LFSRed, fit=(user)(external)(supply), label={[title]below:域外不可信来源}] {};
+  \end{scope}
+\end{tikzpicture}
+\end{document}

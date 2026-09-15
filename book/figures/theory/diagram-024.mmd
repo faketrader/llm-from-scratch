@@ -1,0 +1,20 @@
+sequenceDiagram
+  actor C as 客户端
+  participant G as Gateway
+  participant R as Router
+  participant S as Scheduler
+  participant W as Worker
+  C->>G: POST /generate/stream
+  G->>R: 身份、配额、期限与追踪上下文
+  R->>S: 解析当前活动部署后入队
+  S->>W: 调度请求
+  W-->>S: Token 增量
+  S-->>R: Token 增量
+  R-->>G: SSE delta
+  G-->>C: sequence 与文本增量
+  C->>G: DELETE /requests/{request_id}
+  G->>R: 传播取消
+  R->>S: 从队列移除或标记中止
+  S->>W: 停止后续解码
+  W-->>G: 最终 usage 与 cancelled
+  G-->>C: 终止事件

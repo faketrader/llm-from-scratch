@@ -1,0 +1,15 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex,amsmath}
+\usetikzlibrary{arrows.meta,positioning}
+\begin{document}
+\begin{tikzpicture}[>=Latex,font=\small,node distance=30mm,
+ point/.style={circle,draw=blue!60!black,fill=blue!5,minimum size=9mm}]
+\node[point] (p0) {0};\node[point,right=of p0] (p1) {1};\node[point,right=of p1] (p2) {2};\node[point,right=of p2] (p3) {3};
+\draw[->] (p0)--node[below]{$a:0.2$}(p1);
+\draw[->] (p1)--node[below]{$b:0.2$}(p2);
+\draw[->] (p2)--node[below]{$a:0.2$}(p3);
+\draw[->,blue!65!black] (p0) to[bend left=28] node[above]{$ab:0.4$}(p2);
+\draw[->,teal!70!black] (p1) to[bend right=28] node[below]{$ba:0.2$}(p3);
+\node[below=18mm of p1,align=center,anchor=north west,xshift=-24mm] {前向求和：$\alpha_3=0.128$\qquad 最优路径：$(ab,a)$，权重 $0.08$};
+\end{tikzpicture}
+\end{document}

@@ -1,0 +1,6 @@
+flowchart LR
+    T["Pinned Teacher"] --> N["N 条候选"]
+    N --> V["答案 + 步骤验证"]
+    V --> D["Verified Distillation Dataset"]
+    D --> S["Student SFT"]
+    S --> E["独立评测与成本门禁"]

@@ -1,0 +1,19 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{mymath}[2026/09/07 My mathematical notation]
+\RequirePackage{amsmath,amssymb,mathtools}
+% ! 所有行内公式改为展示档次，符号会变大可能导致不协调
+\everymath{\displaystyle}
+
+% 使用 \dif x 表示直立微分符号。
+\newcommand*{\dif}{\mathop{}\!\mathrm{d}}
+\newcommand*{\Real}{\mathbb{R}}
+\DeclareMathOperator{\softmax}{softmax}
+\DeclareMathOperator*{\argmin}{arg\,min}
+% 比较符号统一使用斜线下划线形式 ⩽ ⩾。正文写作 \le/\leq 与 \ge/\geq，
+% 由这里的语义映射决定字形，作者不需改用 \leqslant。
+% 字面 Unicode 字符 ≤ ≥ 的映射见 mybook.sty；两者渲染同一字形。
+\let\leq\leqslant
+\let\le\leqslant
+\let\geq\geqslant
+\let\ge\geqslant
+\endinput

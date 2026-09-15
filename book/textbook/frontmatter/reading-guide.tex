@@ -1,0 +1,59 @@
+\chapter*{阅读说明}
+\addcontentsline{toc}{chapter}{阅读说明}
+
+\noindent\textsf{第 1 版}\par\medskip
+
+\optional 本书用外侧页边的危险弯道标记标示可暂时跳过的扩展内容。未标记的正文属于所在章节的学习主线，包括核心概念、基本机制、必要推导与基础算例；推导较长并不意味着可以省略。
+
+带有该标记的内容包括可独立研读的扩展证明、专题分析、方法比较或综合问题。首次阅读可以暂时跳过，掌握相关主线知识后再回读；从事对应专题时，这些内容仍可能十分重要。
+
+节首外侧页边的图标适用于该节正文及其下属小节。例题按自身内容标记，图标不影响其推导条件与结论的完整性。
+
+图标表示学习路径上的可延后性，并非简单的难易排名。扩展内容应能够从主线中独立移开，后续主线论述不得依赖其中尚未交代的定义或结论。危险弯道图标采用单色形式，黑白打印不影响辨认。
+
+建议先完成共同基础，再沿所选方向阅读相关章节，结合问题回读带图标的部分。遇到不熟悉的符号可查书前符号约定，术语可查书末中文术语索引或英文术语索引。
+
+\section*{全书的知识组织}
+全书分为五篇。第一篇“语言模型理论基础”从数学与神经网络语言进入文本表示、注意力、Transformer 整体结构、位置表示和自回归生成，篇末给出评估与安全方法。初读评估与安全时，先掌握评估对象、独立测试集、失败切片、威胁模型和工具授权，专题分析随任务深入。
+
+第二篇“应用智能体系统”依次讨论上下文学习、信息检索、RAG、领域应用、智能体架构与 Harness 运行系统。第三篇“模型训练方法”从优化、数据和训练稳定性进入监督微调、参数高效适配和工程优化，再讨论预训练、强化学习、人类反馈学习、可验证推理训练。
+
+第四篇“训练推理系统”先建立资源预算和算力基础，再分别展开分布式训练与推理服务，后者沿缓存、调度和服务架构进入算子与模型优化。第五篇“模型架构拓展”讨论双向编码、混合专家、长上下文、开放权重模型以及视觉理解与生成；相关专题可作为具体任务的前置阅读。
+
+\section*{共同基础及方向选择}
+阅读路线由共同基础和三条方向组成：应用智能体系统、模型训练方法、训练推理系统。第二至第四篇分别展开三条方向，第五篇按模型与任务提供专题。读者可以选择一个方向深入，也可以在补齐前置知识后组合多个方向。
+
+共同基础以理解一次模型请求为目标。先从\bookxrefshort{ch:rev-introduction}建立模型、训练和系统的职责，再从\bookxrefshort{ch:rev-probability}、\bookxrefshort{ch:rev-tensors}和\bookxrefshort{ch:optimization-generalization}掌握条件概率、交叉熵的含义、张量形状、梯度更新与数据划分。随后依次选读\bookxrefshort{ch:rev-tokenization}的分词与嵌入，\bookxrefshort{ch:attention}的查询、键、值与因果掩码，\bookxrefshort{ch:rev-transformer}的整体结构与前向数据流，以及\bookxrefshort{ch:position-representation}的顺序信息。\bookxrefshort{ch:rev-autoregressive}补齐下一词元分布、采样、终止及事实性边界。
+
+共同基础还包括\bookxrefshort{ch:evaluation-statistics}中的评估对象、独立测试集和失败切片，以及\bookxrefshort{ch:model-application-security}中的威胁模型与工具授权。完成这一范围后，应能沿词元、张量、条件分布和生成决策解释一次请求，说明参数更新与运行时上下文各自的作用，并提出可检验的效果指标。完整反向传播、优化推导和系统性能模型随专项学习展开；进入某项推导前，应补齐其使用的定义与假设。
+
+\subsection*{应用智能体系统}
+入门沿\bookxrefshort{ch:context-learning}、\bookxrefshort{ch:information-retrieval}、\bookxrefshort{ch:rag-systems}和\bookxrefshort{ch:domain-applications}展开，学习上下文组织、检索、证据组装和业务验证。学习终点是能将任务拆成输入、证据、模型输出与评价方法，并区分检索失败、生成失败和业务约束失败。
+
+深入智能体时，依次阅读\bookxrefshort{ch:agent-architecture}和\bookxrefshort{ch:agent-runtime}。其中 Harness 指模型之外的执行与控制系统，负责工具调用、状态持久化、权限、执行隔离和失败恢复。该专题以理解任务执行和终止语义为目标；模型计算、批处理和服务容量由系统方向承接。长上下文和多模态内容按应用需要选读。
+
+\subsection*{模型训练方法}
+专项前置是完整的概率、自动微分、优化与注意力反向传播，以及 Transformer 和自回归训练目标。入门依次阅读\bookxrefshort{ch:data-engineering}、\bookxrefshort{ch:resource-budget}、\bookxrefshort{ch:training-stability}、\bookxrefshort{ch:supervised-finetuning}、\bookxrefshort{ch:parameter-efficient-finetuning}和\bookxrefshort{ch:efficient-finetuning}，建立数据、监督信号、可训练参数、资源与恢复之间的关系。学习终点是能设计适配方案，并用独立测试集检验目标能力、遗忘与失败切片。
+
+深入内容按训练目标分支。预训练方向阅读\bookxrefshort{ch:pretraining-scaling}，研究数据配比与计算预算；对齐方向依次阅读\bookxrefshort{ch:reinforcement-learning}、\bookxrefshort{ch:preference-alignment}和\bookxrefshort{ch:verifiable-reasoning}，研究人类反馈、奖励建模、偏好优化与可验证奖励。需要扩大训练规模时，再衔接系统方向的分布式训练。
+
+\subsection*{训练推理系统}
+先阅读\bookxrefshort{ch:resource-budget}和\bookxrefshort{ch:compute-infrastructure}，建立工作负载需求与硬件供给的关系。此后按目标选择两个分支：推理服务分支沿\bookxrefshort{ch:incremental-decoding-cache}、\bookxrefshort{ch:batching-scheduling}和\bookxrefshort{ch:serving-architecture}学习缓存、调度和请求生命周期；训练系统分支在掌握训练目标、自动微分与\bookxrefshort{ch:training-stability}后，进入\bookxrefshort{ch:distributed-training}。
+
+深入时选择\bookxrefshort{ch:inference-algorithms}的算子与解码优化，或\bookxrefshort{ch:quantization}的模型优化；蒸馏与量化感知训练须补齐训练前置。学习终点是能建立容量与性能模型，区分估算和实测，解释并行、调度及恢复的取舍，并设计质量约束下的测量方案。
+
+\subsection*{模型架构拓展}
+数据、评估与安全贯穿三条方向：应用关注知识来源、任务效果与工具权限，模型训练关注采样、泛化与训练资产，系统关注吞吐、延迟与服务隔离。详细方法在对应章节展开，并在所选方向中结合具体对象使用。
+
+\bookxrefshort{ch:rev-mlm}、\bookxrefshort{ch:rev-moe}、\bookxrefshort{ch:long-context}和\bookxrefshort{ch:open-models}按模型与任务选择。视觉理解沿\bookxrefshort{ch:vision-transformer}进入\bookxrefshort{ch:multimodal-alignment}；视觉生成沿\bookxrefshort{ch:diffusion-probability}进入\bookxrefshort{ch:conditional-vision}，并补齐概率与视觉架构前置。涉及具体模型时，先掌握其使用的机制，再分析配置与技术报告。
+
+路线中的主题选读表示当前学习目标所需的范围，章内危险弯道表示相对于该章主线可延后的内容。两者分别服务于方向选择和章内阅读；深入一个主题时，仍需完整掌握其依赖的概念与推导。
+
+\section*{内容体系}
+正文解释定义、假设、推导和系统关系，例题用明确的数据与中间量展示计算。数学推导、构造算例与实测结果具有不同的证据能力，应分别说明其前提与适用范围。
+
+例如，公式推导可以证明某种归一化具有行和为一的性质；小矩阵例题可以逐项展示其计算过程；程序对照可以检查特定实现是否符合该定义。三项全部成立，也仍不能单独证明模型在某个领域具有足够的答案正确率。理论性质、实现正确性与任务效果必须分别建立证据。
+
+本书按照概念依赖组织章节，核心定义与必要推导均在正文展开。涉及实验性结论时，应明确对象、数据、训练预算与测量条件，避免把局部观察推广为普遍规律。
+
+本书的“从零”指从基本表示和运算理解机制，并据此形成独立实现与判断的能力。它不要求重写驱动、编译器或所有数值库。完成原理验证后，使用成熟实现仍需核对其默认值、数值约定和边界条件。\footnote{同一个数学算子可以有不同的存储布局、融合策略和求和顺序；实数算术中的等价不必表现为浮点结果逐位相同。}

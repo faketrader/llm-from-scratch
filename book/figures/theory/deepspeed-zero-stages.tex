@@ -1,0 +1,22 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[lfs picture]
+
+\node[block] (z0) {DDP / ZeRO-0\\\scriptsize P + G + O 全复制};
+\node[block, right=of z0] (z1) {ZeRO-1\\\scriptsize O 分片\\\scriptsize P、G 复制};
+\node[block, right=of z1] (z2) {ZeRO-2\\\scriptsize O、G 分片\\\scriptsize P 复制};
+\node[block, right=of z2] (z3) {ZeRO-3\\\scriptsize P、G、O 全分片};
+\node[compute, below=of z3] (gather) {计算时按需 All-Gather\\\scriptsize 使用后重新分片};
+\node[neutral, below=of z0] (legend) {P = Parameters\\G = Gradients\\O = Optimizer States};
+\draw[data arrow] (z0) -- node[label text, above]{分片 O} (z1);
+\draw[data arrow] (z1) -- node[label text, above]{再分片 G} (z2);
+\draw[data arrow] (z2) -- node[label text, above]{再分片 P} (z3);
+\draw[control arrow] (z3) -- (gather);
+\draw[control arrow] (gather.west) -| node[label text, below]{通信 / 预取} (z2.south);
+\node[group, fit=(z0)(z1)(z2)(z3), label={[title]above:Stage 越高，单 Rank 常驻状态越少}] {};
+
+\end{tikzpicture}
+\end{document}

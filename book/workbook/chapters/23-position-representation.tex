@@ -1,0 +1,68 @@
+\workbookchapter{位置表示}
+
+\begin{exerciselist}
+\exerciseitem 写出交换长度为3的序列前两行的置换矩阵 $\Pi$，验证 $\Pi^{\mathsf T}\Pi=I$。设 $M$ 为下三角可见掩码，比较 $M$ 与 $\Pi M\Pi^{\mathsf T}$ 的允许位置。
+
+\begin{workbookanswers}
+\[
+\Pi=\begin{bmatrix}0&1&0\\1&0&0\\0&0&1\end{bmatrix},\quad
+M=\begin{bmatrix}1&0&0\\1&1&0\\1&1&1\end{bmatrix},\quad
+\Pi M\Pi^{\mathsf T}=\begin{bmatrix}1&1&0\\0&1&0\\1&1&1\end{bmatrix}.
+\]
+每列是互异单位向量，故 $\Pi^{\mathsf T}\Pi=I$。变换后的允许位置不再是原编号下的下三角；因果时间顺序不能在保持原掩码时任意置换。
+\end{workbookanswers}
+
+\exerciseitem 证明逐位置函数 $f$ 满足 $f(\Pi X)=\Pi f(X)$；再证明对输出按位置求和会将这种等变性变为排列不变性。解释两者为何不能使用同一个术语。
+
+\begin{workbookanswers}
+设 $\pi$ 是置换，逐行函数满足 $[f(\Pi X)]_i=f(X_{\pi(i)})=[\Pi f(X)]_i$，前提是各行共享同一个函数且无额外位置依赖。再求和得到 $\sum_if(X_{\pi(i)})=\sum_if(X_i)$。前者输出随输入一起重排，称等变；后者输出不变，称不变。引入位置编码或因果掩码后，应重新审查前提。
+\end{workbookanswers}
+
+\exerciseitem\optional 对 $d=4$ 的正弦位置向量，计算 $p_0^{\mathsf T}p_2$，再用频率差公式独立核对。验证 $\|p_t\|_2^2=2$。
+
+\begin{workbookanswers}
+两组频率为1与 $\frac{1}{100}$，因此
+\[
+\begin{aligned}
+p_0&=(0,1,0,1),\\
+p_2&=(\sin 2,\cos 2,\sin 0.02,\cos 0.02).
+\end{aligned}
+\]
+由各对的余弦差公式可得内积
+\[
+p_0^{\mathsf T}p_2=\cos 2+\cos 0.02\approx0.583653.
+\]
+每对坐标的平方和为1，所以任意 $t$ 都有 $\|p_t\|^2=2$；范数恒定不代表不同位置正交。
+\end{workbookanswers}
+
+\exerciseitem\optional 正弦编码采用 $(\sin\theta,\cos\theta)$ 的分量顺序，RoPE 采用标准列向量旋转矩阵。比较式\tbobject{eq:rev7-sinusoidal-shift}与式\tbobject{eq:rev7-rotation}中的正负号，说明为什么不能不看坐标约定就直接互换。
+
+\begin{workbookanswers}
+对 $v(\theta)=(\sin\theta,\cos\theta)^{\mathsf T}$，$v(\theta+\delta)=\left[\begin{smallmatrix}\cos\delta&\sin\delta\\-\sin\delta&\cos\delta\end{smallmatrix}\right]v(\theta)$，即标准旋转 $R(-\delta)$。标准列向量RoPE的 $R(\delta)$ 则为上右负、下左正。交换$\sin,\cos$坐标次序改变角度方向的矩阵表示，必须连同配对和行列约定转换。
+\end{workbookanswers}
+
+\exerciseitem 用 $q=(1,2)^{\mathsf T}$、$k=(3,-1)^{\mathsf T}$ 和频率1，计算位置 $(i,j)=(0,2)$、$(1,3)$、$(6,8)$ 的旋转内积。再计算 $(3,1)$，分析位置差反号的作用。
+
+\begin{workbookanswers}
+本题点积为 $\cos\Delta+7\sin\Delta$。前三组位置差均为2，结果均约5.948935；$(3,1)$ 的差为−2，结果 $\cos2-7\sin2\approx-6.781229$。余弦部分为偶函数，正弦交叉项为奇函数，因此反转距离一般改变分数，并非只依赖距离绝对值。
+\end{workbookanswers}
+
+\exerciseitem\optional 若仅旋转四维向量的前两维，推导完整内积公式，并给出一个数值例子，说明未旋转部分为何不受位置差影响。
+
+\begin{workbookanswers}
+分块写 $q=(q_R,q_U)$、$k=(k_R,k_U)$，则分数为 $q_R^{\mathsf T}R(\Delta\omega)k_R+q_U^{\mathsf T}k_U$。例如 $q=(1,0,2,3)$、$k=(1,0,4,5)$，结果为 $\cos(\Delta\omega)+23$。最后两维未旋转，其23项不随位置变化；仍需在完整注意力中按定义缩放。
+\end{workbookanswers}
+
+\exerciseitem 某实现每一步都将新查询的位置设为零，但历史键保留原位置的旋转。写出它实际使用的相对角度，并与正确角度比较。说明为什么程序能够输出合法张量却依然违反模型定义。
+
+\begin{workbookanswers}
+若新查询正确绝对位置应为t而实现设为0，历史键j使用Rj，则实际角度为 $j\omega$，正确角度为 $(j-t)\omega$，误差为 $t\omega$。形状和Softmax归一化仍可完全合法，但打分函数已改变。应以固定完整前向与逐步缓存前向的同位置输出作比较，并同时固定频率配置。
+\end{workbookanswers}
+
+\exerciseitem 有人声称“正弦函数可计算任意位置，所以不需要长文本训练”“RoPE 的距离越远，点积必然越小”。分别给出反驳所需的数学边界或反例，并说明还需要什么任务证据才能讨论泛化。
+
+\begin{workbookanswers}
+函数在任意位置可计算只说明表达式有定义，训练未覆盖的相位、干扰数量和长距离任务仍可能失效。取 $q=k=(1,0)$，分数为 $\cos(\Delta\omega)$，可随距离先降后升，直接反驳逐样本单调衰减。讨论泛化须在不同长度、证据位置与干扰密度下评估，并同时检查短文本退化和实际资源成本。
+\end{workbookanswers}
+
+\end{exerciselist}

@@ -1,0 +1,76 @@
+\workbookchapter{分布式训练}
+
+\begin{exerciselist}
+\exerciseitem 构造三副本、每副本两个不等长微批次的计数和梯度，比较三种归一化：微批均值平均、副本均值平均、全局词元平均。
+
+\begin{workbookanswers}
+构造三个副本的微批计数为 $(1,3),(2,6),(4,4)$，对应每词元标量梯度为 $(0,2),(1,3),(4,0)$。六个微批均值平均为 $\frac{10}{6}=\frac{5}{3}$；副本词元均值分别1.5、2.5、2，副本均值平均为2；全局目标和 $0+6+2+18+16+0=42$，目标数20，正确值2.1。只有权重匹配各微批/副本有效计数，才能恢复全局词元目标。
+\end{workbookanswers}
+
+\exerciseitem 在采用平均归约的通信组中，证明式\tbobject{eq:dist-average-correction}；若梯度已被框架额外除以累积步数，应如何修正？
+
+\begin{workbookanswers}
+令副本r目标梯度和为 $S_r$，全局有效目标数为M。平均归约产生 $R^{-1}\sum_rS_r$，再乘 $\frac{R}{M}$ 得正确梯度 $\sum_r\frac{S_r}{M}$。也可每副本先乘 $\frac{R}{M}$ 再归约。若框架额外除以累积步数K，应补乘K或禁用该默认缩放；局部已除以各自计数时，必须先恢复目标和，不能只乘统一常数。
+\end{workbookanswers}
+
+\exerciseitem 用反例说明先裁剪局部梯度再归约不等于先归约再裁剪。
+
+\begin{workbookanswers}
+取两个等权副本标量梯度10和-1，阈值1。先裁剪后平均为 $\frac{1-1}{2}=0$；先平均为4.5，再裁剪为1。非线性投影不能和求和交换。应按声明的全局梯度范数完成归约及反缩放后裁剪。
+\end{workbookanswers}
+
+\exerciseitem 在重计算近似模型中令 $L=100$、每激活单位20 MiB，求最优整数区间及近似存储，并列出未计入的内存项。
+
+\begin{workbookanswers}
+近似存储 $A(\frac{L}{k}+k)$ 在 $k=\sqrt L=10$ 最小，结果 $20(10+10)=400$ MiB；相邻整数9或11都更大。区间边界、残差分支、参数/梯度/优化器、通信桶、算子工作区和分配器余量均不在此简化量内，真实最优还受重算代价和不同层大小影响。
+\end{workbookanswers}
+
+\exerciseitem 推导环式 Reduce-Scatter 的轮次和每成员发送量，再说明如何与 All-Gather 组成式\tbobject{eq:dist-ring}。
+
+\begin{workbookanswers}
+把m字节均分R块，每轮向下一成员发送一块并累加收到块，R-1轮后每成员得到一块完整归约，发送量 $\frac{(R-1)m}{R}$。全收集再经R-1轮传递归约块，合计启动 $2(R-1)\alpha$ 和传输 $\frac{2(R-1)m}{R\beta}$。均匀链路和同步轮次是假设，不能代替拥塞测量。
+\end{workbookanswers}
+
+\exerciseitem 对状态算例把分片组改为4，重新计算各阶段持久状态并讨论峰值可行性。
+
+\begin{workbookanswers}
+$P_s=12,G_s=12,O_s=72$ GiB，R=4时DDP96、阶段1为42、阶段2为33、阶段3为24 GiB。另计10激活和6工作区，阶段2至少49 GiB；阶段3若保留4 GiB聚合和4 GiB预取，则44 GiB。若设备可用40 GiB，二者在此设定下均不够；需减少峰值、卸载或增加分片，不能只看持久状态24 GiB。
+\end{workbookanswers}
+
+\exerciseitem 为张量并行例题计算各权重片梯度，并验证拼接后与完整矩阵微分一致。
+
+\begin{workbookanswers}
+沿用上游梯度1，所有ReLU输入为正。$\nabla_{V_1}L=(1,2)^\mathsf T$，$\nabla_{V_2}L=(3,1)^\mathsf T$；$\nabla_{W_1}L=X^\mathsf T(1,2)=\begin{pmatrix}1&2\\2&4\end{pmatrix}$，$\nabla_{W_2}L=X^\mathsf T(-1,1)=\begin{pmatrix}-1&1\\-2&2\end{pmatrix}$。按原列/行布局拼接等于完整矩阵微分，输入梯度为两成员贡献 $(1,2)+(-2,0)=(-1,2)$。
+\end{workbookanswers}
+
+\exerciseitem 证明非线性一般不能跨越部分和归约，指出式\tbobject{eq:dist-paired-mlp}为什么允许本地执行非线性。
+
+\begin{workbookanswers}
+ReLU反例：$\phi(1-2)=0$，而 $\phi(1)+\phi(-2)=1$。列切分前馈层使每个隐藏坐标的完整预激活已在本地算出，因此可本地激活；随后行切分输出投影的部分和必须归约。允许的是不同隐藏坐标独立非线性，不是对同一坐标的未完成部分和分别非线性。
+\end{workbookanswers}
+
+\exerciseitem 流水阶段数为8时，需要多少微批次才能使理想气泡比例不超过10\%？讨论该选择的显存代价。
+
+\begin{workbookanswers}
+理想气泡比例 $\frac{p-1}{m+p-1}$，p=8时要求 $\frac{7}{m+7}\le0.1$，得 $m\ge63$。增加微批会增加调度开销和在途激活，具体取决于1F1B等策略；若保持总批次不变，微批变小还可能降低矩阵效率，故63只是理想均衡模型下界。
+\end{workbookanswers}
+
+\exerciseitem\optional 由两个块的 Softmax 合并式推导三个块的组合，并解释全掩码块的处理。
+
+\begin{workbookanswers}
+对块i保存 $(m_i,\ell_i,u_i)$，令 $m=\max_i m_i$，则 $\ell=\sum_{i=1}^3e^{m_i-m}\ell_i$、$u=\sum_{i=1}^3e^{m_i-m}u_i$，输出 $\frac{u}{\ell}$。精确算术下均等于完整指数和，故可先合并任意两块。全掩码块用空状态跳过；若三块全空则进入明确的全掩码行规则，不计算负无穷之差。
+\end{workbookanswers}
+
+\exerciseitem\optional 给出64设备的合法逻辑网格，明确不同通信组与有效词元计数范围。
+
+\begin{workbookanswers}
+一个可行例为DP=4、PP=4、TP=4，乘积64。固定DP/PP坐标的4成员做张量并行，固定DP/TP坐标的4成员沿层流水，固定PP/TP坐标的4副本做数据梯度归约。全局有效词元只在四个DP副本及本次累积窗口上各计一次，不能把TP或PP重复表示乘进去。物理上优先将高频TP组放入高速互连域，再验证流水和DP通信路径。
+\end{workbookanswers}
+
+\exerciseitem 设计改变数据并行度后的续训声明，区分资产完整、目标一致、数值接近和逐位复现。
+
+\begin{workbookanswers}
+声明已把全部参数/优化器分片重排并验证摘要、消费位置和随机状态；固定全局有效目标归约及学习率时钟，调整微批/累积保持所需目标。用同一小数据更新对比梯度与损失容差。允许改变归约顺序时可声称语义一致和数值接近，不能声称逐位重放；若DP变化连带批量或样本顺序变化，应明确它是新训练日程。
+\end{workbookanswers}
+
+\end{exerciselist}

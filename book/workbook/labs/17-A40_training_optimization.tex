@@ -1,0 +1,78 @@
+\chapter{训练系统优化}
+\label{lab:A40_training_optimization}
+
+\noindent\textbf{配套文件：}\path{notebook/A40_training_optimization.ipynb}\par
+\noindent\textbf{教材关联：}\bookxrefshort{ch:rev-moe}、\bookxrefshort{ch:training-stability}、\bookxrefshort{ch:parameter-efficient-finetuning}、\bookxrefshort{ch:efficient-finetuning}、\bookxrefshort{ch:compute-infrastructure}、\bookxrefshort{ch:distributed-training}。
+
+\section*{实验目标}
+先建立数值正确性，再比较优化收益。
+
+\section*{准备及定位}
+先阅读本册实验总则，确认Notebook中的依赖与资产单元。原理计算、库接口迁移和真实模型训练可能具有不同资源要求，应分别记录设备、版本及运行范围。
+
+源码定位可从下列函数开始；应结合前置数据与配置单元阅读。
+\begin{itemize}
+\item \texttt{my\_format\_prompt}
+\item \texttt{my\_encode\_sft\_record}
+\item \texttt{my\_padding\_report}
+\end{itemize}
+
+\section*{操作及观察}
+\begin{enumerate}
+\item 固定样本、有效词元计数和单步更新基线。
+\item 比较梯度累积前后等效批次与参数更新，避免平均方式改变目标。
+\item 分别检查混合精度和梯度检查点的数值误差、峰值内存与耗时；记录设备条件。
+\item 核对数据并行与张量并行的等价性基线，再分析ZeRO和混合并行的通信及内存职责。
+\end{enumerate}
+
+\section*{结果判读及提交}
+提交更新误差、同步计时和内存口径。单进程的两rank等价性演算不是多机吞吐实测；首次编译与预热成本应单列。
+
+提交时附上所执行单元范围、环境与制品身份、原始结果及失败说明。将未运行项目明确列出，不能用Notebook中已有输出替代本次执行证据。
+
+相关方法的原始定义与适用前提见\cite{rajbhandari2020zero}；本实验的运行结果仍须按实际配置单独验证。
+
+
+先完成实验\ref{lab:42_peft}的单卡训练链条，再以相同入口研究多设备执行。本实验选择DeepSpeed ZeRO-2作为首次分片运行，随后比较ZeRO-3与FSDP2；Megatron-LM用于进一步分析模型并行的迁移条件\cite{deepspeed2026framework,pytorch2026fsdp2,megatron2026framework}。
+
+准备至少两张支持所选精度的GPU，记录每卡显存、互联、驱动和通信库。单机验证通过后再考虑跨节点；跨节点还需核对节点间地址、进程数量、网络和共享制品。LoRA的优化器状态较小，ZeRO-2的节省可能有限；研究完整训练状态分片时可使用入口的\texttt{--full-finetune}，同时重新核定显存和学习率，不能把两种训练方式混入同一性能对照。
+
+记数据并行设备数为 $D_p$，每设备微批次为 $b$，梯度累积次数为 $a$，则完整批次的样本数为 $D_pba$。单卡 $b=1,a=8$ 与两卡 $b=1,a=4$ 均为8，但尾批次、填充和不同回答长度仍可能改变有效监督词元数。对照中应保存样本划分、尾批处理及损失归一化方式。
+
+为DeepSpeed建立\path{/absolute/run/zero2.json}：
+\begin{verbatim}
+{
+  "bf16": {"enabled": "auto"},
+  "zero_optimization": {"stage": 2},
+  "gradient_accumulation_steps": "auto",
+  "train_micro_batch_size_per_gpu": "auto",
+  "train_batch_size": "auto"
+}
+\end{verbatim}
+这里的\texttt{auto}由Transformers训练器与Accelerate集成解析，实际数值从训练参数取得；这份配置不能作为完全脱离该集成的通用DeepSpeed配置\cite{huggingface2026accelerateframework}。优化器和调度器由上层训练配置管理，不在第二处重复定义。
+
+在训练环境中按所用PyTorch与加速器安装DeepSpeed并保存版本及算子诊断。启动命令为：
+\begin{verbatim}
+torchrun --standalone --nproc_per_node=2 \
+  book/workbook/examples/train_adapter.py \
+  --model /absolute/model-snapshot \
+  --train /absolute/data/train.jsonl \
+  --eval /absolute/data/validation.jsonl \
+  --output /absolute/run/zero2-01 \
+  --eos-token "$EOS_TOKEN" --steps 100 \
+  --max-length 1024 --accumulation 4 \
+  --deepspeed /absolute/run/zero2.json
+\end{verbatim}
+确认每个进程绑定不同GPU，打印的世界大小为2，生效全局批量与设计相符。不要给训练模型额外添加面向推理的\texttt{device\_map="auto"}；设备与状态归属由训练运行时管理。
+
+选择一次已完整保存的检查点，以同样的两进程启动命令加入\texttt{--resume /absolute/run/zero2-01/checkpoint-40}，并保持原输出目录。该路径须对应实际存在的检查点，不能按示例步数假定保存成功。比较恢复后的步数、数据位置、学习率和下一次更新，核对优化器、调度器及随机状态均按声明恢复。
+
+进一步把ZeRO阶段改为3时，先记录参数在何时收集及显存峰值，再核查模型保存所需的权重汇总设置。分片训练状态不应直接当作推理权重目录。保存期间参与集合操作的所有进程必须遵循一致的协议；检查点写完后应进行独立加载，部分文件存在不足以证明完整性。
+
+FSDP2通过\texttt{fully\_shard}与逐参数分片组织执行；其接口机制可参考PyTorch v2.11.0的对应源码\cite{pytorch2026fsdp2}，实际安装版本按目标环境验证。采用Accelerate集成时，用所安装版本的\texttt{accelerate config --config\_file /absolute/run/fsdp.yaml}生成配置，显式选择FSDP2、设备数和混合精度，再检查模型模块的包裹边界与检查点策略。旧FSDP配置中的字段不保证可直接迁移。
+
+使用\texttt{accelerate launch --config\_file /absolute/run/fsdp.yaml}启动同一训练入口，并去掉DeepSpeed配置参数。先用全参数的小规模模型验证分片与恢复，再验证LoRA等参数冻结组合。记录所用版本是否支持该模型的冻结方式、梯度检查点和保存路径；不把FSDP机制正确等同于每种集成组合都可运行。
+
+Megatron-LM迁移还要映射模型配置、权重布局、词表、张量与流水线切分，并校验转换前后的固定输入输出。对需要大规模模型并行的任务，它提供另一条工程路径；对已经能用数据并行满足预算的任务，增加转换和并行维度的收益应通过测量证明。
+
+每种策略保留同一训练预算下的验证指标，并报告每设备峰值显存、有效监督词元吞吐、更新耗时、通信等待和恢复耗时。先预热再计量稳定区间，首次算子编译和制品加载单列。通信超时时按进程数、设备绑定、互联和集合调用一致性排查；吞吐下降时区分填充、重计算、通信及存储等待。提交实际运行的策略组合和原始日志，资源不足的迁移项按实际状态记录。

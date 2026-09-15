@@ -1,0 +1,8 @@
+{
+  "name": "lfs-web-reader",
+  "private": true,
+  "dependencies": {
+    "mathjax": "4.1.3",
+    "@mathjax/mathjax-newcm-font": "4.1.3"
+  }
+}

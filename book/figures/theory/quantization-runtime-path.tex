@@ -1,0 +1,19 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[lfs picture]
+
+\node[storage] (fp) {Floating Weight};
+\node[compute, right=of fp] (obs) {Observer / Calibration};
+\node[storage, right=of obs] (meta) {Scale / Zero-point};
+\node[storage, below=of meta] (int) {Integer Weight};
+\node[interface, left=of int] (kernel) {Supported Kernel\\\scriptsize dtype + layout + hardware};
+\node[storage, left=of kernel] (gain) {延迟与吞吐测量};
+\draw[data arrow] (fp) -- (obs) -- (meta) -- (int) -- (kernel) -- (gain);
+\node[risk, below=of kernel] (risk) {仅文件变小\\不代表推理加速};
+\draw[control arrow] (risk) -- (kernel);
+
+\end{tikzpicture}
+\end{document}

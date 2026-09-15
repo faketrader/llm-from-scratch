@@ -1,0 +1,31 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{tikz}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[lfs picture]
+  \node[interface] (manifest) {制品清单与签名\\唯一加载入口};
+  \node[storage, right=17mm of manifest, yshift=18mm] (weights) {模型权重\\结构配置};
+  \node[storage, below=6mm of weights] (tokenizer) {Tokenizer\\特殊 Token};
+  \node[storage, below=6mm of tokenizer] (template) {聊天模板\\生成默认值};
+  \node[storage, below=6mm of template] (adapter) {Adapter / 量化元数据};
+  \node[storage, below=6mm of adapter] (runtime) {镜像摘要\\资源轮廓};
+  \node[storage, below=6mm of runtime] (reports) {质量、安全\\数据谱系报告};
+  \node[compute, right=21mm of template] (loader) {模型加载器\\校验哈希与兼容性};
+  \node[compute, right=18mm of loader] (server) {已预热模型服务器};
+  \node[risk, below=12mm of loader] (reject) {拒绝启动\\缺失、漂移或不兼容};
+
+  \foreach \n in {weights,tokenizer,template,adapter,runtime,reports}{
+    \draw[data arrow] (manifest.east) -- (\n.west);
+    \draw[data arrow] (\n.east) -- (loader.west);
+  }
+  \draw[data arrow] (loader) -- node[label text,above]{通过校验} (server);
+  \draw[control arrow] (loader) -- node[label text,right]{失败} (reject);
+
+  \begin{scope}[on background layer]
+    \node[group, fit=(manifest)(weights)(tokenizer)(template)(adapter)(runtime)(reports), label={[title]above:不可变制品信任边界}] {};
+    \node[group, fit=(loader)(server)(reject), label={[title]above:运行时加载边界}] {};
+  \end{scope}
+\end{tikzpicture}
+\end{document}

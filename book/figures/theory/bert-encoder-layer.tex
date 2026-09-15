@@ -1,0 +1,22 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[lfs picture]
+
+\node[storage] (x) {$x$\\\scriptsize $[B,T,d]$};
+\node[compute, right=of x] (attn) {双向多头自注意力};
+\node[compute, right=of attn] (drop1) {Dropout};
+\node[interface, right=of drop1] (add1) {Add + LayerNorm};
+\node[compute, below=of add1] (ffn) {FFN\\\scriptsize Linear $\to$ GELU $\to$ Linear};
+\node[compute, left=of ffn] (drop2) {Dropout};
+\node[interface, left=of drop2] (add2) {Add + LayerNorm};
+\node[storage, left=of add2] (out) {Hidden States\\\scriptsize $[B,T,d]$};
+\draw[data arrow] (x) -- (attn) -- (drop1) -- (add1) -- (ffn) -- (drop2) -- (add2) -- (out);
+\draw[residual] (x.south) -- ++(0,-5mm) -| node[label text, below]{residual} (add1.south);
+\draw[residual] (add1.east) -- ++(6mm,0) |- node[label text, right]{residual} (add2.south);
+\node[group, fit=(x)(attn)(drop1)(add1)(ffn)(drop2)(add2)(out), label={[title]above:Post-LN Encoder Layer}] {};
+
+\end{tikzpicture}
+\end{document}

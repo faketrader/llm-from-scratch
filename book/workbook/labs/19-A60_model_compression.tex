@@ -1,0 +1,31 @@
+\chapter{模型压缩}
+\label{lab:A60_model_compression}
+
+\noindent\textbf{配套文件：}\path{notebook/A60_model_compression.ipynb}\par
+\noindent\textbf{教材关联：}\bookxrefshort{ch:quantization}。
+
+\section*{实验目标}
+区分参数表示变化和执行路径变化。
+
+\section*{准备及定位}
+先阅读本册实验总则，确认Notebook中的依赖与资产单元。原理计算、库接口迁移和真实模型训练可能具有不同资源要求，应分别记录设备、版本及运行范围。
+
+源码定位可从下列函数开始；应结合前置数据与配置单元阅读。
+\begin{itemize}
+\item \texttt{my\_global\_magnitude\_prune}
+\item \texttt{my\_prune\_mlp\_hidden}
+\item \texttt{my\_factorize\_linear\_svd}
+\end{itemize}
+
+\section*{操作及观察}
+\begin{enumerate}
+\item 固定基线权重与评价输入，分别应用非结构化剪枝和结构化剪枝。
+\item 比较低秩近似的矩阵形状与误差，记录秩和参数预算。
+\item 核对量化尺度、量化值与反量化误差；检查蒸馏目标的教师/学生对象。
+\item 组合方法时逐步增加变量，记录质量、内存、制品和实际执行后端。
+\end{enumerate}
+
+\section*{结果判读及提交}
+提交逐阶段差异及制品配置。零值权重并不自动减少稠密算子耗时；模拟量化误差不能代替低比特内核速度测试。
+
+提交时附上所执行单元范围、环境与制品身份、原始结果及失败说明。将未运行项目明确列出，不能用Notebook中已有输出替代本次执行证据。

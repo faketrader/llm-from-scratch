@@ -1,0 +1,354 @@
+\documentclass[../textbook.tex]{subfiles}
+\begin{document}
+\bookchapter{智能体架构}{ch:agent-architecture}
+
+语言模型能够生成计划，却不能仅凭生成文本改变外部世界。\term{智能体}{Agent}{}是围绕目标持续组织观察、决策和行动的系统；模型通常承担其中的策略或解释组件，外部执行器负责使合法动作发生，状态存储负责保存已经发生的事实。理解这三种职责，才能解释智能体为何需要记忆、何时需要规划，以及增加协作者为什么有时反而降低可靠性。
+
+本章研究架构机制及其取舍。检索与证据组织分别见\bookxref{ch:information-retrieval}与\bookxref{ch:rag-systems}；完整应用引擎的持久化、接口和交付见\bookxref{ch:agent-runtime}。这里关心的核心问题是：在观察不完整、消息可能延迟、动作可能产生副作用时，怎样把概率性的决策约束为可终止、可恢复的闭环。
+
+\section{部分可观测的决策闭环}
+
+\subsection{环境状态及控制器状态}
+设 $s_t$ 为第 $t$ 步的真实环境状态，例如库存、文件版本或远端任务状态。控制器不能直接读取全部 $s_t$，只能获得\term{观测}{Observation}{} $o_t$，包括工具返回值、错误、时间戳和来源。它维护内部状态 $z_t$，其中包含任务目标 $g$、已确认结果、待解决子问题、预算以及对环境的暂时判断。
+
+\term{部分可观测马尔可夫决策过程}{Partially Observable Markov Decision Process}{POMDP}用状态转移核 $P(s'\mid s,a)$ 和观测核 $O(o\mid s',a)$ 描述这类问题。若历史为 $h_t=(o_0,a_0,o_1,\ldots,a_{t-1},o_t)$，则信念状态 $b_t(s)=P(s_t=s\mid h_t)$ 在离散状态下按贝叶斯规则更新：
+\begin{equation}
+ b_{t+1}(s')=\frac{O(o_{t+1}\mid s',a_t)\sum_sP(s'\mid s,a_t)b_t(s)}{\sum_{\tilde s}O(o_{t+1}\mid\tilde s,a_t)\sum_sP(\tilde s\mid s,a_t)b_t(s)}.
+ \label{eq:agent-belief}
+\end{equation}
+分母是当前动作后收到该观测的概率，必须非零。实际应用一般没有可枚举的完整状态空间，因而使用结构化任务状态、证据和摘要近似表达信念。自然语言摘要并不因被放入上下文就成为充分统计量，也不自动满足马尔可夫性。强化学习中的价值与策略学习可参阅\bookxref{ch:reinforcement-learning}；本章不要求控制器必须经过强化学习训练。
+
+\begin{center}
+\begin{tabularx}{\linewidth}{lX}
+\toprule 符号 & 含义\\\midrule
+$s_t,o_t,z_t$ & 真实环境状态、可获得观测、控制器维护的任务状态。\\
+$g,h_t,b_t$ & 目标、交互历史、对真实状态的条件概率分布。\\
+$m_t,e_t$ & 持久记忆集合、当轮检索后进入上下文的证据集合。\\
+$\hat a_t,a_t$ & 模型提出的动作、外部执行器实际接受的动作。\\
+$u,\mathcal P,v_t$ & 已认证主体、外部授权策略、状态或对象版本。\\
+$B_t,d,c_t$ & 剩余预算向量、截止时刻、当轮实际消耗。\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{bookassumptions}[本章的系统边界]
+模型输出与工具内容均可能错误。身份和授权由模型之外的可信组件提供；消息可能重复、延迟或丢失，远端写入与本地记录不假定为一个事务。构造概率例题只说明决策关系，不代表实际模型已经具有校准概率。预算、终止及状态写入由外部控制器执行。
+\end{bookassumptions}
+
+\subsection{提出动作及执行动作}
+把策略和执行明确分开，可以写出
+\begin{align}
+ e_t&=\operatorname{Retrieve}(m_t,g,z_t,u),\\
+ \hat a_t&\sim\pi_\theta(\cdot\mid g,z_t,e_t),\\
+ a_t&=G(\hat a_t,u,\mathcal P,v_t,B_t),\\
+ z_{t+1}&=F(z_t,a_t,o_{t+1}).
+\end{align}
+$G$ 是执行门控函数：只有动作类型、参数、对象范围、授权、前置条件和预算均满足时才接受请求，否则返回拒绝观测，环境不因此产生所提议的副作用。拒绝不是让模型自行取消一条已经执行的动作，而是在执行边界之前阻止调用。$F$ 根据确认的观测更新状态，不能把提议中的预期结果写成已完成结果。
+
+\begin{center}
+\begin{tikzpicture}[>=stealth,node distance=8mm,every node/.style={font=\small},b/.style={draw,rounded corners,text width=22mm,minimum height=11mm,align=center}]
+\node[b] (state){目标与任务状态\\$g,z_t$};
+\node[b,right=of state] (policy){模型策略\\提出 $\hat a_t$};
+\node[b,right=of policy] (gate){外部执行器\\验证与授权 $G$};
+\node[b,right=of gate] (world){工具与环境\\实际状态 $s_t$};
+\node[b,below=of policy] (memory){记忆检索\\证据 $e_t$};
+\node[b,below=of gate] (obs){结构化观测\\结果、错误、版本};
+\draw[->] (state)--(policy);\draw[->] (memory)--(policy);\draw[->] (policy)--(gate);\draw[->] (gate)--node[above,font=\scriptsize]{仅允许}(world);
+\draw[->] (world)|-(obs);\draw[->] (gate)--node[right,font=\scriptsize]{拒绝或待批准}(obs);\draw[->] (obs)-|(state);\draw[->] (state)--(memory);
+\end{tikzpicture}
+\captionof{figure}{策略、外部授权与环境反馈构成的闭环。拒绝和待批准只形成观测，不产生工具副作用。}\label{fig:agent-loop}
+\end{center}
+
+图\ref{fig:agent-loop}把模型建议与实际执行分开；图中返回的拒绝或待批准状态仍需由控制器处理。
+
+\begin{bookinsight}[两条不能混淆的边界]
+模型认为某个动作有利于目标，不等于主体已授权该动作。记忆中出现某个命题，不等于该命题已经得到事实确认。前者需要执行授权，后者需要来源和证据；提示词中的自我声明不能替代这两种外部依据。
+\end{bookinsight}
+
+\section{Harness 执行控制体系}
+
+\label{sec:agent-harness}
+\term{智能体执行与控制系统}{Agent Harness}{}是围绕模型组织上下文、工具调用、状态持久化、权限判定和终止控制的软件层。模型给出候选动作，Harness 决定哪些动作可以执行、执行结果如何回到上下文，以及任务何时暂停或结束。它既不是模型权重，也不等于一段系统提示词。\footnote{Harness 在不同项目中覆盖的组件范围并不完全相同；本书采用功能定义，不把某一产品的模块划分视为统一标准。还应与只负责评测调度和计分的 evaluation harness 区分。}
+
+\subsection{模型策略及系统策略}
+沿用本章的环境状态 $s_t$、观测 $o_t$ 和控制器状态 $z_t$，将 Harness 的版本及配置记为 $H$。一次交互可分解为
+\begin{align}
+ c_t&=C_H(z_t,o_t), & \widetilde a_t&\sim\pi_\theta(\cdot\mid c_t),\\
+ a_t&=G_H(\widetilde a_t,z_t), & s_{t+1}&\sim P(\cdot\mid s_t,a_t),\\
+ z_{t+1}&=U_H(z_t,o_t,a_t,o_{t+1}).
+\end{align}
+这里 $c_t$ 是送入模型的上下文；$C_H$ 负责信息选择与压缩；$G_H$ 负责模式校验、授权和执行准入；$U_H$ 更新任务状态和日志。$G_H$ 的结果可以是执行、拒绝、等待批准或请求补充信息。拒绝和等待通常不改变目标业务对象，但会消耗时间并改变控制器状态。权限检查必须由受信执行层实施，不能依赖模型承诺遵守规则。
+
+即使模型参数 $\theta$ 不变，改变可见信息或可行动作也会改变整个系统的行为。因此端到端成绩应写为
+\begin{equation}
+ J(\theta,H)=\mathbb E_{\tau\sim P_{\theta,H}}
+ \left[R(\tau)-\lambda C(\tau)\right],
+\end{equation}
+其中 $\tau$ 为完整轨迹，$R$ 为任务收益，$C$ 为成本，$\lambda\ge0$ 将成本换算为收益单位。这是评估目标的定义，并非声称工程系统已对它求得最优解。比较 Harness 时应固定模型、任务、权限、工具版本和预算；比较模型时也应控制 Harness。否则把上下文改进、额外重试或更强工具带来的提升归给模型，会造成错误归因。
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>=stealth, every node/.style={font=\small}, box/.style={draw,rounded corners,align=center,text width=3.2cm,minimum height=1.05cm}]
+\node[box] (ctx) at (0,0) {上下文与任务状态\\目标、证据、预算};
+\node[box] (model) at (4.4,0) {模型策略\\生成候选动作};
+\node[box] (gate) at (8.8,0) {执行准入\\校验、授权、限额};
+\node[box] (log) at (0,-2.1) {事件与检查点\\记录、恢复、停止};
+\node[box] (obs) at (4.4,-2.1) {结果验证\\观测、回执、后置条件};
+\node[box] (env) at (8.8,-2.1) {工具与环境\\文件、业务、浏览器};
+\draw[->] (ctx)--(model); \draw[->] (model)--(gate); \draw[->] (gate)--(env);
+\draw[->] (env)--(obs); \draw[->] (obs)--(log); \draw[->] (log)--(ctx);
+\end{tikzpicture}
+\caption{模型位于受控执行闭环中。上下文组织、准入、验证和恢复共同构成 Harness 的主要职责；记录成功返回不等于验证业务目标成立。}
+\label{fig:agent-harness-loop}
+\end{figure}
+
+\subsection{Harness、框架、协议及技能边界}
+智能体框架提供构造图、工具和状态机的编程抽象；Harness 是实际驱动任务的运行配置与实现，二者可以包含或组合。工具协议约定如何发现能力、传递参数与结果，不自动提供任务恢复、租户隔离和业务授权。\term{技能}{Skill}{}保存可复用的操作知识及资源，由 Harness 选择何时载入和执行；技能内容不能自行扩大权限。插件则是扩展实现的装载单位，可能承载工具、存储或界面；技能与插件并非同义词。
+
+对于代码任务，编辑器、终端和测试结果进入同一个任务闭环；对于个人助理，消息渠道、日程触发与跨会话记忆更重要。两者都需要保存动作身份、区分计划与事实，并处理取消和未知结果。追加式轨迹便于追踪上下文来源，但\emph{重放日志}不等于再次执行日志中的业务写入。记录应脱敏，检查点应保存恢复所需的版本与授权边界；截断对话时不能丢失尚未完成动作的身份。
+
+\subsection{可复现比较及失效边界}
+实验至少记录模型标识、Harness 提交或版本、提示与技能版本、工具集合、沙箱配置、上下文预算、重试上限和终止规则。成功率之外还应报告成本、时延、人工介入率及副作用错误；耗尽预算的任务不能从分母中删除。工具权限更大并不必然意味着系统更好：它可能只提高某一测试的可达性，同时扩大误操作范围。Codex 和 DeepSeek Harness 的不同组织方式可用于分析这些边界，具体工程比较见\bookxref{ch:agent-runtime}[中的“编码 Harness 与个人智能体平台”一节]。
+
+\section{反应、规划及工作流}
+
+\subsection{反应式及规划执行式}
+\term{反应式架构}{Reactive Architecture}{}依据当前状态和最近观测选择下一动作，适合局部反馈清晰、动作链较短的任务。其优点是决策负担较小，对即时变化敏感；其弱点是容易忽略远期依赖，反复进入看似合理但没有总体进展的局部循环。
+
+\term{规划执行架构}{Plan-and-Execute Architecture}{}先形成子目标及依赖，再执行当前可行步骤。计划可以表示为有向无环图 $\mathcal D=(V,E)$，节点 $i\in V$ 具有前置条件 $\operatorname{pre}_i$、动作候选和完成判据 $\operatorname{post}_i$。只有前驱完成并且当前环境仍满足 $\operatorname{pre}_i$ 时，节点才可调度。计划记录预期关系；实际完成状态仍由执行观测决定。
+
+重规划发生在前提失效、观测改变目标可达性或当前路径消耗过大时。重规划应形成新的计划版本，保留已经确认的执行结果和仍然有效的依赖。简单地重新生成全部计划可能再次安排已完成的写入，造成重复副作用。重规划也不能扩大原任务授权范围。
+
+\subsection{工作流及 ReAct}
+\term{工作流}{Workflow}{}用程序预先规定步骤和分支；例如“检索为空则结束，否则计算并生成”仍是工作流。确定分支不意味着控制能力薄弱，恰好可以把稳定业务规则从模型概率输出中移出。
+
+\term{推理与行动交替}{Reasoning and Acting}{ReAct}让模型在交互过程中交替组织判断与动作，并把外部观测纳入后续决策。原论文提出并在问答和交互任务上研究了这种模式\cite{yao2023react}。这一思想支持动态路径选择，但不自带持久化、权限或事务保证。本章将其架构接口概括为“决策摘要、动作提议、实际观测”的循环，不要求记录或公开模型的原始内部思维链。\footnote{可审计的决策摘要可以是“缺少当前版本”“前置条件失效”等短说明，以及所用证据标识。它描述可检查的控制依据，不应被当作模型内部推理过程的完整重建。}
+
+三种设计并非互斥。工作流可以固定准入、核验和终止环节，在中间安排一个预算受限的 ReAct 子循环；规划器可以生成子目标，由确定性执行器选择满足依赖的节点。架构选择应取决于不确定性所在的位置，而不是把所有步骤都交给模型。
+
+\begin{center}
+\begin{tabularx}{\linewidth}{lXX}
+\toprule 结构 & 主要适用条件 & 主要代价或失效模式\\\midrule
+反应式 & 反馈及时，局部决策足以推进 & 短视、重复尝试、目标漂移\\
+规划执行式 & 多步骤依赖可表达 & 计划过期、重规划成本、错误依赖\\
+确定工作流 & 业务路径稳定且可枚举 & 新情况需要显式扩展分支\\
+受限 ReAct & 下一动作依赖新观测 & 额外调用、循环和状态解释错误\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\section{状态机及有限终止}
+
+\subsection{动作生命周期}
+\term{状态机}{State Machine}{}应区分待决策、待验证、执行中、结果待确认和终态。尤其需要区分“未执行”“确认失败”和“结果未知”：一次网络超时可能发生在远端提交之前，也可能发生在提交之后。结果未知时直接重试写入，会把传输不确定性变成业务重复。
+
+\begin{center}
+\begin{tikzpicture}[>=stealth,node distance=8mm,every node/.style={font=\small},b/.style={draw,rounded corners,text width=23mm,minimum height=10mm,align=center}]
+\node[b] (dec){选择动作};\node[b,right=of dec] (val){验证与准入};\node[b,right=of val] (exe){执行中};\node[b,right=of exe] (obs){核验观测};
+\node[b,below=of val] (stop){终态\\成功或未完成};\node[b,below=of dec] (wait){等待批准\\不执行};\node[b,below=of exe] (unknown){结果未知\\查询确认};
+\draw[->] (dec)--(val);\draw[->] (val)--node[above,font=\scriptsize]{仅允许}(exe);\draw[->] (exe)--(obs);\draw[->] (exe)--(unknown);\draw[->] (unknown)-|(obs);\draw[->] (obs) to[bend right=35] (dec);\draw[->] (dec)--(stop);\draw[->] (val)--node[right,font=\scriptsize]{拒绝或终止}(stop);\draw[->] (val)--node[above,sloped,font=\scriptsize]{需批准}(wait);\draw[->] (wait.west) -- ++(-.4,0) |- node[pos=.7,above,font=\scriptsize]{取得批准后重查}(val.north);\draw[->] (obs)|-(stop);
+\end{tikzpicture}
+\captionof{figure}{动作状态与受控分支。等待批准不进入执行，已有批准仍须通过当前校验。}\label{fig:agent-states}
+\end{center}
+
+图\ref{fig:agent-states}中的成功终态要求完成判据被满足，例如查询回答具有足够证据，或写入结果已经由目标系统确认。预算耗尽、截止、取消、无法确认结果和授权不足是不同的未完成原因。语言模型生成“任务完成”不是成功判据。对于长期任务，还需要把“暂停等待外部事件”与“正在持续占用资源执行”区分开。
+
+\subsection{预算提供终止界}
+设剩余预算向量 $B_t=(b_t^{\mathrm{step}},b_t^{\mathrm{tool}},b_t^{\mathrm{token}},b_t^{\mathrm{cost}})$，每轮消耗 $c_t$，执行更新为 $B_{t+1}=B_t-c_t$。在调用之前，应依据预留上界做准入，再根据实际消耗结算；只在调用结束后扣费，不能防止并行分支同时超支。
+
+若每轮至少扣除一个步骤预算，初始步骤数为 $K$，则控制循环最多经历 $K$ 轮。这是一个离散递减量证明：非负整数不可能无限严格下降。然而它不限制某轮阻塞多久，故仍须截止时刻 $d$、工具超时和取消传播。反过来，仅有工具次数限制也不阻止模型在没有工具调用的分支中无限生成。
+
+\begin{bookalgorithm}[受限闭环控制]
+输入为目标 $g$、授权主体 $u$、策略 $\mathcal P$、初始状态 $z_0$、预算 $B_0$ 和截止时刻 $d$；输出为带终止原因的结果及已确认动作记录。
+\begin{enumerate}
+\item 初始化任务版本与完成判据。每次进入循环先检查取消、截止和步骤预算；命中停止条件则形成明确终态。
+\item 按主体权限检索证据，保留来源与版本；策略根据任务状态提出结构化动作或结束候选。
+\item 对结束候选检查完成判据；证据不足时不得标记成功。对动作检查参数、授权、对象版本及前置条件，并预留调用预算。
+\item 验证不通过则记录拒绝观测；通过则登记动作身份并执行。超时且无法判断是否提交时记录结果未知，转入确认流程。
+\item 将实际观测与已确认副作用写入状态，结算预算，再检查后置条件；必要时产生新计划版本，继续或结束。
+\end{enumerate}
+不变量为授权范围不扩大、预算不被重复分配、未确认动作不记为成功、终态不继续发起动作。步骤预算递减与截止共同给出有界执行条件。
+\end{bookalgorithm}
+
+\section{信息价值计算}
+\optional
+\phantomsection\label{q:ch34:example:01}\optional
+
+
+考虑一个构造任务：控制器需要决定是否执行已经获得授权的一次资源预留。资源足够记为 $S$，当前信念 $P(S)=0.6$。若成功，效用为 $2$；若资源不足仍尝试，效用为 $-8$；暂不执行的效用为 $0$。这里效用是人为规定的决策单位，不是金额，也不是实际失败率。
+
+当信念为 $p$ 时，立即尝试的期望效用为
+\begin{equation}
+ U_{\mathrm{act}}(p)=2p-8(1-p)=10p-8.
+\end{equation}
+因此最优的二选一规则是 $p>0.8$ 时尝试，否则暂不执行。先验 $0.6$ 下，直接尝试的效用为 $-2$，应选择效用为零的暂不执行。
+
+现在有一个只读查询，成本为 $0.2$，并假设在这次短暂决策窗口内资源状态不变化。查询有阳性 $+$ 和阴性 $-$ 两种输出，且 $P(+\mid S)=0.9$、$P(+\mid\neg S)=0.1$。由全概率公式，
+\begin{align}
+ P(+)&=0.9\times0.6+0.1\times0.4=0.58,\\
+ P(S\mid +)&=\frac{0.9\times0.6}{0.58}=\frac{27}{29}\approx0.9310,\\
+ P(S\mid -)&=\frac{0.1\times0.6}{0.42}=\frac17\approx0.1429.
+\end{align}
+收到阳性后应尝试，收到阴性后应暂不执行。查询后采取最优决策的净效用为
+\begin{equation}
+ U_{\mathrm{query}}=-0.2+0.58\max\{\frac{10\times27}{29}-8,0\}+0.42\max\{\frac{10}{7}-8,0\}=0.56.
+\end{equation}
+相对于先验下最优效用零，查询具有正的\term{信息价值}{Value of Information}{VOI}。一般地，对查询 $q$、查询成本 $c(q)$ 和后续动作效用 $U(a,s)$，有
+\begin{equation}
+ \operatorname{VOI}(q)=\mathbb E_o\left[\max_a\mathbb E[U(a,s)\mid o,q]\right]-\max_a\mathbb E[U(a,s)]-c(q).
+\end{equation}
+期望中的优化说明，信息只有在可能改变后续决策时才产生决策收益；反复读取相同旧结果通常没有这样的收益。
+
+这个例题还揭示两个边界。第一，概率足够高并不建立动作权限，本例从一开始就假定具体预留已经获得授权。第二，查询后状态可能变化时，后验不能替代提交时的原子前置条件。若查询读到“版本 $v=7$，剩余12件”，预留8件的请求仍应要求目标系统在版本匹配且数量足够时原子执行；其他请求先将版本更新到8，当前请求就应拒绝并重新读取，而不是坚持旧计划。
+
+\section{记忆的生命周期}
+
+\subsection{任务状态、经历及知识}
+\term{工作记忆}{Working Memory}{}保存当前任务必要的上下文，例如当前目标、依赖、最近观测和未确认动作；\term{长期记忆}{Long-Term Memory}{}跨任务保留可复用内容。长期记忆还可按含义分为记录发生过什么的\term{情景记忆}{Episodic Memory}{}、表达命题和关系的\term{语义记忆}{Semantic Memory}{}，以及保存适用步骤的\term{程序性记忆}{Procedural Memory}{}。这些名称描述用途，不要求采用不同数据库。
+
+Generative Agents 研究了自然语言经历记录、反思与动态检索如何支持模拟行为\cite{park2023generativeagents}。这提供了记忆参与行为的研究实例；业务系统仍需另外定义事实核验、授权和版本语义。模型从多个片段归纳出的“经验”属于派生内容，应保留依赖的证据，不可覆盖来源记录而失去可追溯性。
+
+一条记忆可抽象为
+\begin{equation}
+ m_i=(\phi_i,\sigma_i,\nu_i,t_i^{\mathrm{obs}},I_i,\rho_i,\kappa_i),
+\end{equation}
+其中 $\phi_i$ 为命题或经历，$\sigma_i$ 为来源，$\nu_i$ 为来源版本，$t_i^{\mathrm{obs}}$ 为观察时间，$I_i$ 为适用时间及对象范围，$\rho_i$ 为访问规则，$\kappa_i$ 为证据状态，例如已核验、待核验、冲突或失效。主观置信度可以作为附加字段，但不能替代 $\sigma_i$ 与 $\kappa_i$。
+
+\subsection{写入、检索及更新}
+记忆写入应经过候选提取、来源绑定、类型区分、去重和冲突处理，再发布为可检索记录。模型自己的回答可以作为“曾经给出的回答”保存，却不能仅凭保存行为变成新的独立事实来源。否则一次错误会经过检索再次出现，被误解为额外证据，形成自我强化。
+
+检索先按主体、租户、任务范围和有效状态过滤，再在合法候选内排序。设 $x_i\in\{0,1\}$ 表示是否选择记忆 $i$，$\ell_i$ 为进入上下文的词元数，$r_i$ 为任务相关收益估计，$d_{ij}\ge0$ 为重复信息惩罚，则一个设计目标是
+\begin{equation}
+ \max_x\ \sum_i r_ix_i-\eta\sum_{i<j}d_{ij}x_ix_j,
+ \qquad\sum_i\ell_ix_i\le B_{\mathrm{ctx}}.
+\end{equation}
+这里 $\eta\ge0$ 控制冗余惩罚，$B_{\mathrm{ctx}}$ 是记忆上下文预算。这是选择问题的数学表达，并非要求每轮精确求解组合优化。相关性、新鲜度和来源覆盖可以形成候选排序，但不能用高相关分数绕过权限过滤。
+
+\term{新鲜度}{Freshness}{}表达记录相对当前环境的时效性。若额外假设某命题失效具有恒定风险率 $\lambda$，经过 $\Delta t$ 仍未失效的概率满足 $f'(t)=-\lambda f(t)$、$f(0)=1$，解为
+\begin{equation}
+ f(\Delta t)=\exp(-\lambda\Delta t).
+\end{equation}
+这是明确假设下的模型，不能普遍作为事实可信度。库存可以在秒级变化，历史事件的发生时间则不会因记录变旧而改变；配置记录更适合用版本失效通知而不是统一时间衰减。
+
+发现冲突时，先检查对象、时间范围、来源权威与修订链。两条不同时间的库存记录未必逻辑矛盾；同一有效时间的相反状态则不能只靠选择“文字较新”的记录解决。更新应建立替代或冲突关系，保留尚不能判断的分歧。遗忘可以是退出热上下文、降低检索优先级、到期失效或实际删除，四者具有不同语义。实际删除还需要处理向量索引、派生摘要与缓存中的副本。\footnote{删除来源后，依赖该来源的归纳结论可能仍留在摘要中。因此派生记忆需要来源关系；仅删除原始文本并不等于完成整个记忆生命周期的删除。}
+
+\begin{bookalgorithm}[有来源的记忆更新]
+输入为新观测 $o$、当前记忆版本 $v$ 和主体范围；输出为新版本或待处理冲突。
+\begin{enumerate}
+\item 将观测拆成事件记录与命题候选，绑定来源、对象、观察时间和来源版本；模型推断标为派生候选。
+\item 检查主体范围和存储规则，查询相同对象及有效时间内的已有记录，识别重复、替代和冲突。
+\item 对有明确修订关系的记录追加替代关系；对缺少依据的冲突保留双方，并创建核验需求。
+\item 以预期版本 $v$ 提交更新；版本不匹配时重新读取并合并，不能覆盖并发更新。
+\item 发布新检索视图，失效受影响的缓存和派生内容；保留任务所引用的证据版本供解释使用。
+\end{enumerate}
+不变量为来源不丢失、推断不被提升为外部事实、访问范围不扩大、并发写入不静默覆盖。
+\end{bookalgorithm}
+
+\section{单智能体及多智能体协作}
+\optional
+\subsection{角色分工及拓扑}
+单智能体可以调用多个工具，多个模型调用也可以属于同一控制器；智能体数量应根据独立状态、目标和控制责任判断。\term{多智能体系统}{Multi-Agent System}{MAS}将任务分配给多个具有局部状态的参与者。AutoGen 研究了通过可编程多智能体会话组织模型、工具和人类参与的应用形式\cite{wu2023autogen}；会话形式本身不保证协作收益或状态一致。
+
+\term{监督者架构}{Supervisor Architecture}{}由一个协调者分解任务、分配预算并汇总输出。它有清楚的责任归属，但协调者会成为关键路径和信息瓶颈。对等协作减少集中控制，却需要额外处理任务认领、冲突和终止判定。角色名称例如“研究者”和“审查者”只表达职责，不能证明能力互补；若各角色读取同一错误材料，其意见可能高度相关。
+
+\begin{center}
+\begin{tikzpicture}[>=stealth,node distance=9mm,every node/.style={font=\small},b/.style={draw,rounded corners,text width=30mm,minimum height=10mm,align=center}]
+\node[b] (sup){监督者\\目标、预算、合并};
+\node[b,below left=of sup] (a){子任务甲\\局部状态与证据};
+\node[b,below right=of sup] (b){子任务乙\\局部状态与证据};
+\node[b,below=19mm of sup] (store){共享状态\\版本化提交};
+\draw[<->] (sup)--(a);\draw[<->] (sup)--(b);\draw[<->] (a)--(store);\draw[<->] (b)--(store);
+\end{tikzpicture}
+\captionof{figure}{监督者与局部任务通过版本化共享状态协作。}\label{fig:agent-supervisor}
+\end{center}
+
+图\ref{fig:agent-supervisor}强调职责和状态归属，通信拓扑本身不保证意见独立或结果一致。
+
+\subsection{通信成本及收益边界}
+$n$ 个参与者若每轮向所有其他参与者各发送一条消息，共有 $n(n-1)$ 条有向消息；星形拓扑每轮一次汇报和一次反馈为 $2(n-1)$ 条。该计数假定每条逻辑消息单独发送，实际广播和批处理可以改变网络开销，但不会消除阅读和整合信息的计算成本。
+
+若每轮每个参与者新增 $m$ 个词元，且所有参与者每轮都重新读取截至该轮的完整共同历史，经过 $R$ 轮的总输入量级为
+\begin{equation}
+ C_{\mathrm{read}}\approx\sum_{r=1}^{R}n(nmr)=n^2m\frac{R(R+1)}2.
+\end{equation}
+此式是共同历史线性增长且每次完整重读的特定模型，不适用于按需检索、差量消息和有效缓存后的实际计费。它解释了为什么让所有角色互相转发全部历史，可能同时放大上下文噪声与成本。
+
+对于依赖图 $\mathcal D$，在资源充分时，完成时间仍不小于关键路径上计算与通信的总和：
+\begin{equation}
+ T\ge\max_{p\in\operatorname{Paths}(\mathcal D)}\left(\sum_{i\in p}t_i+\sum_{(i,j)\in p}t_{ij}^{\mathrm{comm}}\right).
+\end{equation}
+$t_i$ 是子任务耗时，$t_{ij}^{\mathrm{comm}}$ 是依赖结果传递和整合耗时。两个分别耗时6秒与8秒的独立子任务，经2秒汇总可在理想条件下10秒结束；若第二个必须等待第一个的结果，则至少16秒。把依赖任务分给不同角色并不会制造并行性。
+
+在另一个构造例中，三个独立判断者正确概率都为 $0.8$，多数表决正确率为 $3(0.8)^2(0.2)+(0.8)^3=0.896$。若三者错误完全相关，多数表决仍只有 $0.8$。实际多模型协作不能默认独立；应评估错误相关性、证据差异和裁决规则，而不是把上述独立计算直接当成性能承诺。
+
+\subsection{共享状态及消息一致性}
+协作者消息至少需要任务标识、父任务标识、发送者角色、对应状态版本、证据引用、结果状态和适用范围。任务结果要区分建议、已核验结论、执行提议与执行回执，避免把“建议更新成功状态”误当作“业务更新已经成功”。消息去重标识防止重复消费；关联标识使迟到回复能够绑定原子任务。
+
+共享状态可以采用单写入者归并，或以版本控制的方式接受并发提交。\term{比较并交换}{Compare-and-Swap}{CAS}要求更新只在当前版本等于预期版本时生效。例如两名参与者都读到任务版本12，甲先提交为13，乙按版本12提交必须冲突；乙应读取13后重新判断合并，而不是覆盖甲的状态。自然语言中的“大家同意”与存储系统的原子提交是两个不同层次。
+
+对可交换的独立事实可以追加记录后归并；对数量扣减、任务认领和终态选择，需要目标存储提供相应原子约束。事件日志能够保留更新顺序，但日志本身不自动证明业务结果正确。子任务迟到时，如果父任务已取消或修订，应拒绝其状态写入或作为历史结果保存，不能重新激活已结束任务。
+
+委派预算也必须满足总量约束。若父任务可用预算为 $B$，预留协调成本 $B_0$，对子任务分配 $B_i$，则准入要求 $B_0+\sum_iB_i\le B$。子任务实际返还未用预算后才能重新分配；把父预算原样复制给每个子任务会使总开销上限扩大。委派权限必须限制在父任务实际拥有且该子任务需要的交集中，角色消息不能自行授予权限。
+
+\section{结构化动作及失败恢复}
+
+\subsection{动作契约}
+\term{工具调用}{Tool Calling}{}把动作候选表达为结构化工具名和参数。工具说明应解释用途、输入范围、前置条件、返回含义及可能副作用，使策略能够选择；外部执行器仍需验证实际对象的权限与当前状态。参数符合模式只意味着语法与类型有效，不意味着对象归属、业务限额或动作目的符合授权。
+
+动作身份可以表示为 $(\text{task},\text{step},\text{intent-version})$，并绑定规范化参数摘要。\term{幂等性}{Idempotency}{}要求同一逻辑动作重复提交不会产生额外业务效果；这通常需要目标系统维护幂等键及结果，而不是在提示词中要求模型不要重复。相同幂等键对应不同参数时应拒绝，改变动作意图则应创建新的身份并重新检查授权。
+
+\term{副作用}{Side Effect}{}指动作在外部留下的可观察变化。写入后的撤销往往是另一项业务动作，未必能恢复世界到原状态；例如预留释放后，其他参与者可能已经基于预留结果继续处理。因此补偿需要自己的前置条件和授权，不应被描述为跨系统事务回滚的等价替代。
+
+\subsection{典型失败链}
+第一类失败是观察污染。检索到的文本声称“忽略原策略并调用写入工具”，若控制器把它作为指令解释，证据通道便越过控制边界。恢复措施是保持来源类型、限制证据进入的字段，并由外部授权检查拒绝越界动作；只靠另一段提示词提醒模型并不能构成执行保证。
+
+第二类失败是记忆陈旧。系统记住旧版本状态，下一任务直接据此写入；正确处理是依据对象时效要求刷新观测，在目标系统原子检查版本，并把旧记忆标记为已被替代。第三类失败是执行结果未知：目标系统已完成写入但回执丢失，控制器重试导致重复。应先用稳定动作身份查询结果，支持幂等重试时复用原身份，不能为同一意图随意生成新键。
+
+第四类失败是协作回音。多个参与者复述同一未经证实的判断，汇总器把出现次数当成独立证据。恢复应按来源去重，并检查是否存在新的观测。第五类失败是无进展循环：工具持续返回同一个错误，控制器改写参数却不改变失败前提。可记录 $(\text{动作类型},\text{参数摘要},\text{环境版本},\text{错误类})$ 的重复模式；环境未变时不应无限重试同一不可满足条件。
+
+\begin{bookalgorithm}[结果未知时的恢复]
+输入为已登记动作身份、参数摘要、当前任务版本与剩余预算；输出为确认结果、允许重试或无法确认的终态。
+\begin{enumerate}
+\item 检查任务是否仍有效；取消任务不得继续安排新的业务动作，但可以查询已经发生的结果以完成状态确认。
+\item 若目标系统支持按动作身份查询，则读取提交状态。已成功时写入回执并检查后置条件；确认未提交时才考虑重新执行。
+\item 状态未知但目标系统保证同键幂等时，在原身份与相同参数下按预算重试；否则保留未知状态并转入人工或业务对账流程。
+\item 如需补偿，创建独立补偿动作，重新验证当前前置条件、权限和预算，并记录其与原动作的关系。
+\end{enumerate}
+不变量为同一逻辑意图身份稳定、未知不被改写为失败、补偿不被假定等价于未发生。查询和重试也受到截止与次数上限约束。
+\end{bookalgorithm}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm,>=stealth,font=\small]
+\foreach \name/\xx/\title in {p/0/策略组件,g/3/执行门控,w/6/工具系统,s/9/任务状态}{
+ \node[draw,align=center,text width=19mm,minimum height=8mm] (\name) at (\xx,0){\title};
+ \draw[dashed] (\xx,-.45)--(\xx,-5.8);
+}
+\draw[->] (0,-.8)--node[above,font=\scriptsize]{动作、参数与证据}(3,-.8);
+\node[align=center,font=\scriptsize] at (3,-1.35){核对身份、范围\\批准与前置条件};
+\draw[->] (3,-1.85)--node[above,font=\scriptsize]{拒绝/待批准：只记录状态}(9,-1.85);
+\node[align=left,font=\scriptsize,anchor=west] at (-.4,-2.35){以下消息仅在允许分支发生};
+\draw[->] (3,-2.8)--node[above,font=\scriptsize]{固定动作身份，受控调用}(6,-2.8);
+\draw[->] (6,-3.4)--node[above,font=\scriptsize]{回执或明确错误}(3,-3.4);
+\draw[->] (3,-4)--node[above,font=\scriptsize]{登记已确认结果}(9,-4);
+\draw[->] (9,-4.65)--node[above,font=\scriptsize]{更新后状态及可用证据}(0,-4.65);
+\node[align=center,font=\scriptsize] at (4.5,-5.35){超时而无法确认提交时，记录结果未知；\\核对原动作，不用新身份重复写入。};
+\end{tikzpicture}
+\caption{工具动作的逻辑时序。拒绝和待批准分支在执行前结束；图中下半段只描述允许分支。}
+\label{fig:agent-tool-sequence}
+\end{figure}
+
+图\ref{fig:agent-tool-sequence}给出策略、门控、工具与状态之间的消息顺序。时间先后不等于分布式原子性：门控已经允许，仍可能在发送或记录时崩溃。完整持久化时序及恢复协议见\bookxref{ch:agent-runtime}。
+
+\section{架构评估及证据边界}
+
+架构评估需要同时记录目标完成、证据充分、动作正确、副作用和资源成本。任务成功率不能只按最终文本自报计算；应使用外部可检查的目标状态。对只读问答，引用标识合法仅证明引用格式，不证明每条结论受引用支持；对写入任务，工具返回成功还应结合业务后置条件和目标对象核验。
+
+比较单智能体与多智能体时，应固定任务集合、授权范围、可用工具和总预算。记录预算内成功率、错误副作用率、重复动作数、未知结果比例、终止原因及延迟分布，并按任务依赖复杂度、证据冲突和环境变化程度分组。若多智能体使用了更大的计算预算，成功率提升不能单独归因于角色划分。确定性工作流适合已知路径，动态控制适合观察会改变路径的任务；两者都应接受相同的目标核验。
+
+检索、只读计算、固定工作流和有界 ReAct 展示不同的基本控制关系。分析时应辨认谁提出工具调用、谁验证参数、谁生成真实观测、谁决定终止，以及来源如何进入回答。固定阈值和少量冻结案例用于观察机制，不能直接迁移为完整质量结论。本章的记忆冲突、并发提交与副作用恢复扩展了其架构基础，\bookxref{ch:agent-runtime}再将这些机制组织成持续运行的应用引擎。
+% BEGIN GENERATED INTERVIEWS
+
+% END GENERATED INTERVIEWS
+\chapterreferences
+\end{document}

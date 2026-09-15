@@ -1,0 +1,29 @@
+% 封底落在偶数页（纸张背面），必要时补一张空白正面。
+\ifodd\value{page}
+  \null\thispagestyle{empty}\newpage
+\fi
+\thispagestyle{empty}
+\pdfbookmark[0]{封底}{back-cover}
+\vspace*{30mm}
+\begin{center}
+{\LARGE\bfseries LLM from Scratch\par}
+\vspace{5mm}
+{\Large Zero to Hero\par}
+\vspace{14mm}
+\rule{0.66\textwidth}{0.6pt}\par
+\end{center}
+\vspace{14mm}
+\begin{quotation}
+从文本表示到注意力计算，从训练目标到推理执行，本书以中文串联大语言模型的核心原理与工程实践。
+
+正文提供概念、推导与系统关系，例题与系统案例说明计算过程及工程取舍。学习围绕可解释的机制展开，结论由可检查的证据支撑。
+\end{quotation}
+\vfill
+\begin{center}
+基础与表示\quad 模型与学习\quad 评估与运行\par
+\medskip
+应用与模型扩展\quad 规模与效率\par
+\vspace{18mm}
+{\small 持续修订版\par}
+\end{center}
+\clearpage

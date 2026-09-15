@@ -1,0 +1,30 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[lfs picture]
+
+\node[storage] (prompt) {同一 Prompt $x$};
+\node[storage, above right=9mm and 18mm of prompt] (chosen) {Chosen $y_w$};
+\node[storage, below right=9mm and 18mm of prompt] (rejected) {Rejected $y_l$};
+\node[block, right=of chosen] (policyw) {Policy $\pi_\theta$\\\scriptsize $\log\pi_\theta(y_w|x)$};
+\node[neutral, above=of policyw] (refw) {冻结 Reference\\\scriptsize $\log\pi_{ref}(y_w|x)$};
+\node[block, right=of rejected] (policyl) {Policy $\pi_\theta$\\\scriptsize $\log\pi_\theta(y_l|x)$};
+\node[neutral, below=of policyl] (refl) {冻结 Reference\\\scriptsize $\log\pi_{ref}(y_l|x)$};
+\node[compute, right=22mm of $(policyw)!0.5!(policyl)$] (margin) {相对偏好间隔 $m$\\\scriptsize chosen ratio $-$ rejected ratio};
+\node[compute, right=of margin] (loss) {$L_{DPO}$\\\scriptsize $-\log\sigma(\beta m)$};
+\draw[data arrow] (prompt) -- (chosen);
+\draw[data arrow] (prompt) -- (rejected);
+\draw[data arrow] (chosen) -- (policyw);
+\draw[data arrow] (chosen) |- (refw);
+\draw[data arrow] (rejected) -- (policyl);
+\draw[data arrow] (rejected) |- (refl);
+\draw[data arrow] (policyw) -- (margin);
+\draw[data arrow] (refw.east) -| (margin.north);
+\draw[data arrow] (policyl) -- (margin);
+\draw[data arrow] (refl.east) -| (margin.south);
+\draw[data arrow] (margin) -- (loss);
+
+\end{tikzpicture}
+\end{document}

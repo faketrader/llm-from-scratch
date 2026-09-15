@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="大语言模型：从理论到实践，第5章注意力机制。包含完整推导、结构图与配套习题解析。"
+    />
+    <title>注意力机制 · 大语言模型：从理论到实践</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='9' fill='%232c5549'/%3E%3Ctext x='8' y='28' fill='white' font-size='25'%3EL%3C/text%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="reader.css" />
+    <script>
+      window.MathJax = {
+        loader: { paths: { "mathjax-newcm": "vendor/fonts" } },
+        tex: {
+          tags: "none",
+          macros: {
+            Real: "\\mathbb{R}",
+            softmax: "\\operatorname{softmax}",
+            argmin: "\\operatorname*{arg\\,min}",
+            dif: "\\mathop{}\\!\\mathrm{d}",
+          },
+        },
+        options: { enableMenu: false },
+        startup: {
+          ready() {
+            MathJax.startup.defaultReady();
+            MathJax.startup.promise.then(
+              () => (document.documentElement.dataset.math = "ready"),
+            );
+          },
+        },
+      };
+    </script>
+    <script defer src="vendor/mathjax/tex-chtml.js"></script>
+    <script defer src="reader.js"></script>
+  </head>
+  <body>
+    <a class="skip" href="#chapter">跳到正文</a>
+    <header class="topbar">
+      <a class="brand" href="index.html"
+        ><span class="monogram">L</span
+        ><span>大语言模型<span class="brand-sub">从理论到实践</span></span></a
+      >
+      <div class="top-actions">
+        <button id="search-open" aria-label="搜索本章">
+          搜索本章 <kbd>⌘ K</kbd></button
+        ><a href="attention.pdf" target="_blank" rel="noopener">阅读 PDF ↗</a
+        ><button id="menu-toggle" aria-expanded="false" aria-controls="sidebar">
+          目录
+        </button>
+      </div>
+    </header>
+    <div class="progress" aria-hidden="true">
+      <div id="progress-fill"></div>
+    </div>
+    <div class="layout" id="top">
+      <aside id="sidebar">
+        <div class="sidebar-intro">
+          <span class="eyebrow">TEXTBOOK / 教材</span>
+          <p>语言模型理论基础</p>
+        </div>
+        <div class="chapter-current">
+          <span>05</span><strong>注意力机制</strong>
+        </div>
+        <nav aria-label="本章目录">@@TOC@@</nav>
+        <div class="sidebar-bottom">
+          <a href="#exercises">配套习题与解析 <span>↗</span></a
+          ><a href="#references">参考文献 <span>↗</span></a
+          ><small>大语言模型：从理论到实践</small>
+        </div>
+      </aside>
+      <main id="chapter">
+        <div class="breadcrumb">
+          教材 <span>/</span> 第一篇 · 语言模型理论基础
+        </div>
+        <div class="chapter-heading">
+          <div class="eyebrow">CHAPTER 05</div>
+          <h1>注意力机制</h1>
+          <p class="chapter-subtitle">Attention</p>
+        </div>
+        <article id="chapter-content">@@CONTENT@@</article>
+        <section id="exercises" class="exercise-section">
+          <div class="eyebrow">WORKBOOK / 习题</div>
+          <h2>配套习题与解析</h2>
+          <p class="section-note">
+            先独立作答，再展开参考解析。选修题保留原书标记。
+          </p>
+          @@ANSWERS@@
+        </section>
+        <section id="references" class="references-section">
+          <div class="eyebrow">REFERENCES</div>
+          <h2>参考文献</h2>
+          @@REFERENCES@@
+        </section>
+        <footer>
+          <span>大语言模型：从理论到实践</span><a href="#top">回到章首 ↑</a>
+        </footer>
+      </main>
+      <aside class="reading-tools">
+        <span class="eyebrow">阅读设置</span>
+        <div class="size-controls">
+          <button id="font-smaller" aria-label="缩小字号">A−</button
+          ><button id="font-larger" aria-label="放大字号">A＋</button>
+        </div>
+        <span id="reading-status">开始阅读</span>
+        <div class="reading-note">公式可横向滚动<br />点击图示可放大</div>
+        <a href="#exercises">前往配套习题 ↓</a>
+      </aside>
+    </div>
+    <dialog id="search-dialog" aria-labelledby="search-title">
+      <div class="dialog-top">
+        <h2 id="search-title">搜索本章</h2>
+        <button id="search-close" aria-label="关闭搜索">×</button>
+      </div>
+      <label for="search-input" class="sr-only">输入关键词</label
+      ><input
+        id="search-input"
+        type="search"
+        placeholder="输入术语或正文关键词，如：因果掩码"
+        autocomplete="off"
+      />
+      <p id="search-count" role="status">搜索正文、习题与解析</p>
+      <div id="search-results"></div>
+    </dialog>
+    <dialog id="figure-dialog" aria-label="图示放大">
+      <button id="figure-close" aria-label="关闭图片">关闭 ×</button
+      ><img id="figure-large" alt="" />
+      <p id="figure-caption"></p>
+    </dialog>
+  </body>
+</html>

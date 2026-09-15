@@ -1,0 +1,82 @@
+\workbookchapter{条件视觉生成}
+
+\begin{exerciselist}
+\exerciseitem 写出视觉与文本交叉注意力的全部形状，比较它与联合注意力的配对数。
+
+\begin{workbookanswers}
+单头视觉$H_v\in\mathbb R^{N_v\times d}$，文本$H_t\in\mathbb R^{N_t\times d_t}$，投影得$Q\in\mathbb R^{N_v\times d_k},K\in\mathbb R^{N_t\times d_k},V\in\mathbb R^{N_t\times d_v}$。分数和权重为$N_v\times N_t$，输出$N_v\times d_v$，多头再拼接投影。交叉配对数$N_vN_t$；联合注意力以$N_v+N_t$位置构成$(N_v+N_t)^2$对，包含双方内部及反向交互，结构不同不能只按成本等价替换。
+\end{workbookanswers}
+
+\exerciseitem 潜图补丁边长从4改为2时，位置数与完整打分矩阵如何变化？哪些成本不遵循平方变化？
+
+\begin{workbookanswers}
+固定潜图面积、无补齐且不计特殊位置，块边从4到2使每块面积降为四分之一，位置数增4倍，完整分数矩阵增16倍。逐位置线性层通常随位置数增4倍，补丁输入投影维数也改变；VAE编码、解码、文本编码等不按16倍变化。实际速度还取决于分块内核和带宽。
+\end{workbookanswers}
+
+\exerciseitem 从高斯扰动密度推导条件得分与噪声条件均值的关系，指出 $b_t=0$ 时的问题。
+
+\begin{workbookanswers}
+扰动$x_t=a_tx_0+b_t\epsilon$，$b_t>0$时条件核得分为$\nabla_{x_t}\log q(x_t\mid x_0,c)=-\frac{x_t-a_tx_0}{b_t^2}=-\frac{\epsilon}{b_t}$。在可交换微分积分且密度正的条件下，对后验$x_0\mid x_t,c$求期望得 $\nabla\log p_t(x_t\mid c)=-\frac{E[\epsilon\mid x_t,c]}{b_t}$。b为0时核退化、该除法不成立，必须通过端点极限或单独边界处理。
+\end{workbookanswers}
+
+\exerciseitem 将 $(1+s)\epsilon_c-s\epsilon_u$ 转换成本章引导约定，并计算 $s=3$ 对应的 $w$。
+
+\begin{workbookanswers}
+本章约定$\epsilon_g=\epsilon_u+w(\epsilon_c-\epsilon_u)=w\epsilon_c+(1-w)\epsilon_u$。比较系数可得$w=1+s$，s为3时w为4。不同库把guidance称为s或w，参数同名不能直接照搬；条件缺失训练、数值精度与双路推理协议也需一致。
+\end{workbookanswers}
+
+\exerciseitem 为什么固定时间的幂次密度解释不能直接证明 CFG 终点分布？
+
+\begin{workbookanswers}
+在固定t上，$s_u+w(s_c-s_u)$可写成$\nabla\log[p_t(x\mid c)^w p_t(x)^{1-w}]$，但这只是该时间局部得分形式。各t的幂次密度未必满足采用的前向/反向动态所需的一致边缘方程，且归一化与模型误差另有条件。因此不能据此断言采样终点恰为对应幂次数据密度，更不能保证w越大越真实。
+\end{workbookanswers}
+
+\exerciseitem 推导对角高斯到标准正态的 KL，解释重参数化如何支持梯度传播。
+
+\begin{workbookanswers}
+$q(z\mid x)=\mathcal N(\mu,\operatorname{diag}\sigma^2)$到$\mathcal N(0,I)$的KL为$\tfrac12\sum_j(\mu_j^2+\sigma_j^2-1-\log\sigma_j^2)$，来自均值项、协方差迹、维数项与行列式比。写$z=\mu+\sigma\odot\epsilon,\epsilon\sim\mathcal N(0,I)$后，随机源独立参数，可通过$\mu,\sigma$对重建损失反传。重参数化不消除采样方差，也不保证潜空间无信息损失。
+\end{workbookanswers}
+
+\exerciseitem 计算 $1024\times1024\times3$ 到 $128\times128\times16$ 的元素压缩比，解释为何不是64倍。
+
+\begin{workbookanswers}
+原元素数$1024^2\times3=3145728$，潜元素$128^2\times16=262144$，比值12。空间面积比64，但通道从3到16，所以元素比为$\frac{64\times3}{16}=12$。元素个数还没有乘精度字节数，不能直接等同文件压缩率或端到端加速。
+\end{workbookanswers}
+
+\exerciseitem\optional 证明平方速度回归的条件均值最优性，并写出连续性方程的弱形式。
+
+\begin{workbookanswers}
+令U为训练条件路径速度，固定$(z,t,c)$时平方回归同样分解为不可约条件方差加$\|u-E[U\mid z,t,c]\|^2$，最优场为条件期望。对光滑紧支撑$\varphi$，若微分可交换，$\frac{dE[\varphi(Z_t)]}{dt}=E[\nabla\varphi(Z_t)^Tu(Z_t,t,c)]$，等价弱式$\partial_tp+\nabla\cdot(pu)=0$。从弱式到唯一ODE运输还需速度正则性、可积性等条件，不能只凭训练损失低得出精确生成。
+\end{workbookanswers}
+
+\exerciseitem\optional 对 $u(z)=z$ 使用四步 Euler，比较结果与 $e$，解释误差来源。
+
+\begin{workbookanswers}
+补足初值和区间为$z(0)=1,t\in[0,1]$，步长$h=\frac{1}{4}$。递推$z_{k+1}=1.25z_k$，四步为$1.25^4=2.44140625$；精确$e\approx2.71828183$，低估约0.27687558。局部截断$O(h^2)$、固定区间全局$O(h)$需光滑与稳定条件；网络近似误差不包含在该纯求解器例子中。
+\end{workbookanswers}
+
+\exerciseitem\optional 比较完整时空注意力与分解注意力的连接关系，说明为何不能只比较 FLOPs。
+
+\begin{workbookanswers}
+F帧每帧S位置，完整配对$F^2S^2$；空间后时间分解约$FS^2+SF^2$。后者先在同帧或同位置混合，跨帧跨位置关系通过多层/组合间接传播，通常不等于一次完整注意力。还须比较布局变换、同步、局部性、表达能力及质量，FLOPs相同或较少不能证明性能与能力优势。
+\end{workbookanswers}
+
+\exerciseitem\optional 为图像编辑分别定义条件遵循与未编辑区域保持指标，构造二者冲突的情形。
+
+\begin{workbookanswers}
+例如“把杯子改为红色，背景不动”，分别度量目标掩码内颜色/语义符合率和掩码外像素误差、结构差异。使整图偏红可提高粗图文相似度却损害背景保持；强制每个外部像素不变又可能留下杯边不自然。应声明边界羽化范围和允许光照变化，并用人工或任务标注检验，不能只用一项总相似度。
+\end{workbookanswers}
+
+\exerciseitem 设计生成制品清单，列出替换 VAE、文本编码器或求解器时必须核对的契约。
+
+\begin{workbookanswers}
+清单含主干、VAE、文本编码器/分词器、潜通道/尺度、时间映射、预测对象、采样网格、CFG约定、控制模块和精度。换VAE须核对潜维数、缩放、分布与解码；换文本编码器须核对维数、模板及训练语义空间；换求解器须核对时间方向、预测类型和端点。组件可加载只证明接口部分兼容，仍需固定输入的数值及生成质量验证。
+\end{workbookanswers}
+
+\exerciseitem\optional 计划把生成器的求解步数由30步降至1步。分别说明仅改变数值求解步数与使用适配的一致性训练或蒸馏模型所需的论据，并设计覆盖质量、多样性、条件约束和真实延迟的比较。
+
+\begin{workbookanswers}
+仅改变步数会改变数值离散误差；训练插值路径为直线，也不能推出模型边缘速度沿实际轨迹恒定或单步 Euler 精确。采用一致性训练或蒸馏时，应核对模型预测对象、噪声或时间端点、条件输入与对应采样协议，确保单步执行符合训练目标。使用固定测试条件和覆盖多个随机种子的样本集合，比较质量分布、多样性、条件遵循及失败切片，并计入编码、解码和其他流水线阶段测量实际延迟及资源占用。记录模型制品和求解配置；单张成功样本或 FLOPs 下降不足以支持整体部署结论。
+\end{workbookanswers}
+
+\end{exerciselist}

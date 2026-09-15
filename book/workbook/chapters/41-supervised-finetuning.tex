@@ -1,0 +1,80 @@
+\workbookchapter{监督微调}
+
+\begin{exerciselist}
+\exerciseitem 从联合概率分解推导全序列损失与回答条件损失的差异。给出一个有理由监督提示的任务，并说明代价。
+
+\begin{workbookanswers}
+$\log p(x,y)=\log p(x)+\log p(y\mid x)$，全序列NLL比回答条件NLL多出提示建模项。继续预训练或同时学习文档格式的生成任务可能有理由监督提示，但会分配梯度给提示分布并改变样本长度权重；不能把此目标称为纯回答SFT。
+\end{workbookanswers}
+
+\exerciseitem 在本章移位算例中，将回答扩为三个词元并在尾部共设置两位填充，列出 $r_j$、$m_t$ 与全部有效预测配对。
+
+\begin{workbookanswers}
+明确序列为 $(B,U,q,A,a,b,c,E,P,P)$，共10位置，以下位置编号从0开始。$r=(0,0,0,0,1,1,1,1,0,0)$，九个预测位置的 $m=(0,0,0,1,1,1,1,0,0)$。有效配对为位置3预测a、4预测b、5预测c、6预测E；填充不作为目标，真实终止E必须保留。
+\end{workbookanswers}
+
+\exerciseitem 若 PAD 与 EOT 使用同一词元编号，设计一个不会误删真实终止监督的位置判定规则。
+
+\begin{workbookanswers}
+由结构化消息跨度和实际有效长度判定角色，而不是按token ID过滤。真实消息结束位置即便编号等于PAD，也保留 $r=1$；长度之外填充 $r=0$。再以 $m_t=r_{t+1}$ 构造监督，并结合注意力可见性，避免删除全部同编号词元。
+\end{workbookanswers}
+
+\exerciseitem 两个样本的回答长度为4与12、平均损失为2与1，分别计算词元等权、样本等权与序列损失，并解释梯度权重。
+
+\begin{workbookanswers}
+两条NLL和为8和12。词元等权为 $\frac{20}{16}=1.25$，样本等权均值为 $\frac{2+1}{2}=1.5$，平均序列NLL为 $\frac{8+12}{2}=10$（若不平均则总NLL20）。前者样本权重$\frac{1}{4}$与$\frac{3}{4}$，中者各$\frac{1}{2}$且每词元权重分别$\frac{1}{8}$与$\frac{1}{24}$；后者每词元权重均$\frac{1}{2}$但总尺度更大。
+\end{workbookanswers}
+
+\exerciseitem 对三轮对话展开全部前缀，并在每个前缀监督所有助手轮次，求各轮被计权的次数；给出每轮恰好一次的构造方案。
+
+\begin{workbookanswers}
+三个累积前缀分别包含助手轮1、轮1至2、轮1至3，若每个前缀监督全部助手，轮1出现3次、轮2出现2次、轮3出现1次。方案一仅用完整三轮序列并监督三轮；方案二用三个前缀但各只监督新增末轮。若按样本均值再归约，仍需核对各轮有效长度造成的权重差异。
+\end{workbookanswers}
+
+\exerciseitem 利用式\tbobject{eq:sft-context-gradient}解释提示位置标签被忽略时，其嵌入参数为什么仍可能更新。
+
+\begin{workbookanswers}
+回答位置隐状态通过因果注意力依赖提示嵌入，链式法则给出
+\[
+ \frac{\partial L}{\partial e_j}=\sum_{t\in\mathcal S}\frac{\partial L}{\partial h_t}\frac{\partial h_t}{\partial e_j}.
+\]
+$j$自身没有直接标签只删除局部输出损失，不令右端为零；除非嵌入冻结、梯度截断或计算依赖本身为零。
+\end{workbookanswers}
+
+\exerciseitem 候选正确率为0.7，过滤器正确接受率为0.8，错误接受率为0.1，计算保留率和保留集合正确率，并讨论误差相关性的影响。
+
+\begin{workbookanswers}
+正确保留质量 $0.7\times0.8=0.56$，错误保留质量 $0.3\times0.1=0.03$，保留率0.59，纯度 $\frac{0.56}{0.59}=\frac{56}{59}\approx94.92\%$。只要r/f是目标总体上的真实条件率，公式无需独立性；但相关错误会使跨题/领域外推和置信区间失效，且高纯度不消除集中系统错误。
+\end{workbookanswers}
+
+\exerciseitem\optional 设计多轮数据的一致性检查维度，至少包含一次用户修正、一次必要澄清和一次工具返回。
+
+\begin{workbookanswers}
+记录消息角色、事件顺序、已接受事实和来源。用户修正后检查后文采用新值并标记旧值被替代；信息不足时检查是否提出必要澄清而非编造；工具返回需绑定请求、状态和内容，并检查助手没有将工具失败解释为成功。以独立题族划分训练与评估，矛盾和缺失可标为不可判定，不强造唯一金标。
+\end{workbookanswers}
+
+\exerciseitem 举例说明回答字符串匹配为何不能可靠确定监督跨度，并给出结构化替代方案。
+
+\begin{workbookanswers}
+用户问题可以引用与回答相同的句子，助手也可能多次重复它；字符串首次匹配会选中提示。模板还可能插入控制标记，子词边界也不等于字符边界。应从结构化消息和生成区间记录目标跨度，映射到词元索引，并验证模板渲染一致及停止标记归属。
+\end{workbookanswers}
+
+\exerciseitem 构造两组方向相同和相反的任务梯度，用式\tbobject{eq:sft-forgetting}比较其局部保持趋势。
+
+\begin{workbookanswers}
+旧任务梯度 $g_o=(1,0)$。新任务若 $g_n=(2,0)$，一步更新 $-\eta g_n$ 使旧损失一阶变化 $-2\eta$；若 $g_n=(-2,0)$ 则变化 $+2\eta$。正内积支持局部改善，负内积提示干扰；非线性、高阶项和后续更新可改变趋势，不能仅用一次梯度角度证明长期保持。
+\end{workbookanswers}
+
+\exerciseitem 对具有多个正确回答的问题，分别设计条件似然指标与生成质量指标，说明两者可能不一致的原因。
+
+\begin{workbookanswers}
+条件似然可在独立参考答案集按明确权重计算NLL，但它仍依赖参考写法与词元长度；生成质量用可执行验证或盲评量表覆盖多种合法答案，并报告失败/拒答。模型可能给某一金标较低概率却生成另一正确答案，也可能金标似然高但自由采样时偏离，因此须同时报告。
+\end{workbookanswers}
+
+\exerciseitem 设计一份同时衡量新领域收益和旧能力保持的模型选择规则，说明测试集何时才能使用。
+
+\begin{workbookanswers}
+先冻结新领域、通用能力和风险切片及可接受退化阈值；只在验证集筛选同时满足保持约束的候选，再比较领域收益与成本。正式测试仅在选择及阈值固定后使用；若根据测试结果反复选模型，它转为开发集，需另建独立测试。高风险失效独立设门槛，不由领域均分抵消。
+\end{workbookanswers}
+
+\end{exerciselist}

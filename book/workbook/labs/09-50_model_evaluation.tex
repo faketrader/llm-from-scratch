@@ -1,0 +1,31 @@
+\chapter{模型评估}
+\label{lab:50_model_evaluation}
+
+\noindent\textbf{配套文件：}\path{notebook/50_model_evaluation.ipynb}\par
+\noindent\textbf{教材关联：}\bookxrefshort{ch:domain-applications}、\bookxrefshort{ch:evaluation-statistics}。
+
+\section*{实验目标}
+建立从逐例预测到发布决策的证据链。
+
+\section*{准备及定位}
+先阅读本册实验总则，确认Notebook中的依赖与资产单元。原理计算、库接口迁移和真实模型训练可能具有不同资源要求，应分别记录设备、版本及运行范围。
+
+源码定位可从下列函数开始；应结合前置数据与配置单元阅读。
+\begin{itemize}
+\item \texttt{my\_validate\_prediction\_matrix}
+\item \texttt{my\_normalize\_text}
+\item \texttt{my\_prompt\_fingerprint}
+\end{itemize}
+
+\section*{操作及观察}
+\begin{enumerate}
+\item 校验预测矩阵与样本身份，排查训练评测交集。
+\item 分别计算分类、生成与pass-at-k等指标，记录其分母和适用条件。
+\item 比较人工标注与模型裁判，检查分歧、切片及高风险失败；使用既定抽样单位构造区间或配对比较。
+\item 汇总成本、时延与质量，核对发布清单及在线实验分配规则。
+\end{enumerate}
+
+\section*{结果判读及提交}
+提交逐例结果、分母、置信区间和门禁判定。构造记录用于检验计分逻辑，不能冒充真实模型评测；统计显著性不等于业务收益。
+
+提交时附上所执行单元范围、环境与制品身份、原始结果及失败说明。将未运行项目明确列出，不能用Notebook中已有输出替代本次执行证据。

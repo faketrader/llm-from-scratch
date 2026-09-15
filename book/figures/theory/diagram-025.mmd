@@ -1,0 +1,12 @@
+flowchart LR
+  C["Created"] -->|"拉取并校验制品"| L["Loading"]
+  L -->|"权重加载完成"| W["Warming"]
+  W -->|"预热与依赖就绪"| R["Ready"]
+  R -->|"暂时过载或关键依赖异常"| N["NotReady"]
+  N -->|"恢复"| R
+  R -->|"发布、缩容或维护"| D["Draining"]
+  N -->|"计划下线"| D
+  D -->|"在途请求结束或宽限期到期"| T["Terminated"]
+  L -->|"制品或资源故障"| F["Failed"]
+  W -->|"预热失败"| F
+  R -->|"不可恢复卡死"| F

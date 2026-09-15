@@ -1,0 +1,88 @@
+\workbookchapter{信息检索}
+
+\begin{exerciselist}
+\exerciseitem 为带表格、版本日期和访问限制的文档设计片段记录，说明哪些上下文必须随片段保留。
+
+\begin{workbookanswers}
+片段记录包含\texttt{document\_id}、revision、\texttt{chunk\_id}、页码/表行列、标题路径、有效日期、来源哈希、权限域和提取器版本。表格值还须携带表头、单位、脚注及适用对象，避免把“10”脱离“万元/季度”。引用定位须能复原原版本，撤权过滤发生在检索与返回两阶段；仅存文本向量不足以证明来源。
+\end{workbookanswers}
+
+\exerciseitem 从二元条件独立假设推导词项对数证据，并指出它与完整 BM25 公式之间还需要哪些建模选择。
+
+\begin{workbookanswers}
+由Bayes及条件独立，后验对数赔率等于先验对数赔率加 $\sum_t[x_t\log(\frac{p_t}{u_t})+(1-x_t)\log(\frac{1-p_t}{1-u_t})]$。将与文档无关项合并后，出现词的系数是 $\log[\frac{p_t(1-u_t)}{u_t(1-p_t)}]$。BM25还需估计概率、平滑IDF、从二元出现推广到词频饱和，并引入长度归一化；这些不是上述独立假设自动推出的唯一形式。
+\end{workbookanswers}
+
+\exerciseitem 对式\tbobject{eq:ch32-bm25}计算词频因子的两个导数，分析 $b=0$ 与 $b=1$ 的含义。
+
+\begin{workbookanswers}
+令$K=k_1(1-b+\frac{b\ell}{\bar\ell})>0$，词频因子$f(t)=\frac{(k_1+1)t}{t+K}$。有 $f'(t)=\frac{(k_1+1)K}{(t+K)^2}>0$、$f''(t)=-\frac{2(k_1+1)K}{(t+K)^3}<0$，即递增且边际收益递减。若也考察长度，$\frac{\partial f}{\partial\ell}=-\frac{(k_1+1)t k_1b}{[\bar\ell(t+K)^2]}$。b为0不校正长度，b为1采用全长度比例；极短或极长文本的效果仍取决于词频与语料。
+\end{workbookanswers}
+
+\exerciseitem 改变评分例题中文档 B 的长度，求使其得分高于 A 的一个长度，并解释其他条件是否保持一致。
+
+\begin{workbookanswers}
+在冻结$N,n_t,\bar\ell=100$的评分快照下，把B长度改成100，长度项变1.2；分数为 $\log(\frac{101}{10.5})(\frac{6.6}{4.2})+\log2(\frac{4.4}{3.2})\approx4.5104>3.8058$。可从B删除无关词使目标词频仍为$(3,2)$。若真的修改整个语料并重建，平均长度等统计也会变；题目没有给其余文档，不能声称冻结统计与重建统计完全相同。
+\end{workbookanswers}
+
+\exerciseitem 推导对比损失对查询向量的梯度；如果某个高分负例其实相关，梯度会造成什么后果？
+
+\begin{workbookanswers}
+点积分数$s_j=u^Tv_j$，$\mathcal L=-\frac{s_+}{\tau}+\log\sum_j e^{\frac{s_j}{\tau}}$，故 $\nabla_u\mathcal L=\frac{\sum_jp_jv_j-v_+}{\tau}$。高分假负例具有较大$p_j$，梯度下降将查询推离它，损害真实相关邻域。应识别多正例、控制负例污染；不能仅以训练损失下降断言召回更好。
+\end{workbookanswers}
+
+\exerciseitem 构造两个未归一化文档向量，使内积、余弦和欧氏距离产生至少两种不同排名。
+
+\begin{workbookanswers}
+取查询$q=(1,0)$，文档$a=(10,10),b=(0.9,0)$。内积10与0.9使a优先；余弦$\frac{1}{\sqrt2}$与1使b优先；到q的距离分别$\sqrt{181}$与0.1也使b优先。若都单位化，余弦和内积等价且平方欧氏为$2-2q^Td$，上述分歧依赖范数未统一。
+\end{workbookanswers}
+
+\exerciseitem\optional 解释为什么 HNSW 增加查询探索宽度可能提高召回，却不能对所有过滤条件保证精确结果。
+
+\begin{workbookanswers}
+更宽探索可访问更多候选、减少局部贪心遗漏，但有限预算和图连通性仍限制结果。权限过滤可能断开原图或消除近邻桥梁，先截断再过滤也可能返回不足K项。应与同权限集合内的精确搜索比较，必要时过滤感知搜索或小集合精确回退；探索宽度不是普适精确性证明。
+\end{workbookanswers}
+
+\exerciseitem\optional 给定 $h=768,m=48,k=256$，计算每条 PQ 码的字节数及全部子码本中心的元素数，不含原始精排向量。
+
+\begin{workbookanswers}
+每子空间需$\log_2 256=8$位，48段共48字节。每子向量维数$\frac{768}{48}=16$，全部码本有 $48\times256\times16=196608$ 个中心元素；若每元素4字节，另为786432字节共享码本。每对象的原向量、ID和索引连接没有计入48字节。
+\end{workbookanswers}
+
+\exerciseitem\optional 推导 PQ 距离误差界，并说明候选间距很小时为何容易改变排名。
+
+\begin{workbookanswers}
+令重建误差$e=\hat x-x$，平方距离差为 $\|q-\hat x\|^2-\|q-x\|^2=-2(q-x)^Te+\|e\|^2$，绝对值不超过 $2\|q-x\|\|e\|+\|e\|^2$。若A和B各有误差界$\epsilon_A,\epsilon_B$，原距离间隔大于二者和可保持排序，否则不能保证。非平方距离还满足反三角不等式界$|\|q-\hat x\|-\|q-x\||\le\|e\|$。
+\end{workbookanswers}
+
+\exerciseitem 使用本章两路排名，分别取 $c=1$ 和 $c=60$ 计算 RRF，比较顶部差异的影响。
+
+\begin{workbookanswers}
+两路为$(A,B,C)$及$(B,D,A)$。c为1时A为$\frac{1}{2}+\frac{1}{4}=0.75$，B为$\frac{1}{3}+\frac{1}{2}=\frac{5}{6}$，C为$\frac{1}{4}$，D为$\frac{1}{3}$；c为60时A为$\frac{1}{61}+\frac{1}{63}\approx0.03227$，B为$\frac{1}{62}+\frac{1}{61}\approx0.03252$，C为$\frac{1}{63}\approx0.01587$，D为$\frac{1}{62}\approx0.01613$。均为B、A、D、C，但顶部B-A差从$\frac{1}{12}$降至约0.000256，c越大越弱化顶部位次差异。
+\end{workbookanswers}
+
+\exerciseitem 说明为什么重排器不能补救候选漏召回，以及增加候选深度会消耗哪些资源。
+
+\begin{workbookanswers}
+重排只为候选集合内对象评分，唯一证据不在集合中时不存在可提升对象。加深召回增加检索I/O、重排模型输入对数、上下文长度和延迟；联合编码器尤其不能把成本视为常数。应同时绘制候选覆盖与预算曲线，定位是召回遗漏还是排序失误。
+\end{workbookanswers}
+
+\exerciseitem 设计文档撤销后在倒排索引、图索引、向量缓存和检索缓存中的删除传播流程，区分立即不可见与物理清理。
+
+\begin{workbookanswers}
+权威权限/墓碑先提交，查询入口与返回前强制过滤，使旧索引暂未删除也不可见；随后发送版本化删除事件更新倒排、图节点和向量缓存，失效依赖该文档的检索缓存。重复删除幂等，乱序旧写入不能覆盖墓碑；物理压缩可异步但须有完成水位。负缓存也依赖语料/权限版本，不能仅追踪已命中文档。
+\end{workbookanswers}
+
+\exerciseitem 为前四名等级 $(1,0,3,2)$ 计算 DCG 与 nDCG，并与完整算例比较 Recall、MRR 的不同关注点。
+
+\begin{workbookanswers}
+沿用全部相关等级$3,2,1$，新排名$(1,0,3,2)$的DCG为 $1+\frac{7}{2}+\frac{3}{\log_2 5}\approx5.7920$；IDCG仍$7+\frac{3}{\log_2 3}+\frac{1}{2}\approx9.3928$，nDCG约0.6166。此时三个相关对象均在前四，Recall为1，首条相关所以RR为1；原例为Recall$\frac{2}{3}$、RR$\frac{1}{2}$、nDCG0.5225。三个量分别关注覆盖、首次命中和等级排序。
+\end{workbookanswers}
+
+\exerciseitem 设计一个 ANN 召回很高但任务召回很低的例子，说明应改索引还是改表示。
+
+\begin{workbookanswers}
+设精确向量前10均为措辞相近却版本错误的文件，ANN全部复现，ANN Recall@10=1；唯一正确版本排名100，任务Recall@10=0。此时首先改表示、版本过滤或查询协议，而不是只加图搜索宽度。若精确前10已有证据而ANN漏掉，才是索引近似误差主导。
+\end{workbookanswers}
+
+\end{exerciselist}

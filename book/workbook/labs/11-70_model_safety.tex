@@ -1,0 +1,31 @@
+\chapter{模型安全}
+\label{lab:70_model_safety}
+
+\noindent\textbf{配套文件：}\path{notebook/70_model_safety.ipynb}\par
+\noindent\textbf{教材关联：}\bookxrefshort{ch:model-application-security}。
+
+\section*{实验目标}
+把风险资产、攻击面、控制和证据逐项关联。
+
+\section*{准备及定位}
+先阅读本册实验总则，确认Notebook中的依赖与资产单元。原理计算、库接口迁移和真实模型训练可能具有不同资源要求，应分别记录设备、版本及运行范围。
+
+源码定位可从下列函数开始；应结合前置数据与配置单元阅读。
+\begin{itemize}
+\item \texttt{my\_risk\_score}
+\item \texttt{my\_sha256}
+\item \texttt{my\_evaluate\_records}
+\end{itemize}
+
+\section*{操作及观察}
+\begin{enumerate}
+\item 建立资产与威胁清单，说明风险分级的依据和责任主体。
+\item 检查数据、权重及配置完整性，比较正常请求与策略违规样本。
+\item 使用授权工具调用入口验证主体、对象和动作边界，分析提示注入与多租户隔离。
+\item 检查风险矩阵、发布门禁、日志最小化及事件响应材料。
+\end{enumerate}
+
+\section*{结果判读及提交}
+提交允许/拒绝用例、原因及残余风险。字符串过滤不能代替授权；没有触发已知样本不能证明系统不存在漏洞。
+
+提交时附上所执行单元范围、环境与制品身份、原始结果及失败说明。将未运行项目明确列出，不能用Notebook中已有输出替代本次执行证据。

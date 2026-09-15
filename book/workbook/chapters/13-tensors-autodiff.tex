@@ -1,0 +1,73 @@
+\workbookchapter{神经网络基础}
+
+\begin{exerciselist}
+\exerciseitem 设 $X\in\Real^{3\times4}$、$W\in\Real^{4\times2}$、$b\in\Real^2$。写出 $Z=XW+\mathbf1_3b^{\mathsf T}$ 的分量式，并给出上游梯度为 $G$ 时三个输入梯度的形状。解释为什么偏置梯度不是 $G$ 本身。
+
+\begin{workbookanswers}
+$Z_{ij}=\sum_{k=1}^4X_{ik}W_{kj}+b_j$，$G\in\Real^{3\times2}$。由 $\dif Z=(\dif X)W+X\dif W+\mathbf1_3\dif b^{\mathsf T}$ 得 $\overline X=GW^{\mathsf T}\in\Real^{3\times4}$、$\overline W=X^{\mathsf T}G\in\Real^{4\times2}$、$\overline b=G^{\mathsf T}\mathbf1_3\in\Real^2$。同一偏置在三行复用，其梯度必须对三条路径求和。
+\end{workbookanswers}
+
+\exerciseitem\optional 从矩阵内积定义出发，推导 $\mathcal L=\frac12\|XW-T\|_F^2$ 对 $W$ 和 $X$ 的梯度，其中 $T$ 为固定目标矩阵。若损失改为对样本数取平均，哪些项需要改变？
+
+\begin{workbookanswers}
+记 $R=XW-T$。$\dif\mathcal L=\operatorname{tr}[R^{\mathsf T}((\dif X)W+X\dif W)]$，循环移动迹中因子可得 $\nabla_W\mathcal L=X^{\mathsf T}R$、$\nabla_X\mathcal L=RW^{\mathsf T}$。若对 $B$ 个样本平均，目标乘 $\frac{1}{B}$，两个梯度也乘 $\frac{1}{B}$；不能额外再除输出宽度，除非所定义目标还按元素平均。
+\end{workbookanswers}
+
+\exerciseitem 对 $q=(\frac{1}{2},\frac{1}{3},\frac{1}{6})$ 写出完整 Softmax 雅可比，验证各行之和为零，并用一个给定向量检查显式矩阵乘积与向量形式相等。
+
+\begin{workbookanswers}
+\[
+J=\operatorname{diag}(q)-qq^{\mathsf T}
+=\begin{bmatrix}\frac{1}{4}&-\frac{1}{6}&-\frac{1}{12}\\-\frac{1}{6}&\frac{2}{9}&-\frac{1}{18}\\-\frac{1}{12}&-\frac{1}{18}&\frac{5}{36}\end{bmatrix}.
+\]
+每行和为零。任选 $v=(1,2,3)^{\mathsf T}$，$q^{\mathsf T}v=\frac{5}{3}$，故 $Jv=q\odot(v-\tfrac53\mathbf1)=(-\frac{1}{3},\frac{1}{9},\frac{2}{9})^{\mathsf T}$，与逐行矩阵乘法相同。题目未指定向量，这是一种可复核选择。
+\end{workbookanswers}
+
+\exerciseitem\optional 将目标改为权重向量 $y=(1,1,0)$，推导 $-\sum_jy_j\log q_j$ 的分数梯度。说明它为何不再等于 $q-y$，以及它与三个独立二元分类目标有何区别。
+
+\begin{workbookanswers}
+设 $s=\sum_jy_j$，展开损失为 $-\sum_jy_jz_j+s\log\sum_ke^{z_k}$，故梯度为 $sq-y$。本题 $s=2$，得到 $2q-(1,1,0)$。Softmax类别共享一个分母；三个独立二元任务使用各自Sigmoid，梯度是 $\sigma(z_j)-y_j$，不存在该互斥归一化约束。
+\end{workbookanswers}
+
+\exerciseitem 设 $X\in\Real^{2\times3\times4}$，偏置形状为 $1\times3\times1$。写出 $Z=X+b$ 的反向求和轴。若前向又对全部24个元素取平均，说明归一化系数在反向中的位置。
+
+\begin{workbookanswers}
+$\overline b_{1j1}=\sum_{i=1}^2\sum_{k=1}^4\overline Z_{ijk}$，即对批量轴及最后一轴求和，保留维度。若 $\mathcal L=\operatorname{mean}(Z)$，则每个 $\overline Z_{ijk}=\frac{1}{24}$，偏置梯度为 $\frac{8}{24}=\frac{1}{3}$。若平均的是后续逐元素损失，其局部导数先乘 $\frac{1}{24}$ 再沿广播轴求和。
+\end{workbookanswers}
+
+\exerciseitem 嵌入编号为 $(1,3,1,3)$，四个位置的上游梯度依次为 $(1,0)$、$(0,1)$、$(2,3)$、$(-1,2)$。求嵌入表各行的梯度，并说明按最后一次出现覆盖会造成什么错误。
+
+\begin{workbookanswers}
+第1行梯度为 $(1,0)+(2,3)=(3,3)$，第3行为 $(0,1)+(-1,2)=(-1,3)$，未出现行均为零。覆盖写入只保留最后一项，将得到错误的 $(2,3)$ 和 $(-1,2)$。反向应执行按编号的散射求和，而非赋值覆盖。
+\end{workbookanswers}
+
+\exerciseitem\optional 在本章两层网络例题中，单独扰动 $W_{1,12}$。保持 ReLU 分支不变，写出标量损失关于扰动的表达式，并核对其零点导数为 $\frac{a}{2}+b$。
+
+\begin{workbookanswers}
+将 $W_{1,12}$ 增加 $t$，两个相关预激活变为 $1+t$ 与 $3-2t$。例如 $|t|<\frac{1}{2}$ 保证激活分支不变。正确类别分数差分别为 $2-t$、$3-2t$，故
+\[
+f(t)=\tfrac12\log(1+e^{-2+t})+\tfrac12\log(1+e^{-3+2t}),
+\quad f'(0)=\frac{a}{2}+b\approx0.1070273.
+\]
+求偏导时其他参数固定；同时更新其他参数将不再是这个单变量函数。
+\end{workbookanswers}
+
+\exerciseitem 对 $f(x)=\max(0,x)$ 在 $x=0$ 使用中心差分。所得值是多少？它为什么不能用于否定零点取零的求导约定？再解释在 $x=1$ 附近如何选择扰动才能避开折点。
+
+\begin{workbookanswers}
+中心差分为 $\frac{[f(\varepsilon)-f(-\varepsilon)]}{2\varepsilon}=\frac{1}{2}$。零点不存在普通导数，差分跨越左右两分支，所以不能据此否定框架取零的次梯度约定。在 $x=1$ 附近取 $0<\varepsilon<1$ 可保持两点都在正半轴，差分精确为1；浮点计算还需避免扰动过小产生消减误差。
+\end{workbookanswers}
+
+\exerciseitem 一个长度不同的序列批次用填充后的总位置数作交叉熵分母，另一个实现用有效词元数作分母。分别写出两种目标，分析它们在填充比例变化时的梯度尺度。即使二者均通过有限差分校验，是否足以认定目标相同？
+
+\begin{workbookanswers}
+记有效损失和为 $S$，填充后位置数 $N_p$、有效数 $N_v>0$，则 $L_p=\frac{S}{N_p}$、$L_v=\frac{S}{N_v}$，并有 $\nabla L_p=(\frac{N_v}{N_p})\nabla L_v$。填充比例变动会改变前者梯度尺度；若不同批次有效长度不同，也改变批次贡献。两种函数都可通过各自有限差分测试，该测试只检验导数实现，不证明目标相同。
+\end{workbookanswers}
+
+\exerciseitem 某语言模型的自动微分梯度与中心差分一致，但训练目标把每个位置的当前词元当作标签。说明这项检查能证明什么；构造一个长度为3的词元序列，写出正确与错误的输入标签配对，并设计独立于梯度差分的检查。讨论在 ReLU 折点附近做差分时应如何解释不一致。
+
+\begin{workbookanswers}
+差分一致支持所实现标量函数的局部导数计算正确，不能证明该函数符合预测任务。对序列 $(a,b,c)$，下一词元预测使用输入 $(a,b)$、标签 $(b,c)$；若标签为 $(a,b)$，当前词元已出现在该位置输入中，模型可能学到复制。应手算一个短序列的目标位置与有效词元掩码，逐位置核对损失，并通过改变未来词元检查因果隔离。语义检查通过后，再在光滑点比较中间量与梯度。ReLU 折点处经典导数不存在，跨越两侧的中心差分可与框架选用的次梯度不同；应换用远离折点的输入，不能据此单独判定反向传播实现错误。
+\end{workbookanswers}
+
+\end{exerciselist}

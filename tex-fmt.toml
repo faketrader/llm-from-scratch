@@ -1,0 +1,19 @@
+# 项目级 LaTeX 格式化配置（tex-fmt 0.5.7）。
+# 格式化：tex-fmt path/to/file.tex
+# 仅检查：tex-fmt --check path/to/file.tex
+
+# 使用空格缩进，每级 2 个空格。
+tabsize = 2
+tabchar = "space"
+
+# 长行在 90–100 字符附近换行，支持中文标点后的断行。
+wrap = true
+wraplen = 100
+wrapmin = 90
+wrap-chars = ["。", "，", "；", "：", "！", "？"]
+
+# 保留表格中手工安排的列间距。
+format-tables = false
+
+# document 环境中的顶层内容保持顶格。
+no-indent-envs = ["document"]

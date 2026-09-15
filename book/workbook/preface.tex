@@ -1,0 +1,24 @@
+\chapter*{使用说明}
+\addcontentsline{toc}{chapter}{使用说明}
+
+《习题解析与实验指导》与教材配套使用。教材承担概念、原理、推导和教学例题，本册集中安排习题、实验指导及参考解析。两册的分工是先理解机制，再通过推导、实现和证据检验理解。
+
+第一部分按教材五篇42章的顺序编排；第二部分按五类主题编排24个Notebook实验，与教材形成多对多关系；第三部分汇集504份习题解析；第四部分列出实验指导实际引用的论文与框架资料。教学例题及其完整计算过程位于教材。
+
+\section*{按方向选择习题及实验}
+先按教材阅读说明建立共同基础，再选择应用智能体系统、模型训练方法或训练推理系统方向。习题按对应教材章节选择，实验按下面的主题顺序进入；实验依次按语言模型理论基础、应用智能体系统、模型训练方法、训练推理系统、模型架构拓展编排，各实验的输入资产和知识前置见其学习契约。
+
+共同基础的机制实践由实验\ref{lab:10_foundations}、实验\ref{lab:20_dataset}、实验\ref{lab:21_tokenizer}、实验\ref{lab:30_transformer}和实验\ref{lab:31_nlp_gpt}依次支撑，覆盖基础复习、数据、分词、Transformer 和自回归生成。完整实验包含训练与数值验证，阅读教材的共同基础可以按主题选读。实验\ref{lab:50_model_evaluation}提供各方向共用的评估方法，实验\ref{lab:70_model_safety}提供安全分析；使用第三方开放权重制品时，结合实验\ref{lab:E10_open_model}核对来源和模型仓库。
+
+应用智能体系统沿实验\ref{lab:50_model_evaluation}、实验\ref{lab:91_prompt_reasoning}和实验\ref{lab:90_llm_applications}学习评估、提示策略、RAG 与有界智能体，提前掌握实验\ref{lab:70_model_safety}中的威胁模型和工具授权。Harness 的持久化、隔离与恢复机制继续结合教材智能体架构和运行系统研读；实验\ref{lab:90_llm_applications}的实践范围是检索、工具、工作流与有界执行循环。
+
+模型训练方法在掌握训练循环与监督目标后进入实验\ref{lab:41_post_training}的监督微调主题及实验\ref{lab:42_peft}，深入时选择实验\ref{lab:40_pre_training}的预训练、实验\ref{lab:A20_data_engineering}的数据工程或实验\ref{lab:41_post_training}与实验\ref{lab:A30_reasoning_model}的人类反馈、偏好对齐和推理训练。实验\ref{lab:41_post_training}将多类目标放在同一文件，主题阅读可分阶段，运行时仍按文件内数据与定义依赖执行。
+
+训练推理系统以实验\ref{lab:A10_resource_planning}建立资源预算。推理服务分支沿实验\ref{lab:50_model_evaluation}、实验\ref{lab:60_inference_deployment}、实验\ref{lab:70_model_safety}和实验\ref{lab:A50_inference_optimization}学习评估、部署、安全与优化；训练系统分支在完成实验\ref{lab:40_pre_training}的训练与恢复知识后进入实验\ref{lab:A40_training_optimization}。实验\ref{lab:A60_model_compression}作为模型优化专题，涉及蒸馏和训练时量化时补齐训练前置。多模态与其他模型专题根据任务选择实验\ref{lab:E20_multimodal_llm}、实验\ref{lab:E30_nlp_bert}、实验\ref{lab:E40_cv_vit}和实验\ref{lab:E50_cv_diffusion}。
+
+\section*{作答及运行}
+\optional 外侧页边的危险弯道标记表示首次阅读可暂时跳过的扩展题，其他题目不加标记。建议先独立作答，再核对解析。实验先提出预期与失败条件，再运行代码并记录实际结果，不能以现有输出替代自己的复现证据。
+
+配套Notebook位于项目的\path{notebook/}目录。指导中的文件名和函数定位依据当前仓库源文件；环境、资源和外部制品要求应与Notebook中的依赖及配置单元共同核对。实验结果以读者实际执行的环境、输入和运行记录为准。
+
+两册使用共同符号与参考文献库。习题不要求查阅文献；实验指导引用的方法论文与框架资料集中列在第四部分。跨册公式与图表以教材编号定位；发布时应成套更新两册，避免版本不一致。

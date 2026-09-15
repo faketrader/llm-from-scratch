@@ -1,0 +1,111 @@
+% 配套册复用教材排版，新增接口使用LaTeX3。
+\ExplSyntaxOn
+% 同章题目与解析共同维护；题目出现时生成内部锚点，解析暂存时绑定该锚点，
+% 从而无需在章节源码中手填题序或维护题目—解析标签对。
+\seq_new:N \g_lfs_workbook_answers_seq
+\int_new:N \g_lfs_workbook_chapter_int
+\int_new:N \g_lfs_workbook_exercise_int
+\bool_new:N \g_lfs_workbook_answer_pending_bool
+\tl_new:N \g_lfs_workbook_chapter_label_tl
+\tl_new:N \g_lfs_workbook_question_label_tl
+\tl_new:N \g_lfs_workbook_answer_label_tl
+\tl_new:N \g_lfs_workbook_question_level_tl
+\RenewDocumentCommand{\optional}{}
+  {
+    \bool_if:NT \g_lfs_workbook_answer_pending_bool
+      { \tl_gset:Nn \g_lfs_workbook_question_level_tl { optional } }
+    \lfsoptionalmark
+  }
+\msg_new:nnn { lfs } { missing-workbook-answer }
+  { Each~exercise~must~be~followed~by~one~workbookanswers~environment. }
+\cs_new_protected:Npn \lfs_workbook_typeset_answer:nnnn #1#2#3#4
+  {
+    \par\medskip
+    \noindent\phantomsection\label{#2}
+    \hyperref[#1]{\textbf{\ref*{#1}}}\quad
+    \str_if_eq:nnT {#3} { optional } { \lfsoptionalmark }
+    \ignorespaces#4
+  }
+\cs_new_protected:Npn \lfs_workbook_store_bound_answer:n #1
+  {
+    \seq_gput_right:Nx \g_lfs_workbook_answers_seq
+      {
+        \exp_not:N \lfs_workbook_typeset_answer:nnnn
+          { \exp_not:V \g_lfs_workbook_question_label_tl }
+          { \exp_not:V \g_lfs_workbook_answer_label_tl }
+          { \exp_not:V \g_lfs_workbook_question_level_tl }
+          { \exp_not:n {#1} }
+      }
+  }
+\NewDocumentEnvironment{workbookanswers}{+b}
+  {
+    \bool_if:NTF \g_lfs_workbook_answer_pending_bool
+      {
+        \lfs_workbook_store_bound_answer:n {#1}
+        \bool_gset_false:N \g_lfs_workbook_answer_pending_bool
+      }
+      { \msg_error:nn { lfs } { missing-workbook-answer } }
+  }
+  {}
+\NewDocumentCommand{\printworkbookanswers}{}
+  {\seq_map_inline:Nn \g_lfs_workbook_answers_seq {##1}}
+\NewDocumentCommand{\workbookchapter}{m}
+  {
+    \chapter{#1}
+    \int_gincr:N \g_lfs_workbook_chapter_int
+    \tl_gset:Nx \g_lfs_workbook_chapter_label_tl
+      { lfs-workbook-chapter-\int_use:N \g_lfs_workbook_chapter_int }
+    \exp_args:NV \label \g_lfs_workbook_chapter_label_tl
+    \seq_gput_right:Nx \g_lfs_workbook_answers_seq
+      {
+        \exp_not:N \answerchapter
+          { \exp_not:V \g_lfs_workbook_chapter_label_tl }
+      }
+  }
+\prop_new:N \g_lfs_tb_numbers_prop
+\NewDocumentCommand{\tbnumber}{mm}{\prop_gput:Nnn\g_lfs_tb_numbers_prop{#1}{#2}}
+\NewDocumentCommand{\tbobject}{m}
+  {（\prop_item:Nn\g_lfs_tb_numbers_prop{#1}）}
+\NewDocumentCommand{\tbnumberref}{m}
+  {（\prop_item:Nn\g_lfs_tb_numbers_prop{#1}）}
+\NewDocumentEnvironment{exerciselist}{}
+  {\begin{enumerate}[labelwidth=3.2em,leftmargin=4em,labelsep=.6em,align=right]}
+  {
+    \bool_if:NT \g_lfs_workbook_answer_pending_bool
+      { \msg_error:nn { lfs } { missing-workbook-answer } }
+    \end{enumerate}
+  }
+\NewDocumentCommand{\exerciseitem}{}
+  {
+    \bool_if:NT \g_lfs_workbook_answer_pending_bool
+      { \msg_error:nn { lfs } { missing-workbook-answer } }
+    \int_gincr:N \g_lfs_workbook_exercise_int
+    \tl_gset:Nx \g_lfs_workbook_question_label_tl
+      { lfs-workbook-question-\int_use:N \g_lfs_workbook_exercise_int }
+    \tl_gset:Nx \g_lfs_workbook_answer_label_tl
+      { lfs-workbook-answer-\int_use:N \g_lfs_workbook_exercise_int }
+    \tl_gset:Nn \g_lfs_workbook_question_level_tl { required }
+    \renewcommand{\theenumi}{\thechapter.\arabic{enumi}}
+    \renewcommand{\labelenumi}
+      {\hyperref[\tl_use:N \g_lfs_workbook_answer_label_tl]{\theenumi.}}
+    \item\leavevmode\phantomsection
+    \exp_args:NV \label \g_lfs_workbook_question_label_tl
+    \bool_gset_true:N \g_lfs_workbook_answer_pending_bool
+  }
+\ExplSyntaxOff
+
+% 保留“篇—章”的真实结构，同时将章级目录项排成紧凑、可扫描的列表。
+% 该覆盖只在习题入口加载，不影响教材目录。
+\makeatletter
+\renewcommand*{\l@chapter}{\@dottedtocline{0}{1.5em}{5.5em}}
+\makeatother
+
+% 参考解析正文连续排版；章号、标题和公式前缀均取自对应习题章标签。
+\RenewDocumentCommand{\answerchapter}{m}{%
+  \edef\lfsanswerchapternumber{\getrefnumber{#1}}%
+  \section*{第\lfsanswerchapternumber 章\texorpdfstring{\quad}{ }\nameref*{#1}}%
+  \phantomsection\label{ans:#1}%
+  \addcontentsline{toc}{chapter}{\protect\numberline{第\lfsanswerchapternumber 章}\nameref*{#1}}%
+  \setcounter{equation}{0}%
+  \renewcommand{\theequation}{答\lfsanswerchapternumber.\arabic{equation}}%
+  \renewcommand{\theHequation}{answer.\lfsanswerchapternumber.\arabic{equation}}}

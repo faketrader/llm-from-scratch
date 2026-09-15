@@ -1,0 +1,24 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{tikz}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[lfs picture]
+  \node[storage] (embedding) {Token Embedding\\$V\times d$};
+  \node[compute, right=17mm of embedding] (attn) {Attention 投影\\Q / K / V / O};
+  \node[compute, below=7mm of attn] (norm) {Norm 参数};
+  \node[compute, below=7mm of norm] (ffn) {门控 FFN\\Gate / Up / Down};
+  \node[group, fit=(attn)(norm)(ffn), inner sep=7pt, label={[title]above:Decoder Layer $\times L$}] (layers) {};
+  \node[compute, right=20mm of layers] (finalnorm) {Final Norm};
+  \node[storage, right=15mm of finalnorm] (head) {LM Head\\共享或独立 $V\times d$};
+  \node[interface, below=12mm of head] (budget) {参数量、显存与通信预算};
+
+  \draw[data arrow] (embedding) -- (layers);
+  \draw[data arrow] (layers) -- (finalnorm);
+  \draw[data arrow] (finalnorm) -- (head);
+  \draw[control arrow] (embedding) |- (budget);
+  \draw[control arrow] (layers) |- (budget);
+  \draw[control arrow] (head) -- (budget);
+\end{tikzpicture}
+\end{document}

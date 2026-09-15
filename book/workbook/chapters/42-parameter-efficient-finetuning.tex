@@ -1,0 +1,82 @@
+\workbookchapter{参数高效微调}
+
+\begin{exerciselist}
+\exerciseitem 对 $d_i=4096,d_o=1024,r=16$ 的投影计算 LoRA 参数量与比例，说明为什么不能使用方阵公式。
+
+\begin{workbookanswers}
+参数量 $r(d_i+d_o)=16(4096+1024)=81920$；基座参数 $4096\times1024=4194304$，比例 $\frac{5}{256}\approx1.9531\%$。$2rd$仅适用于输入输出同宽，不能随意取4096代入。
+\end{workbookanswers}
+
+\exerciseitem 从迹微分完整推导 $\nabla_A\mathcal L$、$\nabla_B\mathcal L$ 与 $\nabla_X\mathcal L$，逐步核对张量形状。
+
+\begin{workbookanswers}
+$dY=s(dB)AX+sB(dA)X+(W_0+sBA)dX$，代入 $dL=\operatorname{tr}(G^\mathsf T dY)$ 并循环移位，得到 $\nabla_BL=sGX^\mathsf TA^\mathsf T$、$\nabla_AL=sB^\mathsf TGX^\mathsf T$、$\nabla_XL=(W_0+sBA)^\mathsf TG$。其形状分别 $d_o\times r,r\times d_i,d_i\times n$；冻结 $W_0$ 不删除最后一式。
+\end{workbookanswers}
+
+\exerciseitem 在本章数值例题中继续执行第二次梯度下降，分别计算两个因子的更新。解释为什么应同时用更新前的因子求本步梯度。
+
+\begin{workbookanswers}
+第一次后 $A_1=(1,-1),B_1=(0.1,0.1)^\mathsf T$，$y-t=(0.9,0.9)$，$A_1x=-1$。故 $\nabla_B=(-0.9,-0.9)^\mathsf T$，$\nabla_A=(0.18,0.36)$。步长0.1得 $B_2=(0.19,0.19)^\mathsf T$，$A_2=(0.982,-1.036)$。$A_2x=-1.09$，输出 $(0.7929,1.7929)$，损失 $0.7929^2=0.62869041$。若先改B再计算A梯度，则不再是同一点的一次普通梯度下降。
+\end{workbookanswers}
+
+\exerciseitem\optional 证明对可逆 $R$，$(BR)(R^{-1}A)=BA$，并讨论这对通道可解释性和因子平均的影响。
+
+\begin{workbookanswers}
+由结合律 $(BR)(R^{-1}A)=B(RR^{-1})A=BA$。R可旋转或缩放通道，故单通道不具唯一语义，乘积才不变。不同适配器因子处于不同基时直接平均没有不变意义；应先对完整增量求和或对齐后再近似。
+\end{workbookanswers}
+
+\exerciseitem\optional 若 $A$ 固定而只训练 $B$，增量行空间受到何种限制？与同时训练两个因子相比有何差别？
+
+\begin{workbookanswers}
+$\Delta W=BA$的每一行是A行的线性组合，故行空间包含于固定的 $\operatorname{row}(A)$；若输入x位于A零空间，则增量对x永远为零。共同训练A/B允许改变该子空间，但仍受秩上界r限制，优化非凸并不保证找到任意期望子空间。
+\end{workbookanswers}
+
+\exerciseitem 利用第一步更新公式，比较固定 $\alpha$ 与固定 $s$ 时秩变化对初始期望增量的影响，明确初始化方差是否也发生变化。
+
+\begin{workbookanswers}
+B零初始化时 $\nabla_A=0$，一步增量为 $-\eta s^2GX^\mathsf TA^\mathsf TA$。若A各元素独立零均值、方差 $\sigma^2$，则 $\mathbb E A^\mathsf TA=r\sigma^2I$。固定 $s=\frac{\alpha}{r}$ 且固定alpha/方差，期望幅度正比 $\frac{\alpha^2\sigma^2}{r}$；固定s则正比 $s^2r\sigma^2$。若初始化方差也随r变化，必须把它代入，不能只按r判断。
+\end{workbookanswers}
+
+\exerciseitem 构造两个秩一适配器，使其增量之和秩为二，验证直接相加因子产生交叉项。
+
+\begin{workbookanswers}
+取 $B_1=e_1,A_1=e_1^\mathsf T$ 与 $B_2=e_2,A_2=e_2^\mathsf T$，增量和为2维单位阵、秩2。但 $(B_1+B_2)(A_1+A_2)$ 是全一矩阵、秩1，并多出 $e_1e_2^\mathsf T+e_2e_1^\mathsf T$。拼接 $[B_1,B_2]$ 和纵向堆叠A可精确表示增量和。
+\end{workbookanswers}
+
+\exerciseitem 对 $Y=D(W_q)X+sBAX$ 说明为什么不需要对量化码值求导却仍必须计算基座输入梯度；给出错误切断计算图的后果。
+
+\begin{workbookanswers}
+码值固定时只把 $D(W_q)$ 看作常矩阵，无需对离散码求导；但 $\nabla_XL=[D(W_q)+sBA]^\mathsf TG$ 仍包含基座项。对整条基座分支使用无梯度执行会丢失该项，影响更早层的适配器或可训练输入，从而改变目标梯度。
+\end{workbookanswers}
+
+\exerciseitem\optional 令 $L=24,d=2048,p=20$，比较输入软提示与直接逐层键值前缀的参数量，并说明参数量之外还应比较哪些成本。
+
+\begin{workbookanswers}
+输入软提示为 $pd=20\times2048=40960$。若每层键和值各有d维，直接前缀为 $2Lpd=1966080$，是前者48倍。另计占用的上下文/KV、提示编码器（若有）、注入位置、推理内核支持、加载切换和任务质量；不能只以参数量选方法。
+\end{workbookanswers}
+
+\exerciseitem\optional 对瓶颈 Adapter 证明：若非线性替换为恒等且偏置固定，可以合成一个仿射映射；进一步说明何时增量才是纯线性的。保留非线性时为何一般不能如此合并？
+
+\begin{workbookanswers}
+若 $y=x+U\phi(Dx+b_d)+b_u$ 且 $\phi$ 为恒等，则 $y=(I+UD)x+(Ub_d+b_u)$，是仿射映射；只有附加偏置 $Ub_d+b_u=0$ 时才是纯线性增量。保留ReLU等非线性时雅可比随x变化，一般无法由单一常矩阵和偏置表示。固定偏置不等于偏置为零，原题已据此澄清。
+\end{workbookanswers}
+
+\exerciseitem\optional 分析将键向量缩放移动到 softmax 之后是否等价，并用单查询、两个键的例子说明原因。
+
+\begin{workbookanswers}
+取q=1、键 $(0,1)$、值 $(0,1)$，原输出为 $\frac{e}{1+e}$。把键乘2后为 $\frac{e^2}{1+e^2}$；把原输出乘2则为 $\frac{2e}{1+e}$，不仅不同，后者还超过值凸包。键缩放改变概率分配，不能移到Softmax后的值缩放。
+\end{workbookanswers}
+
+\exerciseitem\optional 设计角色适配的稳定信息、运行时配置和实时观察三层结构，分别给出数据划分、非触发控制与回滚条件。
+
+\begin{workbookanswers}
+稳定信息如职责和固定风格进入版本化训练档案；租户、权限与部署版本由服务配置提供；日期和工具结果来自带来源的实时观察。按提示家族划分数据，加入普通数学/翻译等非触发对照；测试身份、能力、动态事实和越权分别计分。出现旧角色泄漏、过度自我介绍、伪造工具成功或通用能力越界退化时回退完整适配器/模板组合，授权始终由执行器裁决。
+\end{workbookanswers}
+
+\exerciseitem 设 $W\in\mathbb R^{d\times d}$ 满秩，LoRA 增量为 $BA$，其中 $B\in\mathbb R^{d\times r}$、$A\in\mathbb R^{r\times d}$ 且 $r<d$。证明增量秩的上界，并给出 $W+BA$ 仍满秩的具体例子。解释为何增量秩不能直接视为多层模型的能力上限，以及增大 $r$ 为何未必改善验证效果。
+
+\begin{workbookanswers}
+矩阵乘积满足 $\operatorname{rank}(BA)\leq\min(\operatorname{rank}(B),\operatorname{rank}(A))\leq r$。取 $W=I_d$、$r=1$，$B=A^{\mathsf T}=e_1$，则 $W+BA=\operatorname{diag}(2,1,\ldots,1)$ 仍为满秩。低秩约束作用于特定权重的更新方向，多层非线性和多个适配位置共同决定最终函数，不能由单个增量秩直接推断整体任务能力。增大 $r$ 扩展可更新方向并增加参数与优化成本，但验证效果还受数据、目标层、正则化和优化充分程度影响，应在相同评估与资源约束下比较。
+\end{workbookanswers}
+
+\end{exerciselist}

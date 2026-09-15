@@ -1,0 +1,11 @@
+sequenceDiagram
+    participant T as Training Loop
+    participant S as Sampler / RNG
+    participant C as Checkpoint Store
+    participant R as Resumed Process
+    T->>T: 完成一次 optimizer.step
+    T->>S: 读取数据位置与随机状态
+    T->>C: 原子提交完整训练状态
+    C-->>R: 加载已保存的资产与状态
+    R->>S: 恢复采样顺序和随机状态
+    R->>R: 从下一次参数更新继续

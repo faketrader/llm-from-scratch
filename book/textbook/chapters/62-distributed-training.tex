@@ -1,0 +1,321 @@
+\documentclass[../textbook.tex]{subfiles}
+\begin{document}
+\bookchapter{分布式训练}{ch:distributed-training}
+
+模型规模扩大后，训练不再只是选择更新公式的问题：一次前向所需的激活可能超过显存，优化器状态可能无法在单设备常驻，多设备之间的通信又可能抵消并行计算的收益。分布式训练把同一逻辑计算分配到多个执行单元；它首先需要解释计算结果为何仍对应原来的目标，然后才讨论速度和容量。
+
+本章沿全局目标归一化、集合通信、状态分片与模型并行展开，适用于预训练和微调。\bookxref{ch:efficient-finetuning}讨论微调中的资源取舍与并行方案选用；本章解释跨设备计算如何保持目标、参数更新和恢复状态的一致性。\bookxref{ch:resource-budget}提供内存和计算量的计数方法，\bookxref{ch:compute-infrastructure}解释互连与存储，\bookxref{ch:training-stability}规定一次更新的数值语义。
+
+\section{不变的目标及可变的执行方式}
+
+\subsection{三个不同的词元计数}
+训练中至少需要区分：输入的非填充词元数、实际进入算子的词元位置数，以及参与目标函数的有效监督词元数。提示词元可能不参与损失，却仍需前向计算；被因果掩码排除的注意力关系也未必被底层实现跳过。因此不能把“没有标签的位置”一概视为可以删除的计算。
+
+若批内非填充长度为 $\ell_1,\ldots,\ell_B$，动态填充到 $\ell_{\max}$ 后，填充比例为
+\begin{equation}
+ \rho_{\mathrm{pad}}=1-\frac{\sum_{b=1}^B\ell_b}{B\ell_{\max}}.
+ \label{eq:dist-padding}
+\end{equation}
+这描述输入位置的浪费比例，不直接等于总 FLOPs 的浪费比例。稠密注意力的长度代价近似二次，而前馈层通常随位置数线性增长；不同内核还可能利用变长信息减少实际运算。
+
+\term{长度分桶}{Length Bucketing}{}应与随机化和数据混合共同设计。多副本执行还要平衡各副本的计算负载：仅降低每个本地批次的填充比例，仍可能让持有长序列的副本成为同步等待的瓶颈。分桶的基本算例见\bookxref{ch:efficient-finetuning}。
+
+\term{序列打包}{Sequence Packing}{}减少短序列尾部空位，但必须保留任务规定的监督及上下文边界。若任务要求样本独立，需同时处理跨样本注意力、位置标识和首个目标的条件范围；仅插入终止标记并不自动禁止读取前一个样本。数据构造的完整机制见\bookxref{ch:data-engineering}。
+
+\subsection{符号及逻辑设备网格}
+本章主要符号见表\ref{tab:distributed-training-symbols}。
+\begin{table}[htbp]
+\centering
+\caption{分布式训练的主要符号与逻辑设备量。}
+\label{tab:distributed-training-symbols}
+\begin{tabularx}{\linewidth}{@{}lX@{}}
+\toprule
+符号 & 含义\\
+\midrule
+$R$ & 数据并行组中的副本数；不是所有场景下的总设备数。\\
+$G$ & 一次更新内每个副本的微批次数。\\
+$S_{rj},n_{rj}$ & 副本 $r$ 的微批次 $j$ 的损失和与有效监督词元数。\\
+$N$ & 一次全局更新的有效监督词元总数。\\
+$P_s,G_s,O_s$ & 完整模型的参数、梯度、优化器状态所占字节数。\\
+$q,p$ & 张量并行度与流水并行阶段数。\\
+$M,\alpha,\beta$ & 集合通信的逻辑消息字节数、单轮时延和每字节传输时间。\\
+$B_\mu,T,d$ & 微批量、序列长度和隐藏维数。\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\term{进程序号}{Rank}{}是通信组内的逻辑成员标识。一个物理进程可以属于多个通信组，例如与相同模型分片的其他副本组成数据并行组，与同一层的其他分片组成张量并行组。全局进程序号不能代替这些不同的组内坐标。
+
+\section{梯度累积及全局归一化}
+
+\subsection{有限和梯度推导}
+\term{梯度累积}{Gradient Accumulation}{}在参数保持不变的条件下，分多次前向和反向获得一次更新的梯度。设 $n_{rj}$ 由固定标签掩码决定，不依赖参数，则
+\begin{align}
+ N&=\sum_{r=1}^R\sum_{j=1}^G n_{rj},&
+ \mathcal L&=\frac{1}{N}\sum_{r,j}S_{rj},\\
+ \nabla\mathcal L&=\frac{1}{N}\sum_{r,j}\nabla S_{rj}
+ =\sum_{r,j:n_{rj}>0}\frac{n_{rj}}{N}\nabla\overline{\mathcal L}_{rj},&
+ \overline{\mathcal L}_{rj}&=\frac{S_{rj}}{n_{rj}}.
+ \label{eq:dist-token-gradient}
+\end{align}
+该式来自微分的线性性，不要求各微批次长度相同。简单平均各批次平均损失，使用的是每批等权目标，只有计数相同或梯度发生特殊抵消时才与词元平均一致。$n_{rj}=0$ 时其损失和与梯度贡献定义为零，不能计算局部平均。
+
+微批次加权的基本算例见\bookxref{ch:efficient-finetuning}；多副本执行还需让本地损失缩放与跨副本通信的求和或平均语义配合。
+
+\subsection{求和通信及平均通信}
+\term{分布式数据并行}{Distributed Data Parallel}{DDP}令各副本处理不同数据，随后同步梯度。若通信后梯度为各副本梯度的平均，每个副本可反向传播
+\begin{equation}
+ \mathcal L_r^*=\frac{R}{N}\sum_jS_{rj},\qquad
+ \frac1R\sum_r\nabla\mathcal L_r^*
+ =\frac1N\sum_{r,j}\nabla S_{rj}.
+ \label{eq:dist-average-correction}
+\end{equation}
+若通信执行求和，则无需分子中的 $R$。选择哪一种表达取决于实际通信语义，而不是函数名称中的“归约”二字。
+
+例如两副本分别拥有2和6个目标，损失和的梯度为2和18。各自局部平均再跨副本平均得到 $\frac{1+3}{2}=2$；先乘 $\frac{R}{N}=\frac{1}{4}$ 得到0.5和4.5，再平均才得到2.5。全局 $N$ 需要在相关数据并行组内归约；张量并行进程往往处理同一批词元，不能把它们再次计入总量。
+
+可以先读取窗口内的标签计数，再依式\eqref{eq:dist-average-correction}反向；也可以累积未归一化的损失和梯度，完成求和后除以 $N$。后者避免预先知道计数，但未归一化梯度更大，必须在精度设计中考虑溢出风险。裁剪应在最终归一化后执行，因为先裁剪局部梯度再求和通常改变方向。
+
+\begin{bookassumptions}[大批次与累积的等价范围]
+所有微批次使用同一参数版本、相同样本及监督集合，梯度线性聚合正确，且中间不更新参数或矩状态。在精确算术和相同随机函数实现下，累积与完整批次梯度一致。若层依赖批内统计、随机掩码映射不同或归约顺序不同，不能据此保证逐位一致。
+\end{bookassumptions}
+
+非最终微步可推迟梯度通信，以减少集合操作次数，但必须确保最终同步覆盖全部累计贡献。某些参数只在部分微批次或路由分支中参与计算时，通信调度还必须处理未使用参数和组间顺序一致性。没有本地有效目标的进程也不能自行退出其他成员仍需参与的集合操作。
+
+\section{混合精度及激活重计算}
+
+\term{混合精度}{Mixed Precision}{}将不同运算和状态置于适合的数值格式。它同时影响输入存储、乘法精度、累加精度、输出格式和优化器状态，单个“低精度训练”标签不足以描述这些选择。损失缩放与非有限值处理已在\bookxref{ch:training-stability}展开；分布式场景需要使同一更新组对跳步作出一致决定，防止各副本参数分叉。
+
+\term{激活重计算}{Activation Recomputation}{}在前向时不保存部分中间结果，在反向需要时重新求值。早期系统工作给出了次线性激活存储的构造\autocite{chen2016sublinear}。以下采用均匀链式网络说明成本，不把近似式当作所有计算图的峰值保证。
+
+设有 $L$ 层，每层需保存一个大小为 $A$ 字节的激活单位。每隔 $k$ 层保存边界，反向时重建一个区间。边界约占 $\frac{AL}{k}$，当前区间约占 $Ak$，从而
+\begin{equation}
+ M_{\mathrm{act}}(k)\approx A(\frac{L}{k}+k).
+ \label{eq:dist-recompute-memory}
+\end{equation}
+该均匀模型的最优区间与计算量算例见\bookxref{ch:efficient-finetuning}。分布式执行需要按本地模型分片与同时存活的微批次重新计数。流水并行会保留多个在途微批次的边界，张量或上下文切分改变本地激活形状；参数分片下，重算区间还可能再次触发参数收集。每个设备的容量预算因此需要同时计入激活、临时完整参数及通信缓冲。
+
+重算中的集合通信必须由相应通信组按一致顺序参与。若一部分进程重算含集合操作的分支而其他成员跳过，可能造成等待或执行不一致。分片参数释放和预取的时机还决定重算期间的通信开销，不能直接把额外前向计算量当作完整的重算成本。
+
+重计算要求函数可重复执行。若重新生成不同的 Dropout 掩码，反向对应的函数已经改变；若第二次前向重复修改持久缓冲，还可能重复产生副作用。\footnote{“梯度检查点”是这一机制的常用别名，但通常保存的是前向边界状态，不是已经计算好的完整梯度。为与持久化训练检查点区别，本书优先使用“激活重计算”。}
+
+\section{集合通信及反向计算的依赖}
+
+\subsection{四种基本操作}
+\term{全归约}{All-Reduce}{}将各成员的等形状张量按指定算子归约，并将完整结果交给每个成员。\term{归约散播}{Reduce-Scatter}{}执行同样归约，但每个成员只获得结果的一片。\term{全收集}{All-Gather}{}将各成员的分片收集为完整结果。\term{全互换}{All-to-All}{}则由每个成员向所有目标分别发送指定部分。
+
+将 All-Reduce 理解为 Reduce-Scatter 后接 All-Gather，有助于解释状态分片如何省去不需要的副本。它不表示所有实现必须按这两个独立调用执行，也不表示每种拓扑下同一算法最优。
+
+对 $R$ 个成员的理想环式算法，完整消息大小为 $M$ 字节，每个阶段每成员传递约 $\frac{M}{R}$。Reduce-Scatter 和 All-Gather 各需 $R-1$ 轮，因此
+\begin{equation}
+ t_{\mathrm{AR}}\approx2(R-1)\alpha+
+ 2\frac{R-1}{R}M\beta.
+ \label{eq:dist-ring}
+\end{equation}
+式中忽略归约计算、链路竞争和协议开销，$\frac{1}{\beta}$ 是该消息路径可利用的有效带宽。小消息可能受轮次时延主导，大消息更易受带宽主导。树式组织改变轮次和负载分布，不能只凭一条消息大小决定实际最优选择。
+
+\subsection{桶大小及通信尾部}
+反向沿层逆序产生梯度。将若干梯度合并为通信桶，可以在前面层仍计算时归约已经就绪的桶。大桶减少启动次数，却可能推迟首个通信；小桶更早就绪，却增加时延和调度开销。真正不能隐藏的是最后一批计算之后仍未完成的通信尾部。
+
+若计算时间为 $t_c$、独立通信时间为 $t_m$，完全串行时为 $t_c+t_m$，理想完全重叠的下界为 $\max(t_c,t_m)$。依赖、带宽争用及共享计算单元常使实际时间位于两者之间，甚至因资源竞争超过独立时间之和。通信重叠是需要度量的优化选择，不是所有工作负载都应强制开启的条件。
+
+\section{ZeRO 及 FSDP 状态分片}
+
+\term{零冗余优化器}{Zero Redundancy Optimizer}{ZeRO}按状态类别逐步消除数据并行副本之间的重复存储\autocite{rajbhandari2020zero}。以 $R$ 为分片组大小，持久状态近似为
+\begin{align}
+ M_0&=P_s+G_s+O_s,\\
+ M_1&=P_s+G_s+\frac{O_s}{R},\\
+ M_2&=P_s+\frac{G_s+O_s}{R},\\
+ M_3&=\frac{P_s+G_s+O_s}{R.}
+ \label{eq:dist-zero-memory}
+\end{align}
+阶段1由各成员更新其拥有的优化器状态和参数片，再使其他成员获得更新后的参数；阶段2进一步只保留所需的梯度片；阶段3在计算某模块之前临时取得该模块的参数。它们改变状态所有权，而不是将不同样本训练成互不相关的模型。
+
+\term{完全分片数据并行}{Fully Sharded Data Parallel}{FSDP}同样围绕按需聚合参数与归约梯度组织全状态分片\autocite{zhao2023fsdp}。具体实现可以选择计算后重新分片或暂时保留完整参数；这些策略改变通信与峰值。不能仅由“FSDP”名称推断一次更新的精确通信量。
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm,>=stealth]
+\foreach \y/\name in {3/复制数据并行,2/ZeRO-1,1/ZeRO-2,0/ZeRO-3}{\node[anchor=east] at (0,\y) {\name};}
+\foreach \x/\name in {1.2/参数,3.8/梯度,6.4/优化器状态}{\node at (\x,3.8) {\name};}
+\foreach \x/\y in {1.2/3,3.8/3,6.4/3,1.2/2,3.8/2,1.2/1}{\draw[fill=blue!8] (\x-1,\y-.3) rectangle (\x+1,\y+.3);\node at (\x,\y) {完整副本};}
+\foreach \x/\y in {6.4/2,3.8/1,6.4/1,1.2/0,3.8/0,6.4/0}{\draw[fill=green!12] (\x-1,\y-.3) rectangle (\x+1,\y+.3);\node at (\x,\y) {各成员持有一片};}
+\end{tikzpicture}
+\caption{状态的逻辑所有权。图中分片不包含前向或反向期间临时聚合的完整模块。}
+\label{fig:dist-zero}
+\end{figure}
+
+峰值显存还包含激活、当前聚合模块、预取模块、梯度桶、分配器碎片与临时工作区。设最大聚合模块为 $U$ 字节，则即使持久状态很小，至少仍需为该模块的计算表示留出空间；同时预取下一模块还会增加驻留量。过粗的分片单元可能使“全分片”仍然无法执行。
+
+\subsection{容量通信测算}
+\label{q:ch28:example:01}
+\noindent\textbf{例28.1}\quad
+
+设某模型的 $P_s=12$ GiB、$G_s=12$ GiB、$O_s=72$ GiB，分片组 $R=8$。四种持久状态分别为96、33、22.5和12 GiB。若另有10 GiB激活与6 GiB工作区，阶段2近似为38.5 GiB；阶段3若需要4 GiB聚合参数和4 GiB预取，则约为36 GiB。该构造例说明：持久状态从22.5降到12 GiB，不代表峰值也下降10.5 GiB。
+
+对阶段3，若每层参数在前向后释放、反向前重新聚合，那么一个微批次可能需要两次参数收集；若为减少通信而跨阶段保留参数，则显存增大。梯度累积也未必消除这些逐微批次的参数通信。精确通信量必须从参数生命周期和实际调度计算，不能只乘一个固定“ZeRO倍率”。
+
+\term{卸载}{Offload}{}把部分状态或更新计算移到主机内存、CPU或存储。它与分片阶段是不同维度。假设每步必须通过某链路传输 $Q$ 字节且有效带宽为 $b$，仅这段搬运就有 $\frac{Q}{b}$ 的时间下界。预取能隐藏一部分等待，但不能消除总带宽约束；当数据管线和卸载共享链路时还需合并预算。
+
+\section{张量并行的代数结构}
+
+\subsection{列切分、行切分及非线性}
+\term{张量并行}{Tensor Parallelism}{TP}将一个算子的张量维度分配到多个设备。令 $X\in\Real^{n\times d}$、$W\in\Real^{d\times f}$。沿输出列切分为 $W=[W_1\ \cdots\ W_q]$，则
+\begin{equation}
+ XW=[XW_1\ \cdots\ XW_q].
+ \label{eq:dist-column}
+\end{equation}
+每个成员获得一组输出特征。若下一运算逐元素进行，则可直接在分片上计算，无需立即收集完整结果。
+
+再令第二层权重 $V\in\Real^{f\times d}$ 沿输入行分成 $V_i\in\Real^{\frac{f}{q}\times d}$，有
+\begin{equation}
+ Y=\phi(XW)V=\sum_{i=1}^q\phi(XW_i)V_i.
+ \label{eq:dist-paired-mlp}
+\end{equation}
+第一层的列切分和第二层的行切分可以配对，仅在部分和合并处通信。这是 Transformer 层内并行的一种重要组织方式\autocite{shoeybi2020megatron}。它依赖 $\phi$ 不混合分片特征；若中间运算是沿完整特征轴的归一化，则还需归约统计量。通常 $\phi(\sum_iZ_i)\ne\sum_i\phi(Z_i)$，因此不能任意移动非线性和归约的位置。
+
+对门控前馈层，门分支和数值分支须按相同中间特征索引切分，先在本地相乘，再由输出投影产生部分和。反向时，列并行各分片对输入梯度的贡献也需要相加；只画前向通信会低估总成本。
+
+\phantomsection\label{q:ch28:example:02}
+\noindent\textbf{例28.2}\quad
+
+取 $X=(1,2)$，
+\begin{equation*}
+ W_1=\begin{pmatrix}1&0\\0&1\end{pmatrix},\quad
+ W_2=\begin{pmatrix}1&-1\\1&1\end{pmatrix},\quad
+ V_1=\begin{pmatrix}1\\2\end{pmatrix},\quad
+ V_2=\begin{pmatrix}-1\\1\end{pmatrix}.
+\end{equation*}
+采用逐元素 ReLU，两个本地隐藏向量为 $(1,2)$ 和 $(3,1)$，均无需截断；输出部分和为 $1+4=5$ 和 $-3+1=-2$，最终输出为3。单设备将隐藏拼成 $(1,2,3,1)$ 再乘完整 $V$，同样得到3。
+
+若输出的上游梯度为1，本地输入梯度分别为 $(1,2)$ 与 $(-2,0)$，相加得到 $(-1,2)$。因此即使前向输出可以通过一次求和得到，反向仍存在输入梯度的跨成员汇总。
+
+注意力头也可按组切分，但 GQA 的键值头数可能少于张量并行度。此时需要改变分片粒度或复制某些键值头，并计算重复状态和梯度归约；不能在整数头数无法整除时简单向下取整。
+
+\section{流水并行及调度}
+
+\term{流水并行}{Pipeline Parallelism}{PP}沿层深度划分模型，以微批次在阶段之间传递激活和反向梯度。GPipe 展示了以微批次组织层间流水训练的方式\autocite{huang2019gpipe}。以下推导采用同步更新和均衡阶段，不包含过时权重的异步方案。
+
+设有 $p$ 个阶段、$m$ 个微批次，每阶段一次前向耗时 $f$、反向耗时 $b$。采用先完成全部前向、再完成全部反向的填充—排空调度，前向占 $(m+p-1)f$，反向占 $(m+p-1)b$，总时间为
+\begin{equation}
+ t_{\mathrm{pipe}}=(m+p-1)(f+b).
+\end{equation}
+每阶段有效工作为 $m(f+b)$，因此理想利用率与气泡比例为
+\begin{equation}
+ U=\frac{m}{m+p-1},\qquad
+ \rho_{\mathrm{bubble}}=\frac{p-1}{m+p-1}.
+ \label{eq:dist-pipeline-bubble}
+\end{equation}
+当 $p=4,m=8$ 时 $U=\frac{8}{11}\approx72.7\%$。增加 $m$ 减少气泡比例，却可能增加待反向激活，或者迫使固定全局批量下的微批量变小，从而降低算子效率。
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=.80cm,y=.65cm]
+\foreach \r in {0,1,2}{
+ \node[anchor=east] at (0,-\r) {阶段\the\numexpr\r+1\relax};
+ \foreach \m in {1,2,3,4}{
+  \pgfmathtruncatemacro{\slot}{\r+\m}
+  \draw[fill=blue!12] (\slot-.9,-\r-.28) rectangle (\slot-.05,-\r+.28);
+  \node at (\slot-.475,-\r) {$F_{\m}$};
+ }
+}
+\draw[->] (0,-2.8)--(6.2,-2.8) node[right] {时间};
+\end{tikzpicture}
+\caption{三个均衡阶段处理四个微批次的前向流水。每个微批次必须等待上一阶段，形成启动与排空空位；反向具有反向依赖。}
+\label{fig:dist-pipeline}
+\end{figure}
+
+\term{一前向一反向调度}{One-Forward-One-Backward}{1F1B}在预热后交替处理就绪的前向与反向，可降低同时保留的激活数。它并不自动消除所有启动和排空开销；交错虚拟阶段等方法还会改变通信次数与调度依赖。保持同步语义时，一次全局更新中的微批次必须使用一致的参数版本，待贡献完整后再更新。
+
+阶段划分应依据计算与内存，而非只平均层数。嵌入、词表投影、不同序列长度及 MoE 负载可能造成显著差异。稳态节拍受最慢阶段约束；某阶段算力空闲可能是在等待依赖，不能据此认定其设备性能不足。
+
+\section{序列、上下文及专家并行}
+\optional
+\term{序列并行}{Sequence Parallelism}{SP}常指将某些逐位置激活和运算沿序列轴分片；\term{上下文并行}{Context Parallelism}{CP}则通常需要处理跨设备的注意力上下文。不同系统的命名范围存在差异，应以实际切分对象和通信过程为准。序列并行与选择性重算的组合见原论文\autocite{korthikanti2022recomputation}；Megatron Core 对上下文并行的具体切分与通信定义见其官方文档\autocite{nvidia2026contextparallel}。
+
+若查询按序列分片，而每个查询仍应读取全部合法键值，则必须传递键值块，或等价地交换注意力计算所需的信息。不能只在各自局部片段计算 Softmax 后将输出相加，因为局部分母不同。
+
+设一个查询对两个键块的分数分别为 $z^{(1)}$ 和 $z^{(2)}$。每块保存最大值 $a_i$、指数和 $l_i=\sum_j\exp(z_j^{(i)}-a_i)$ 与未归一化值和 $o_i=\sum_j\exp(z_j^{(i)}-a_i)v_j$。取 $a=\max(a_1,a_2)$，则
+\begin{align}
+ l&=e^{a_1-a}l_1+e^{a_2-a}l_2,\\
+ o&=e^{a_1-a}o_1+e^{a_2-a}o_2,\qquad y=\frac{o}{l.}
+ \label{eq:dist-block-softmax}
+\end{align}
+这是把相同全局指数和分块后重组的恒等式，为跨块精确注意力提供数学基础。实际系统仍须处理因果掩码、全掩码块、反向梯度和数据移动；全掩码块应作为零贡献显式处理，避免无穷值相减。
+
+\term{专家并行}{Expert Parallelism}{EP}将 MoE 专家分布在不同成员上，按路由结果分发词元，在专家计算后把输出送回并加权组合。若 $N$ 个词元各选择 $k$ 个专家，隐藏维数为 $d$，每元素 $b_e$ 字节，则一次分发与返回的逻辑载荷约为 $2Nkdb_e$，另有索引、路由权重和容量填充等开销。该式计入本地路由的逻辑数据，不等于每张网卡的实际流量。
+
+当少数专家接收过多词元时，最大负载决定阶段耗时。增加专家设备数可能降低每成员参数量，却增加路由通信及小矩阵计算。路由损失和容量策略见\bookxref{ch:rev-moe}；本章关注这些选择在分布式执行中的负载后果。
+
+\section{混合并行及故障恢复}
+
+\subsection{通信拓扑映射}
+在各维度互相独立的简单网格中，总设备数为 $D=Rpq$。每个数据副本由 $pq$ 个设备共同执行一次模型，只有数据并行维 $R$ 增加不同样本的并发量。若每副本每微步有 $B_\mu$ 个样本、累积 $G$ 步，则全局样本数为 $RB_\mu G$，不能再乘 $p$ 和 $q$。
+
+例如32个设备采用 $R=2,p=4,q=4$，每副本微批量2，累积8步，全局样本数为32。若每个样本恰有1023个有效目标，则一次更新包含32736个目标；长度变化时改用式\eqref{eq:dist-token-gradient}中的实际计数。专家组或上下文组若复用了已有网格维度，不能在 $D$ 上重复乘其组大小。
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[node distance=7mm,box/.style={draw,rounded corners,align=center,text width=31mm,minimum height=12mm},>=stealth]
+\node[box] (a) {副本0：阶段0\\TP成员0、1};
+\node[box,right=of a] (b) {副本0：阶段1\\TP成员0、1};
+\node[box,below=of a] (c) {副本1：阶段0\\TP成员0、1};
+\node[box,right=of c] (d) {副本1：阶段1\\TP成员0、1};
+\draw[<->] (a)--node[above,font=\small] {激活／梯度}(b);
+\draw[<->] (c)--node[below,font=\small] {激活／梯度}(d);
+\draw[<->] (a)--node[left,font=\small] {同分片同步}(c);
+\draw[<->] (b)--node[right,font=\small] {同分片同步}(d);
+\end{tikzpicture}
+\caption{八设备逻辑网格：两数据副本、两流水阶段、每阶段两张量成员。每个框对应两个不同物理设备，纵向同步匹配同一参数分片。}
+\label{fig:dist-grid}
+\end{figure}
+
+层内高频通信宜优先映射到适合其带宽和时延需求的互连域，但这是成本判断，不是固定的“节点内只能TP”规则。参数分片、专家流量或大规模上下文交换也可能跨节点；必须使用\bookxref{ch:compute-infrastructure}的链路约束计算关键路径和超售影响。
+
+\subsection{一致更新及分布式检查点}
+所有相关成员应对有效计数、非有限梯度、更新版本和停止条件达成一致。一个成员独自跳过集合操作可能使其他成员永久等待；一个成员更新而另一个成员跳步，会使副本分叉。错误传播须进入明确的组级取消或重启路径。
+
+分布式检查点将\bookxref{ch:training-stability}的一致性边界扩展到整个逻辑模型。清单应记录每片的逻辑参数名、全局形状、偏移范围、数据类型与摘要，以及数据组和随机状态。恢复时先验证全部必需片段，再按目标布局读取。改变分片布局是张量重分布；改变数据并行度还可能改变样本次序、归约顺序和批量语义，二者不能混为同一操作。
+
+\begin{bookalgorithm}[按全局有效目标执行同步更新]
+\textbf{输入：}固定模型与资产、合法通信组、一个累积窗口；\textbf{输出：}各逻辑参数的一致新版本。
+\begin{enumerate}
+\item 确认各副本对应同一参数版本，为窗口中的有效标签计数；在数据并行组中求和得到 $N$。
+\item 若 $N=0$，所有成员一致跳过；否则按通信采用求和或平均的约定确定损失系数。
+\item 参数保持不变，逐微批次执行分片前向、反向与必要激活重计算；依赖允许时重叠通信。
+\item 完成全部梯度贡献和组内归约，恢复未缩放梯度，统一判定有限性。异常时按共同策略跳步或停止。
+\item 对唯一逻辑参数计算全局范数，按同一系数裁剪；状态所有者执行优化器更新，并同步所需参数片。
+\item 全组提交成功更新计数和已消费数据位置；到达保存边界时写出同一代的状态分片及完整清单。
+\end{enumerate}
+\end{bookalgorithm}
+
+\section{扩展效率及效果判断}
+
+\term{强扩展}{Strong Scaling}{}固定总工作量并增加设备数。若同一任务在 $D_0$ 与 $D$ 个设备上耗时 $t_{D_0}$ 和 $t_D$，相对加速比为 $\frac{t_{D_0}}{t_D}$，效率为
+\begin{equation}
+ E=\frac{\frac{t_{D_0}}{t_D}}{\frac{D}{D_0}}.
+\end{equation}
+\term{弱扩展}{Weak Scaling}{}随设备数增加总工作量以保持每设备工作量近似不变。若扩大的是全局批量，优化轨迹也可能变化，因此弱扩展吞吐不能独自证明达到同等质量的时间减少。
+
+若8设备某固定预算耗时100分钟，16设备耗时60分钟，则加速比为 $\frac{5}{3}$，效率约为83.3\%。若模型不能在单设备容纳，应使用可运行的多设备基线并明确 $D_0$，不能虚构单设备耗时。还应同时报告有效目标词元吞吐、实际序列长度、更新次数、精度、峰值显存和恢复成本。
+
+优化成立需要两条证据：数学与数值行为仍满足声明的训练语义；在相同质量目标和资源约束下，时间或成本确有改善。更高设备利用率可能来自额外重计算，更多处理词元可能来自填充，较低显存也可能换来更长通信等待。应从端到端关键路径解释这些指标之间的关系。
+
+
+
+
+
+\section{分布式训练框架的工程落点}
+
+PyTorch FSDP、DeepSpeed和Megatron-LM把分布式机制落实到不同的接口与工作流。FSDP围绕模块参数和训练状态的分片组织计算；DeepSpeed提供ZeRO及相关训练运行能力；Megatron-LM及Megatron Core面向大规模Transformer训练，组合张量、流水线等并行机制\cite{pytorch2026fsdp2,deepspeed2026framework,megatron2026framework}。项目提供某种能力不等于该能力适用于任意模型、硬件与版本组合。
+
+FSDP2采用逐参数分片表示，并通过\texttt{fully\_shard}组织模块的参数收集与重新分片；阅读实现时应把它与传统FSDP包装器区分，配置和状态导出方式不能机械互换\cite{pytorch2026fsdp2}。DeepSpeed的ZeRO阶段则对应优化器状态、梯度和参数的不同切分范围。仅训练很少量LoRA参数时，优化器状态节省可能有限；不能把全参数训练中的显存收益比例直接搬到适配器训练。
+
+Accelerate可以组织启动、设备与训练后端配置，并与上层训练器衔接\cite{huggingface2026accelerateframework}。它与FSDP或DeepSpeed之间存在编排与执行的关系。一次运行应明确由谁管理优化器、梯度累积、学习率调度和混合精度，避免在多处配置不一致的批量或重复更新。
+
+迁移应从一个可容纳的单设备或较少设备基线出发，固定有效全局批量、监督词元计数和更新次数，再引入分片。首轮验证关注损失、梯度或参数更新差异以及检查点恢复；性能比较随后测量有效词元吞吐、通信等待、峰值显存和保存恢复时间。对于无法建立单设备基线的大模型，应公开可运行的最小分布式基线，而不是用虚拟单卡数字计算加速比。
+
+框架产生的分片检查点用于恢复训练，部署制品用于加载推理，两者可能具有不同格式。将分片状态汇总为完整权重时，要预算主机内存、存储和集合通信，并检验权重、配置、分词器与适配器的完整性。对恢复的验收应继续一次真实更新并检查数据进度；仅恢复模型权重无法说明训练状态已经连续。
+
+\chapterreferences
+\end{document}

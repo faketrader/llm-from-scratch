@@ -1,0 +1,17 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[lfs picture,node distance=9mm and 10mm]
+\node[storage] (q) {已认证查询\\主体与问题};
+\node[block,right=of q] (r) {授权过滤与召回\\词法／向量索引};
+\node[block,right=of r] (e) {重排与证据组装\\来源、版本、预算};
+\node[compute,below=of e] (g) {模型生成\\回答或动作提议};
+\node[interface,left=of g] (v) {外部执行器\\模式、权限、预算校验};
+\node[storage,left=of v] (t) {工具执行结果\\状态与证据};
+\node[block,below=of g] (a) {引用与答案核验\\完成或证据不足};
+\draw[->] (q)--(r);\draw[->] (r)--(e);\draw[->] (e)--(g);\draw[->] (g)--(v);\draw[->] (v)--(t);\draw[->] (g)--(a);
+\draw[->] (t.south)--++(0,-9mm)-|node[below,pos=.45]{结果作为数据返回；循环受次数与期限约束}(g.south west);
+\end{tikzpicture}
+\end{document}

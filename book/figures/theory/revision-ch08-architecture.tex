@@ -1,0 +1,60 @@
+\documentclass[tikz,border=6pt]{standalone}
+\usepackage{ctex,amsmath}
+\usetikzlibrary{arrows.meta,fit,backgrounds}
+\begin{document}
+\begin{tikzpicture}[>=Latex,font=\small,
+ box/.style={draw=blue!60!black,fill=blue!5,rounded corners,align=center,minimum height=7mm,text width=35mm},
+ norm/.style={box,fill=orange!12,minimum height=6mm},
+ add/.style={circle,draw,fill=white,inner sep=0pt,minimum size=5mm},
+ note/.style={align=center,font=\footnotesize}]
+\node[note] (src) at (0,0) {源词元 $x_{1:S}$，$[B,S]$};
+\node[note] (tgt) at (7,0) {右移目标 $(\mathrm{BOS},y_1,\ldots,y_{T-1})$\\$[B,T]$};
+\foreach \x/\p in {0/e,7/d}{
+ \node[box] (\p emb) at (\x,1) {词嵌入 $\times\sqrt d$};
+ \node[add] (\p pos) at (\x,1.8) {$+$};
+ \node[note] (\p pe) at (\x-2,1.8) {位置编码};
+ \draw[->,thick] (\p emb)--(\p pos);
+ \draw[->,thick] (\p pe)--(\p pos);
+}
+\draw[->,thick] (src)--(eemb);\draw[->,thick] (tgt)--(demb);
+\node[box] (esa) at (0,3.1) {多头自注意力\\$Q,K,V\leftarrow C_{\ell-1}$};
+\node[box] (eff) at (0,6.1) {逐位置前馈网络\\$d\to f\to d$，ReLU};
+\node[box] (dsa) at (7,3.1) {掩码多头自注意力\\$Q,K,V\leftarrow X_{\ell-1}$};
+\node[box] (dca) at (7,6.1) {多头交叉注意力\\$Q\leftarrow U_\ell$，$K,V\leftarrow C$};
+\node[box] (dff) at (7,9.1) {逐位置前馈网络\\$d\to f\to d$，ReLU};
+\foreach \p/\x/\y in {esa/0/3.1,eff/0/6.1,dsa/7/3.1,dca/7/6.1,dff/7/9.1}{
+ \coordinate (\p in) at (\x,\y-0.7);
+ \node[add] (\p add) at (\x,\y+0.8) {$+$};
+ \node[norm] (\p ln) at (\x,\y+1.6) {LayerNorm};
+ \draw[->,thick] (\p in)--(\p.south);
+ \draw[->,thick] (\p.north)--(\p add);
+ \draw[->,thick] (\p add)--(\p ln);
+ \draw[->,thick,gray!80!black] (\p in)--++(2.2,0)|-(\p add.east);
+ \fill (\p in) circle (1.2pt);
+}
+\draw[->,thick] (epos)--node[left,font=\footnotesize] {$C_0$} (esain);
+\draw[->,thick] (dpos)--node[right,font=\footnotesize] {$X_0$} (dsain);
+\draw[->,thick] (esaln)--(effin);
+\draw[->,thick] (dsaln)--node[left,font=\footnotesize] {$U_\ell$} (dcain);
+\draw[->,thick] (dcaln)--node[left,font=\footnotesize] {$Z_\ell$} (dffin);
+\node[note] (mem) at (0,8.7) {最终编码器记忆\\$C=C_{N_e}$，$[B,S,d]$};
+\draw[->,thick] (effln)--(mem);
+\draw[->,thick,blue!70!black] (mem.east)--(3.6,8.7)--(3.6,6.1)--node[above,font=\footnotesize] {$K,V$} (dca.west);
+\node[note,text width=24mm] at (3.6,9.6) {同一份源记忆\\送入每个解码层};
+\node[box] (linear) at (7,12) {线性词表投影\\$[B,T,V_{\mathrm{vocab}}]$};
+\node[box] (softmax) at (7,13.2) {Softmax（词表维）};
+\node[note] (out) at (7,14.3) {$p(y_t\mid y_{<t},x_{1:S})$\\训练时与 $y_{1:T}$ 对齐};
+\draw[->,thick] (dffln)--node[right,font=\footnotesize] {$X_{N_d}$} (linear);
+\draw[->,thick] (linear)--(softmax);\draw[->,thick] (softmax)--(out);
+\begin{scope}[on background layer]
+ \node[draw=gray,dashed,fit=(esa)(esain)(effln),inner xsep=7mm,inner ysep=3mm] (enc) {};
+ \node[draw=gray,dashed,fit=(dsa)(dsain)(dffln),inner xsep=7mm,inner ysep=3mm] (dec) {};
+\end{scope}
+\node[note,anchor=south] at (enc.north) {编码器层 $\times N_e$};
+\node[note,anchor=south] at (dec.north) {解码器层 $\times N_d$};
+\node[note,text width=44mm,anchor=north] at (0,14) {原始 Transformer：Post-LN\\[4pt]
+源侧自注意力：双向可见；\\目标侧自注意力：因果可见；\\交叉注意力：读取有效源位置。\\[4pt]
+灰色旁路：残差连接；\\圆圈 $+$：逐元素相加；\\相加后进行 LayerNorm。\\[4pt]
+图中省略 Dropout 与填充掩码。\\堆叠层结构相同，参数各自独立。};
+\end{tikzpicture}
+\end{document}

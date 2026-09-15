@@ -1,0 +1,22 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[lfs picture]
+
+\node[storage] (ids) {词元编号\\\scriptsize $[B,T]$};
+\node[storage, below=of ids] (posid) {位置编号\\\scriptsize $[B,T]$};
+\node[compute, right=of ids] (tok) {Token Embedding\\\scriptsize $[B,T,d]$};
+\node[compute, right=of posid] (pos) {Position Embedding\\\scriptsize $[B,T,d]$};
+\node[interface, right=18mm of $(tok)!0.5!(pos)$] (add) {逐元素相加\\\scriptsize $x_0:[B,T,d]$};
+\node[block, right=of add] (blocks) {因果网络层 $\times L$\\\scriptsize Pre-Norm\\\scriptsize causal mask $[T,T]$};
+\node[compute, below=of blocks] (norm) {Final LayerNorm};
+\node[compute, left=of norm] (head) {词表投影\\\scriptsize weight $[V,d]$};
+\node[storage, left=of head] (logits) {logits\\\scriptsize $[B,T,V]$};
+\draw[data arrow] (ids) -- (tok) -- (add);
+\draw[data arrow] (posid) -- (pos) -- (add);
+\draw[data arrow] (add) -- (blocks) -- (norm) -- (head) -- (logits);
+
+\end{tikzpicture}
+\end{document}

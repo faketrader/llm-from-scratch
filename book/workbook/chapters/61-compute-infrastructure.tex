@@ -1,0 +1,82 @@
+\workbookchapter{算力基础设施}
+
+\begin{exerciselist}
+\exerciseitem\optional 某 SM 具有65536个寄存器、64 KiB共享存储、2048线程上限与16块上限。每块256线程，每线程64寄存器，每块24 KiB共享存储。忽略分配粒度，求驻留块数上界；将共享存储改为16 KiB后，哪个约束成为主导？
+
+\begin{workbookanswers}
+寄存器允许 $\lfloor\frac{65536}{256\times64}\rfloor=4$ 块，共享存储允许 $\lfloor\frac{64}{24}\rfloor=2$ 块，线程允许8块，块数限制16，故最多2块。共享存储改为16 KiB后允许4块，与寄存器共同成为主导，最多4块；实际分配粒度可能进一步降低驻留。
+\end{workbookanswers}
+
+\exerciseitem 对 $X\in\mathbb R^{B\times4096}$、$W\in\mathbb R^{4096\times4096}$，每元素两字节，求理想算术强度达到50 FLOP/byte所需的最小整数 $B$。解释为何这不足以保证达到峰值算力。
+
+\begin{workbookanswers}
+理想强度为 $I=\frac{B}{1+\frac{B}{2048}}$ FLOP/byte。解 $I\ge50$ 得 $B\ge\frac{102400}{1998}\approx51.251$，最小整数52。此结论只排除理想带宽上界的阻挡；实际重复读取、矩阵单元效率、占用率和启动开销仍可能限制性能。
+\end{workbookanswers}
+
+\exerciseitem 一项算子包含 $4\times10^{12}$ FLOP，跨 HBM 传输 $10^{11}$ 字节。峰值为 $2\times10^{14}$ FLOP/s，带宽为 $2\times10^{12}$ byte/s。求时间下界，并比较操作量减半与流量减半的效果。
+
+\begin{workbookanswers}
+计算下界0.02秒，搬运下界0.05秒，可充分重叠时总下界为0.05秒。只将操作量减半，计算项变0.01秒，总下界不变；只将流量减半，搬运项0.025秒，总下界降到0.025秒。不能据此保证真实速度翻倍，因为原来是否重叠及其他开销尚未知。
+\end{workbookanswers}
+
+\exerciseitem CPU 绑定到 NUMA 0，而输入页已经在 NUMA 1 分配，GPU位于 NUMA 0。说明仅更改线程亲和性为何不足，并画出可能的数据路径。
+
+\begin{workbookanswers}
+可能路径为NUMA1内存，经跨插槽互连到NUMA0的I/O，再传入GPU；NUMA0线程读取页面也需远端访问。线程绑定不会自动搬迁既有页面。可在NUMA0完成首次触页分配或迁移页，并绑定数据工作线程和合适的I/O路径；仍需测页分布、跨插槽流量与传输延迟，不可只看线程亲和性。
+\end{workbookanswers}
+
+\exerciseitem 读取、整理、传输和计算分别需要10、20、8、16毫秒。求串行批次时间与理想稳定流水间隔；若整理与读取共享瓶颈资源，说明原流水估计应怎样修正。
+
+\begin{workbookanswers}
+串行时间 $10+20+8+16=54$ 毫秒。独立资源、足够缓冲下稳定间隔为20毫秒，首批仍约54毫秒。读取和整理若争用同一不可重叠资源，应合成30毫秒阶段，间隔至少30毫秒；若只部分争用，应按共享资源占用率求界，而非继续取各阶段最大值。
+\end{workbookanswers}
+
+\exerciseitem 使用式\tbobject{eq:infra-ring}，比较 $p=8$ 与 $p=64$ 在相同消息和链路参数下的启动项与传输项。为什么全局设备数增加不代表一次集合通信变快？
+
+\begin{workbookanswers}
+$t=2(p-1)\alpha+\frac{2(p-1)m}{p\beta}$。8成员为 $14\alpha+\frac{1.75m}{\beta}$，64成员为 $126\alpha+\frac{1.96875m}{\beta}$。启动项增9倍，传输项也接近但不低于原值；此外拥塞和拓扑可能恶化，增加成员不是固定消息的免费加速。
+\end{workbookanswers}
+
+\exerciseitem\optional 给出一个端口总带宽很高、跨割带宽却很低的交换拓扑。说明专家全互换为什么可能比局部邻近通信更容易暴露此问题。
+
+\begin{workbookanswers}
+取两个各有32台主机的机架，机架内端口均高速，但两架仅由一条慢链路连接。端口带宽总和可以很高，跨机架任意流量仍受这一链路限制。专家全互换可能令大量词元跨割传输，而局部相邻通信主要留在机架内。可把高交互专家组放在同一高速域，并以跨割总字节率核算拥塞，不能靠端口总和判断。
+\end{workbookanswers}
+
+\exerciseitem 一个存储路径支持1 GiB/s，随机请求能力为每秒5000次。分别计算4 KiB与1 MiB请求的理论有效带宽上界，并说明增加并发为何不能无限提高吞吐。
+
+\begin{workbookanswers}
+上界为 $\min(\beta,\mathrm{IOPS}\times s)$。4 KiB时为20000 KiB/s，即19.53125 MiB/s；1 MiB时请求能力允许5000 MiB/s，但链路只有1024 MiB/s，故上界1 GiB/s。并发可填满在途窗口，却不能突破请求处理器或传输链路上限。
+\end{workbookanswers}
+
+\exerciseitem 将本章检查点写入窗口从120秒改为90秒，重新计算集群及每节点所需带宽。若允许分层暂存，分别指出前台暂停和远端持久化的完成条件。
+
+\begin{workbookanswers}
+全局 $\frac{2048}{90}\approx22.756$ GiB/s，每节点 $\frac{256}{90}\approx2.844$ GiB/s，另加校验、提交和训练流量。分层暂存时，前台可在一致快照安全复制到暂存层后继续；远端持久化只有全部分片校验并原子发布清单后完成。节点本地暂存丢失仍可能丢检查点，不能把前台恢复计算时刻记作远端完成。
+\end{workbookanswers}
+
+\exerciseitem 为跨64个分片的检查点设计提交清单，说明如何处理第63个分片完成后进程失效，以及恢复时发现一个分片摘要不匹配的情形。
+
+\begin{workbookanswers}
+清单包含运行/步骤编号、世界布局、64个分片位置/字节数/摘要、模型优化器数据游标和随机状态版本。分片先写临时命名空间，全部验证后发布唯一提交标志。第63片后失效时该版本未提交，不得恢复；可续传或清理。恢复发现任一摘要错误应拒绝整个版本，切换到前一已验证版本并报告数据丢失范围，不拼接不同步骤分片。
+\end{workbookanswers}
+
+\exerciseitem\optional 从式\tbobject{eq:infra-checkpoint-loss}推导最优间隔。若作业平均故障间隔缩短到原来的四分之一，最优间隔怎样变化？哪些实际条件会使该近似失效？
+
+\begin{workbookanswers}
+$w=\frac{C}{\tau}+\frac{\tau}{2M}+\frac{R_f}{M}$，导数 $-\frac{C}{\tau^2}+\frac{1}{2M}=0$，故 $\tau_*=\sqrt{2CM}$，二阶导正。$M$缩至四分之一则间隔减半。相关故障、非平稳失效率、异步保存竞争、长保存/恢复期间再次故障等会破坏近似，需改用实际失效与状态模型。
+\end{workbookanswers}
+
+\exerciseitem\optional 某训练作业设备忙碌率提高，但单位有效词元能耗也提高。至少给出三种机制，并说明需补充哪些测量才能区分它们。
+
+\begin{workbookanswers}
+可能是激活重算增加无效算术、低效内核增加设备忙碌时间、通信轮询或重复失败重做、温度降频延长运行。测实际能量积分与有效目标数、重算比例、内核时间、通信等待、频率/功率和恢复日志。相同有效工作更久或功率更高均会升高单位能耗；忙碌率不能单独区分这些原因。
+\end{workbookanswers}
+
+\exerciseitem\optional 为一个国产加速器迁移任务列出兼容矩阵的最小字段，明确“模型加载成功”“算子正确”“通信可用”“端到端达标”各自能够支持什么结论。
+
+\begin{workbookanswers}
+最少列设备/驱动/固件、框架与设备扩展、底层运行时、通信库、精度、模型修订、关键形状/算子和并行布局。加载成功仅支持反序列化路径；算子正确需前反向容差；通信可用需目标组、数据类型、次序和失效恢复；端到端达标还需质量、有效吞吐、峰值资源及恢复证据。版本升级形成新矩阵并保留完整回退制品。
+\end{workbookanswers}
+
+\end{exerciselist}

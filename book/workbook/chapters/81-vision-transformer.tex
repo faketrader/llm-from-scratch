@@ -1,0 +1,76 @@
+\workbookchapter{视觉 Transformer}
+
+\begin{exerciselist}
+\exerciseitem 对 $B=2,C=3,H=96,W=128,P_h=8,P_w=16$，计算 $G_h,G_w,N,F$；写出最后一个补丁和块内最后一个像素的索引。
+
+\begin{workbookanswers}
+网格$G_h=\frac{96}{8}=12,G_w=\frac{128}{16}=8$，补丁数$N=96$，块内元素$F=3\times8\times16=384$。零起始最后补丁$n=95$对应网格$(11,7)$；按块内通道优先、再行列的约定，最后元素$f=383$对应$(c,u,v)=(2,7,15)$，映回图像$(c,h,w)=(2,95,127)$，批索引可为0或1。若通道后置，需同时改索引公式与权重排列。
+\end{workbookanswers}
+
+\exerciseitem 证明式\tbobject{eq:ch37-patchify}可逆，并说明当滑窗重叠、忽略边界或带填充时，哪些结论发生变化。
+
+\begin{workbookanswers}
+无重叠整除时，每像素$h,w$唯一分解为$h=g_hP_h+u,w=g_wP_w+v$，其中商余数唯一；再将$(g_h,g_w)$和$(c,u,v)$编码为n、f，构成双射，逆映射按商余数还原。重叠会复制像素，逆需检查一致并累加/归一；忽略边界丢信息所以不可逆；填充需保留原尺寸并裁掉新增位置，才能恢复原图。
+\end{workbookanswers}
+
+\exerciseitem 以本章 $4\times4$ 图像算例为基础交换块内两个像素的展平位置。怎样变换 $W_E$ 才保持输出不变？只改变展平规则会造成什么错误？
+
+\begin{workbookanswers}
+令块内置换矩阵为P，行向量展平改成$X'=XP$，取$W'_E=P^TW_E$，则$X'W'_E=XPP^TW_E=XW_E$。交换两个像素等于交换W对应两行。只改X不改W会让不同像素被原位置权重相乘，例如左右差核可能算成上下或混合差，形状虽不变而输出语义改变。
+\end{workbookanswers}
+
+\exerciseitem\optional 推导重叠滑窗情况下图像梯度的累加公式，并说明为什么不能用无重叠逆重排直接替代。
+
+\begin{workbookanswers}
+设抽取算子$X=UI$，投影$Z=XW$，则$D_I=U^T(D_ZW^T)$。展开为某像素的梯度等于所有包含该像素的窗口、对应块内位置以及输出通道贡献之和。重叠时同像素出现多次，单纯逆重排只保留一次会漏梯度；若为重建图像求平均，要明确这是另一归一化算子，而反向应为前向抽取算子的转置。
+\end{workbookanswers}
+
+\exerciseitem\optional 当 $F=12,d=5$ 时，证明至少存在七维的补丁扰动空间不会改变线性嵌入。这个结论是否足以判断分类性能？
+
+\begin{workbookanswers}
+线性映射由$12\times5$矩阵定义，其秩至多5。秩零化度定理给核空间维数$12-\operatorname{rank}W\ge7$，所以存在至少七维非零扰动$\delta x$满足$\delta xW=0$。这说明线性编码不能保留全部输入差异，却不能单独判断分类性能，因为被丢弃方向可能与标签无关；任务充分性需要数据与分类目标证据。
+\end{workbookanswers}
+
+\exerciseitem 证明没有位置编码时，固定 CLS、任意置换补丁不会改变分类读出。加入位置后同时置换内容和位置，与只置换内容有何区别？
+
+\begin{workbookanswers}
+令置换$P=\operatorname{diag}(1,P_v)$固定CLS，对无位置的自注意力有$Q'=PQ,K'=PK,V'=PV$，行Softmax满足$\operatorname{softmax}(PSP^T)=P\operatorname{softmax}(S)P^T$，输出为PO；逐位置前馈、归一化和残差也等变。由层归纳CLS行不变，分类不变。加入位置后同时置换内容和位置仍只是整行置换；只置换内容则改变内容与空间的配对，一般改变输出。推理关闭随机丢弃或同步其置换是该证明的条件。
+\end{workbookanswers}
+
+\exerciseitem 把 $2\times2$ 标量位置网格插值至 $4\times3$，明确角点或中心对齐规则，并解释为什么不能将 CLS 当作额外空间点。
+
+\begin{workbookanswers}
+沿用源网格$\left[\begin{smallmatrix}0&2\\4&6\end{smallmatrix}\right]$，取角点对齐，连续场为$f(y,x)=4y+2x$。目标y取$0,\frac{1}{3},\frac{2}{3},1$，x取$0,\frac{1}{2},1$，结果为 $\left[\begin{smallmatrix}0&1&2\\\frac{4}{3}&\frac{7}{3}&\frac{10}{3}\\\frac{8}{3}&\frac{11}{3}&\frac{14}{3}\\4&5&6\end{smallmatrix}\right]$。中心对齐会使用另一坐标和边界处理，结果不同。CLS表示汇聚角色，没有二维像素位置，单独保留其参数，不能插入网格混合。
+\end{workbookanswers}
+
+\exerciseitem 当 $d=512,\rho=4$ 时，求式\tbobject{eq:ch37-cost}中线性项与二次项相等的序列长度；解释这为何不是硬件延迟交点。
+
+\begin{workbookanswers}
+主要线性项$(4+2\rho)Ld^2$与注意力项$2L^2d$相等，正L下约去$2Ld$得$L=(2+\rho)d=6\times512=3072$。这是乘加量交点；内存搬运、融合、并行度、矩阵利用率和工作区不同，真实时间交点必须测量，不能据此直接决定内核选择。
+\end{workbookanswers}
+
+\exerciseitem 比较固定补丁尺寸提高分辨率与固定分辨率减小补丁尺寸：哪些参数形状变化，哪些只是激活形状变化？
+
+\begin{workbookanswers}
+固定补丁尺寸提高分辨率，块内维数F与投影W不变，位置数及注意力激活增大，学习位置表需重采样。固定分辨率减小补丁，F和W形状改变、位置数增大，因此不能只插值位置表就复用全部权重。共享编码层的d不变时其参数可保留；两种变化都改变输入尺度分布，质量需验证。
+\end{workbookanswers}
+
+\exerciseitem 写出带填充掩码的 GAP 读出梯度，并说明直接除以包含填充的 $N$ 会产生什么偏差。
+
+\begin{workbookanswers}
+有效掩码$m_i\in\{0,1\}$，$n_v=\sum_i m_i>0$，读出$g=\sum_i \frac{m_ih_i}{n_v}$。给定上游$D_g$，$D_{h_i}=\frac{m_iD_g}{n_v}$；填充位置为零。若除以含填充的N，则$g$和梯度被缩为$\frac{n_v}{N}$，让表示幅度与填充比例相关。全空样本必须拒绝或单独定义，不能除零。
+\end{workbookanswers}
+
+\exerciseitem 为包含小字符的图像分类任务分析随机裁剪、镜像与 Mixup 的标签假设。提出一个保持划分固定的比较方案，区分增强收益与数据泄漏。
+
+\begin{workbookanswers}
+小字符裁剪可能删掉决定标签的字，镜像可能改变文字含义，Mixup软标签隐含组合目标而非真实混图类别概率。可固定按原始图/文档分组的数据划分，在相同模型、训练步数和预算下分别比较无增强、语义保持裁剪、翻转和Mixup。测试使用固定处理器，并按字符大小与方向切片；同一原图变体不得跨训练测试泄漏。
+\end{workbookanswers}
+
+\exerciseitem 一个模型张量形状全部正确，但部署准确率骤降。按输入范围、通道、位置映射、读出和标签映射构造逐层排查顺序，并为每一步指出所需证据。
+
+\begin{workbookanswers}
+先用原始样本与处理器日志核对数值范围和归一化，再核对RGB/BGR与通道轴；用可手算网格验证patchify及位置索引；用保存中间激活核对CLS/GAP和掩码；最后核对分类头列与标签ID映射。每步以固定输入对照参考输出，定位第一个偏离处。形状检查只能排除维度错误，不能排除数值尺度、位置或标签语义错误。
+\end{workbookanswers}
+
+\end{exerciselist}

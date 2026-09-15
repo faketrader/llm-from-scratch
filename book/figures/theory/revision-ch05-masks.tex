@@ -1,0 +1,20 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex,amsmath}
+\usetikzlibrary{arrows.meta,positioning}
+\begin{document}
+\begin{tikzpicture}[>=Latex,font=\small,node distance=13mm and 13mm,
+ box/.style={draw=blue!55!black,fill=blue!4,rounded corners,align=center,text width=36mm,minimum height=13mm},
+ source/.style={draw=gray,fill=gray!7,align=center,text width=30mm,minimum height=13mm}]
+\node[source] (x) {输入序列\\BOS，提示，回答，EOS，PAD};
+\node[box,right=of x] (pad) {填充掩码\\哪些键是真实位置};
+\node[box,below=of pad] (causal) {因果掩码\\哪些键不属于未来};
+\node[box,right=of pad] (attn) {注意力可见性\\二者共同决定条件};
+\node[box,below=of attn] (pred) {逐位置预测分布\\输入已经右移};
+\node[source,below=of x] (target) {目标序列\\提示，回答，EOS，PAD};
+\node[box,below=of causal] (loss) {损失掩码\\选择回答与真实终点};
+\node[box,below=of pred] (ce) {加权交叉熵\\仅累加选中目标};
+\draw[->] (x)--(pad);\draw[->] (pad)--(attn);\draw[->] (causal.east)-|(attn.south);
+\draw[->] (attn)--(pred);\draw[->] (pred)--(ce);
+\draw[->] (target.south)|-(loss.west);\draw[->] (loss)--(ce);
+\end{tikzpicture}
+\end{document}

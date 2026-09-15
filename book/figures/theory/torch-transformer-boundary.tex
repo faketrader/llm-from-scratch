@@ -1,0 +1,19 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[lfs picture]
+
+\node[storage] (tok) {Tokenizer\\\scriptsize IDs $[N,S]$, $[N,T]$};
+\node[compute, right=of tok] (pre) {调用方输入包装\\\scriptsize Embedding + 位置编码\\\scriptsize Mask 协议};
+\node[interface, right=of pre] (lib) {\texttt{torch.nn.Transformer}\\\scriptsize Encoder--Decoder 特征主干\\\scriptsize $[N,S,E],[N,T,E]\to[N,T,E]$};
+\node[compute, right=of lib] (post) {调用方输出包装\\\scriptsize LM Head $[E,V]$\\\scriptsize Loss / 生成策略};
+\node[storage, right=of post] (logits) {logits\\\scriptsize $[N,T,V]$};
+\node[neutral, below=of lib] (config) {\texttt{norm\_first=True}\\\texttt{activation=gelu}\\\texttt{batch\_first=True}};
+\draw[data arrow] (tok) -- (pre) -- (lib) -- (post) -- (logits);
+\draw[control arrow] (config) -- (lib);
+\node[group, fit=(lib)(config), label={[title]above:PyTorch 库接管边界}] {};
+
+\end{tikzpicture}
+\end{document}

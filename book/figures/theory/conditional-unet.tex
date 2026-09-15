@@ -1,0 +1,24 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[lfs picture]
+
+\node[storage] (xt) {Noisy Latent $x_t$\\\scriptsize $[B,C,H,W]$};
+\node[compute, right=of xt] (down) {Down Block\\\scriptsize + time};
+\node[compute, below=of down] (downsample) {Downsample};
+\node[compute, right=of downsample] (mid) {Mid Block\\\scriptsize + time / Cross-Attention};
+\node[compute, right=of mid] (upsample) {Upsample};
+\node[compute, above=of upsample] (up) {Up Block\\\scriptsize + time / text};
+\node[storage, right=of up] (pred) {Noise Prediction\\\scriptsize $[B,C,H,W]$};
+\node[storage, below=of xt] (time) {Time Embedding};
+\node[storage, below=of mid] (text) {Text Context};
+\draw[data arrow] (xt) -- (down) -- (downsample) -- (mid) -- (upsample) -- (up) -- (pred);
+\draw[residual] (down.north) -- ++(0,7mm) -| node[label text, above]{skip features} (up.north);
+\draw[control arrow] (time.east) -- node[label text, above, sloped]{广播至各尺度} (down.west);
+\draw[control arrow] (text) -- node[label text, right]{Cross-Attention} (mid);
+\node[group, fit=(down)(downsample)(mid)(upsample)(up), label={[title]above:多尺度条件 U-Net}] {};
+
+\end{tikzpicture}
+\end{document}

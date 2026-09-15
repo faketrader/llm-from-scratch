@@ -1,0 +1,76 @@
+\workbookchapter{增量解码}
+
+\begin{exerciselist}
+\exerciseitem 提示长度为5、输出长度为4，列出每次前向处理的词元位置、产生的预测与最终缓存长度。
+
+\begin{workbookanswers}
+约定生成4个词元后立即停止，不把最后输出再送入模型。预填充处理提示位置0至4，末端logits预测y0，缓存5；随后分别处理y0位置5预测y1、y1位置6预测y2、y2位置7预测y3，缓存依次6、7、8。最终输出4个而缓存8位置；只有为继续生成再物化y3才到9，输出长度不必等于已物化缓存长度。
+\end{workbookanswers}
+
+\exerciseitem 逐层证明旧位置隐状态不变，并指出双向注意力在哪一步破坏该证明。
+
+\begin{workbookanswers}
+嵌入与逻辑位置固定时历史层0状态相同。若某层历史输入相同，其QKV相同；因果掩码使旧位置不读取新位置，注意力输出相同，逐位置归一化/前馈与残差也相同。因此逐层历史KV不变。双向注意力的旧行会读新增键，新分母和值改变，归纳在注意力这一步失败。
+\end{workbookanswers}
+
+\exerciseitem 改变数值例的新键为 $\log4$，重新计算权重与输出；说明漏掉自身键值的错误。
+
+\begin{workbookanswers}
+指数质量为1、2、4，总量7；输出 $(\frac{1}{7})(1,0)+(\frac{2}{7})(0,2)+(\frac{4}{7})(3,3)=(\frac{13}{7},\frac{16}{7})$。漏自身时仍错误得到 $(\frac{1}{3},\frac{4}{3})$，相当于丢失$\frac{4}{7}$的分布质量而重新归一，不是精度容差。
+\end{workbookanswers}
+
+\exerciseitem 对提示8、输出4，分别计算全量重算与缓存方案的线性处理位置数和因果合法分数对数。
+
+\begin{workbookanswers}
+按最后输出不物化的约定，全量前向长度为8、9、10、11，总线性位置38；缓存为8+1+1+1=11。合法因果分数对：全量 $36+45+55+66=202$，缓存 $36+9+10+11=66$。这是每层每头的逻辑配对，若内核计算被掩码的稠密元素，实际算术计数还会不同。
+\end{workbookanswers}
+
+\exerciseitem 设40层、16个 KV 头、键维128、值维64，元素均为2字节，缓存16384词元，计算裸容量。
+
+\begin{workbookanswers}
+每词元字节为 $40\times16\times(128+64)\times2=245760$；乘16384得4026531840字节，即3.75 GiB。键值维不相等时不能用 $2d_k$ 替代二者和，分页元数据和预留另计。
+\end{workbookanswers}
+
+\exerciseitem 保持32个查询头，比较4个 KV 头与1个 KV 头的容量；解释为什么计算不能简单按容量同比减少。
+
+\begin{workbookanswers}
+固定层、长度、键值维及精度，缓存正比KV头数，4头比1头为4倍。32个查询头仍各产生分数和输出，查询投影与前馈也未按KV头数缩减；广播和矩阵布局影响实际带宽，不能把缓存缩减4倍称为全模型计算缩减4倍。
+\end{workbookanswers}
+
+\exerciseitem\optional 推导式\tbobject{eq:cache-absorb-key}，并用维度说明 $U_K$ 不能与任意位置旋转交换。
+
+\begin{workbookanswers}
+若 $k_j=U_Kc_j$，则 $q_t^\mathsf Tk_j=q_t^\mathsf TU_Kc_j=(U_K^\mathsf Tq_t)^\mathsf Tc_j$。$U_K\in\mathbb R^{d_k\times r_c}$，矩形矩阵不能与任意 $d_k\times d_k$旋转交换；例如 $R_jU_K$ 与 $U_KR_j$ 后者甚至维度不合法。即使方阵也一般不交换，位置旋转须保持其真实分工。
+\end{workbookanswers}
+
+\exerciseitem 块大小8、长度19、页表 $(4,1,7)$，求位置17的物理块和偏移及尾部空位。
+
+\begin{workbookanswers}
+逻辑位置17在第 $\lfloor\frac{17}{8}\rfloor=2$ 个逻辑块，页表映射为物理块7，偏移1。长度19共分配24槽位，尾部空5槽。物理块编号7不意味着位置编码使用7或57，应保留逻辑时间17。
+\end{workbookanswers}
+
+\exerciseitem 四条请求共享16词元前缀、各有5词元后缀、块大小8，计算共享前后块数与尾部碎片。
+
+\begin{workbookanswers}
+独立每请求长度21，需3块，四条共12块；共享16前缀用2公共块，四条5词元尾部各1块，共6块。独立分配96槽位、有效84、尾碎片12；共享分配48槽位、独特有效 $16+4\times5=36$，尾碎片仍12。节省来自重复前缀，不是所有尾部碎片被消除。
+\end{workbookanswers}
+
+\exerciseitem 说明未满共享块追加时为何需要写时复制，以及引用计数归零为何仍可能暂不可回收。
+
+\begin{workbookanswers}
+共享未满块若被一条分支直接写入会影响其他引用者，须分配私有块复制有效内容后追加。引用归零只表示无活动所有者，设备内核可能尚未读完；需等完成事件或安全epoch后复用内存，否则产生异步读写竞态。取消也必须按所有权只减一次。
+\end{workbookanswers}
+
+\exerciseitem 区分全注意力历史淘汰、原生滑窗回收、无引用前缀淘汰和活动请求抢占。
+
+\begin{workbookanswers}
+全注意力删历史通常改变模型条件，是近似；原生滑窗删除未来不再可见的键值可保持其逐步计算语义；无引用前缀淘汰只降低未来命中率；活动抢占需换出完整状态或重算后恢复，影响成本和时延。它们不能仅以一个LRU规则统一处理，须明确活动引用与可恢复边界。
+\end{workbookanswers}
+
+\exerciseitem 设计缓存身份字段，分别讨论仅改变采样温度、适配器、模板和图像输入时是否可复用。
+
+\begin{workbookanswers}
+键覆盖权重/结构摘要、适配器组合、精度布局、位置/掩码、完整词元前缀、模板处理器和图像特征依赖、共享命名空间。仅温度作用于输出分布时已有KV可复用，但后续采样状态不同；适配器变化一般失效；模板若导致同一实际前缀且其他依赖相同可复用，否则失效；不同图像即便文本标记相同也不能复用其条件KV。
+\end{workbookanswers}
+
+\end{exerciselist}

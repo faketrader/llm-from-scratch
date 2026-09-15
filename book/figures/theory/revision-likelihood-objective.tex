@@ -1,0 +1,16 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex,amsmath}
+\usetikzlibrary{arrows.meta,positioning}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[lfs picture,node distance=13mm and 12mm]
+\node[storage,text width=28mm] (truth) {总体分布 $p_*$\\通常未知};
+\node[storage,text width=29mm,right=of truth] (data) {观测数据 $D$\\经验分布 $\widehat p_n$};
+\node[block,text width=39mm,right=of data] (loss) {经验交叉熵\\$-\frac1n\sum_i\log p_\theta(x_i)$};
+\node[compute,text width=29mm,below=of data] (model) {模型分布 $p_\theta$\\参数化条件概率};
+\draw[data arrow] (truth)--node[above]{采样}(data);
+\draw[data arrow] (data)--node[above]{目标}(loss);
+\draw[data arrow] (model.east)-|node[right,pos=.75]{预测}(loss.south);
+\draw[control arrow] (loss.south)--++(0,-23mm)-|node[below,pos=.5]{梯度更新参数}(model.south);
+\end{tikzpicture}
+\end{document}

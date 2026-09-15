@@ -1,0 +1,85 @@
+\workbookchapter{Transformer 网络结构}
+
+\begin{exerciselist}
+\exerciseitem 证明不含激活的两层 FFN 可合并为一个仿射变换。加入 ReLU 后，写出给定激活区间内的局部雅可比，并解释为何跨区间不再是同一个仿射函数。
+
+\begin{workbookanswers}
+没有激活时 $(xW_1+b_1)W_2+b_2=x(W_1W_2)+(b_1W_2+b_2)$。在固定ReLU激活区域令 $D=\operatorname{diag}(\mathbf1[xW_1+b_1>0])$，则行向量扰动满足 $\dif F=\dif x\,W_1DW_2$，列雅可比为 $(W_1DW_2)^{\mathsf T}$。跨越折点会改变D，因此不同区域具有不同仿射参数。
+\end{workbookanswers}
+
+\exerciseitem 对 $u=-1,0,1$ 计算 GELU、SiLU 及其导数，比较二者在负区间的行为。说明“平滑”为什么不足以推出训练效果更好。
+
+\begin{workbookanswers}
+采用精确 $\mathrm{GELU}(u)=u\Phi(u)$，其导数为 $\Phi(u)+u\phi(u)$；SiLU为 $u\sigma(u)$，导数为 $\sigma(u)+u\sigma(u)(1-\sigma(u))$。在 $u=-1,0,1$，GELU值约 $(-.158655,0,.841345)$，导数 $(-.083315,.5,1.083315)$；SiLU值约 $(-.268941,0,.731059)$，导数 $(.072329,.5,.927671)$。负区间允许负输出，且两者局部斜率不同。光滑性不能独自决定训练质量，还取决于尺度、结构、数据和优化。
+\end{workbookanswers}
+
+\exerciseitem\optional 设普通 FFN 宽度为 $f=\num{4096}$，求等无偏置参数预算的门控宽度。若宽度必须是 $256$ 的倍数，分别给出向下、向上取整后的参数差异。
+
+\begin{workbookanswers}
+普通无偏置FFN参数 $2df$，门控FFN参数 $3dg$，故 $g=\frac{2f}{3}=\frac{8192}{3}\approx2730.667$。256倍数向下为2560、向上2816；相对原 $8192d$ 参数分别少 $512d$（6.25\%）和多 $256d$（3.125\%）。计算效率还受内核对齐与实际矩阵形状影响，不能仅按参数差判断快慢。
+\end{workbookanswers}
+
+\exerciseitem 从 $c=Px$ 出发独立推导 LayerNorm 雅可比。验证该雅可比作用于全一向量为零，并说明这与平移不变性的关系。
+
+\begin{workbookanswers}
+令 $P=I-\frac{\mathbf1\mathbf1^{\mathsf T}}{d}$、$c=Px$、$s=\sqrt{\frac{c^{\mathsf T}c}{d}+\epsilon}$。有 $\dif c=P\dif x$、$\dif s=\frac{c^{\mathsf T}\dif x}{ds}$，故无仿射输出雅可比为 $J=\frac{P}{s}-\frac{cc^{\mathsf T}}{ds^3}$；有增益时左乘 $\operatorname{diag}(\gamma)$。因 $P\mathbf1=0$ 且 $c^{\mathsf T}\mathbf1=0$，$J\mathbf1=0$，对应整体平移不改变中心化表示。
+\end{workbookanswers}
+
+\exerciseitem 对 $x=(1,2,3)$ 分别计算无仿射 LayerNorm 和 RMSNorm。给向量整体加十，比较输出变化；不要把非零 $\epsilon$ 情况下的比例缩放近似写成精确不变性。
+
+\begin{workbookanswers}
+令 $x=(1,2,3)$，归一化均不含可训练仿射参数。其结果为
+\[
+\begin{aligned}
+\mathrm{LN}(x)&=\frac{(-1,0,1)}{\sqrt{\frac{2}{3}+\epsilon}},\\
+\mathrm{RMSNorm}(x)&=\frac{(1,2,3)}{\sqrt{\frac{14}{3}+\epsilon}}.
+\end{aligned}
+\]
+各坐标整体加十后，令 $x'=(11,12,13)$。LN不变，RMSNorm则变为
+\[
+\mathrm{RMSNorm}(x')=\frac{(11,12,13)}{\sqrt{\frac{434}{3}+\epsilon}}.
+\]
+当 $\epsilon=0$ 时，LN约为 $(-1.224745,0,1.224745)$；保留正 $\epsilon$ 时应使用上述式。RMSNorm不具有平移不变性。
+\end{workbookanswers}
+
+\exerciseitem 取一维 $F(x)=ax$，分析十层残差网络在 $a=0.1,-0.1,-1$ 时的导数。结合归一化雅可比，解释恒等路径不能独立保证稳定训练。
+
+\begin{workbookanswers}
+每层 $x\mapsto(1+a)x$，十层导数为 $(1+a)^{10}$。分别为 $1.1^{10}\approx2.593742$、$.9^{10}\approx.348678$ 和0。即使每层含恒等分支，其他分支仍可放大、衰减或抵消它；加入归一化后，还需分析其雅可比与方向，不能单凭网络图上的直通线保证稳定。
+\end{workbookanswers}
+
+\exerciseitem 写出长度六、条件前缀长度三的前缀可见性矩阵。若对前缀内部使用普通下一词元监督，指出可能出现泄漏的具体位置。
+
+\begin{workbookanswers}
+允许矩阵为
+\[
+\begin{bmatrix}1&1&1&0&0&0\\1&1&1&0&0&0\\1&1&1&0&0&0\\1&1&1&1&0&0\\1&1&1&1&1&0\\1&1&1&1&1&1\end{bmatrix}.
+\]
+前缀位置1若预测词元2、位置2若预测词元3，答案已在可见输入中，形成泄漏。位置3预测首个回答词元4时没有直接看到4，但应按定义仅对回答区域监督，避免把双向条件区当作普通因果训练样本。
+\end{workbookanswers}
+
+\exerciseitem\optional 对 $d=768,f=3072$ 计算带偏置编码器层与含交叉注意力解码器层的参数量，列出未包含的模型组件。再将普通 FFN 改为等预算无偏置 SwiGLU，重新计算。
+
+\begin{workbookanswers}
+按本章带偏置普通FFN及两次归一化约定，编码器为 $4d^2+2df+9d+f$，代入得7087872；解码器增加一套注意力和一次归一化，为 $8d^2+2df+15d+f=9451776$。未计嵌入、位置参数、词表头、堆叠外末端归一化。无偏置SwiGLU等矩阵预算取 $g=\frac{2f}{3}=2048$，只移除原FFN的 $f+d=3840$ 个偏置，得到7084032、9447936；这里仍保留注意力偏置和归一化参数。
+\end{workbookanswers}
+
+\exerciseitem\optional 将完整例题的因果掩码改为双向掩码，逐步重算输出。解释为什么此时位置一可能依赖位置二；再讨论二维末端 LayerNorm 可能隐藏哪些数值差异。
+
+\begin{workbookanswers}
+仍记 $p=\sigma(2\sqrt2)$、$c=2p-1$。双向权重为 $\left[\begin{smallmatrix}p&1-p\\1-p&p\end{smallmatrix}\right]$，输出 $O=[(-c,c);(c,-c)]$，第一残差为 $U=[(1-c,3+c);(4+c,2-c)]$。两行LN仍为 $(-1,1),(1,-1)$，FFN输出仍为 $(0,1),(3,-2)$；故 $H=[(1-c,4+c);(7+c,-c)]$。末端二维、$\epsilon$为零的LN仍给相同符号模式，最终概率和损失恰好不变。这是退化低维例的遮蔽效应；中间表示已变，第一行通过注意力依赖第二行，不能据末端相同否认泄漏。
+\end{workbookanswers}
+
+\exerciseitem 目标嵌入与输出头共享权重时，说明一个未出现在输入中的词元行为什么仍可能获得梯度。设计重载检验，同时覆盖共享关系、固定位置状态和生成首个词元。
+
+\begin{workbookanswers}
+若 $Z=HE^{\mathsf T}$，则 $\overline E_{\mathrm{out}}=\overline Z^{\mathsf T}H$。未作为输入的词元仍作为词表候选参与Softmax，通常有非零分数梯度，故对应E行可更新。重载应核对共享参数关系或等价共享实现、形状和词表ID、固定位置配置，在评估模式下比较同输入首步logits及确定解码首词元；不能仅检查两个矩阵初值数值相等。
+\end{workbookanswers}
+
+\exerciseitem 将手写 Transformer 迁移到库实现后，参数均能加载且张量形状一致，但首步 logits 不同。设计从输入到输出的逐层对照方案，至少覆盖掩码语义、归一化位置、位置表示和权重布局，并说明何时应开始比较完整生成结果。
+
+\begin{workbookanswers}
+固定权重、输入、精度与评估模式，先关闭 Dropout。核对词元 ID、嵌入缩放、张量布局以及 QKV 权重的拼接顺序或转置约定，再比较投影结果。使用短输入核对掩码的真假含义、广播维度和因果位置，随后逐层比较位置变换后的 Q/K、注意力输出、残差、归一化、激活及前馈输出；归一化的前后位置和数值稳定项都应一致。最后检查词表输出权重是否共享、偏置及 logits。训练损失还需单独核对标签移位。中间量及首步输出在约定容差内一致后，再检查缓存递增位置和完整生成；采样需固定设置，微小数值差异仍可能改变离散生成路径。
+\end{workbookanswers}
+
+\end{exerciselist}

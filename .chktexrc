@@ -1,0 +1,14 @@
+CmdLine
+{
+    # 1: Command terminated with space.
+    -n1
+
+    # 8: Wrong length of dash may have been used.
+    -n8
+
+    # 19: Use "'" (ASCII 39) instead  of "´" (ASCII 180).
+    -n19
+
+    # 39: Double space found.
+    -n39
+}

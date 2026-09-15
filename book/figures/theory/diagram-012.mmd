@@ -1,0 +1,13 @@
+flowchart LR
+    B["基座模型 ID 与哈希"] --> G["兼容性闸门"]
+    T["Tokenizer + Chat Template"] --> G
+    P["Identity Profile + Data Hash"] --> G
+    C["PEFT 配置"] --> G
+    W["Adapter safetensors + 哈希"] --> G
+    E["质量、安全、性能报告"] --> G
+    G --> R["Adapter Registry"]
+    R --> D{"部署模式"}
+    D -->|"动态切换"| H["基座 + 多 Adapter"]
+    D -->|"固定单任务且允许合并"| M["合并后不可变模型"]
+    H --> O["观测与回滚"]
+    M --> O

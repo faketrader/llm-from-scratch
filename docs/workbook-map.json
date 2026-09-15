@@ -1,0 +1,2069 @@
+{
+  "title": "习题解析与实验指导",
+  "wb_entry": "book/workbook/workbook.tex",
+  "wb_output": "build/workbook/workbook.pdf",
+  "chapters": [
+    {
+      "number": 1,
+      "title": "绪论",
+      "tb_source": "book/textbook/chapters/11-introduction.tex",
+      "wb_source": "book/workbook/chapters/11-introduction.tex"
+    },
+    {
+      "number": 2,
+      "title": "数学基础",
+      "tb_source": "book/textbook/chapters/12-probability-information.tex",
+      "wb_source": "book/workbook/chapters/12-probability-information.tex"
+    },
+    {
+      "number": 3,
+      "title": "神经网络基础",
+      "tb_source": "book/textbook/chapters/13-tensors-autodiff.tex",
+      "wb_source": "book/workbook/chapters/13-tensors-autodiff.tex"
+    },
+    {
+      "number": 4,
+      "title": "文本表示",
+      "tb_source": "book/textbook/chapters/21-text-representation.tex",
+      "wb_source": "book/workbook/chapters/21-text-representation.tex"
+    },
+    {
+      "number": 5,
+      "title": "注意力机制",
+      "tb_source": "book/textbook/chapters/22-attention.tex",
+      "wb_source": "book/workbook/chapters/22-attention.tex"
+    },
+    {
+      "number": 6,
+      "title": "Transformer 网络结构",
+      "tb_source": "book/textbook/chapters/24-transformer.tex",
+      "wb_source": "book/workbook/chapters/24-transformer.tex"
+    },
+    {
+      "number": 7,
+      "title": "位置表示",
+      "tb_source": "book/textbook/chapters/23-position-representation.tex",
+      "wb_source": "book/workbook/chapters/23-position-representation.tex"
+    },
+    {
+      "number": 8,
+      "title": "自回归语言建模",
+      "tb_source": "book/textbook/chapters/26-autoregressive-generation.tex",
+      "wb_source": "book/workbook/chapters/26-autoregressive-generation.tex"
+    },
+    {
+      "number": 9,
+      "title": "模型评估",
+      "tb_source": "book/textbook/chapters/91-evaluation-statistics.tex",
+      "wb_source": "book/workbook/chapters/91-evaluation-statistics.tex"
+    },
+    {
+      "number": 10,
+      "title": "模型安全",
+      "tb_source": "book/textbook/chapters/92-model-application-security.tex",
+      "wb_source": "book/workbook/chapters/92-model-application-security.tex"
+    },
+    {
+      "number": 11,
+      "title": "上下文学习",
+      "tb_source": "book/textbook/chapters/71-context-learning.tex",
+      "wb_source": "book/workbook/chapters/71-context-learning.tex"
+    },
+    {
+      "number": 12,
+      "title": "信息检索",
+      "tb_source": "book/textbook/chapters/72-information-retrieval.tex",
+      "wb_source": "book/workbook/chapters/72-information-retrieval.tex"
+    },
+    {
+      "number": 13,
+      "title": "检索增强生成",
+      "tb_source": "book/textbook/chapters/73-rag-systems.tex",
+      "wb_source": "book/workbook/chapters/73-rag-systems.tex"
+    },
+    {
+      "number": 14,
+      "title": "领域应用",
+      "tb_source": "book/textbook/chapters/76-domain-applications.tex",
+      "wb_source": "book/workbook/chapters/76-domain-applications.tex"
+    },
+    {
+      "number": 15,
+      "title": "智能体架构",
+      "tb_source": "book/textbook/chapters/74-agent-architecture.tex",
+      "wb_source": "book/workbook/chapters/74-agent-architecture.tex"
+    },
+    {
+      "number": 16,
+      "title": "智能体运行系统",
+      "tb_source": "book/textbook/chapters/75-agent-runtime.tex",
+      "wb_source": "book/workbook/chapters/75-agent-runtime.tex"
+    },
+    {
+      "number": 17,
+      "title": "优化及泛化",
+      "tb_source": "book/textbook/chapters/14-optimization-generalization.tex",
+      "wb_source": "book/workbook/chapters/14-optimization-generalization.tex"
+    },
+    {
+      "number": 18,
+      "title": "训练数据工程基础",
+      "tb_source": "book/textbook/chapters/31-data-engineering.tex",
+      "wb_source": "book/workbook/chapters/31-data-engineering.tex"
+    },
+    {
+      "number": 19,
+      "title": "训练稳定性",
+      "tb_source": "book/textbook/chapters/34-training-stability.tex",
+      "wb_source": "book/workbook/chapters/34-training-stability.tex"
+    },
+    {
+      "number": 20,
+      "title": "监督微调",
+      "tb_source": "book/textbook/chapters/41-supervised-finetuning.tex",
+      "wb_source": "book/workbook/chapters/41-supervised-finetuning.tex"
+    },
+    {
+      "number": 21,
+      "title": "参数高效微调",
+      "tb_source": "book/textbook/chapters/42-parameter-efficient-finetuning.tex",
+      "wb_source": "book/workbook/chapters/42-parameter-efficient-finetuning.tex"
+    },
+    {
+      "number": 22,
+      "title": "训练工程优化",
+      "tb_source": "book/textbook/chapters/43-efficient-finetuning.tex",
+      "wb_source": "book/workbook/chapters/43-efficient-finetuning.tex"
+    },
+    {
+      "number": 23,
+      "title": "预训练原理",
+      "tb_source": "book/textbook/chapters/33-pretraining-scaling.tex",
+      "wb_source": "book/workbook/chapters/33-pretraining-scaling.tex"
+    },
+    {
+      "number": 24,
+      "title": "强化学习基础",
+      "tb_source": "book/textbook/chapters/44-reinforcement-learning.tex",
+      "wb_source": "book/workbook/chapters/44-reinforcement-learning.tex"
+    },
+    {
+      "number": 25,
+      "title": "人类反馈学习",
+      "tb_source": "book/textbook/chapters/45-preference-alignment.tex",
+      "wb_source": "book/workbook/chapters/45-preference-alignment.tex"
+    },
+    {
+      "number": 26,
+      "title": "可验证推理训练",
+      "tb_source": "book/textbook/chapters/46-verifiable-reasoning.tex",
+      "wb_source": "book/workbook/chapters/46-verifiable-reasoning.tex"
+    },
+    {
+      "number": 27,
+      "title": "模型规模及资源预算",
+      "tb_source": "book/textbook/chapters/32-resource-budget.tex",
+      "wb_source": "book/workbook/chapters/32-resource-budget.tex"
+    },
+    {
+      "number": 28,
+      "title": "算力基础设施",
+      "tb_source": "book/textbook/chapters/61-compute-infrastructure.tex",
+      "wb_source": "book/workbook/chapters/61-compute-infrastructure.tex"
+    },
+    {
+      "number": 29,
+      "title": "分布式训练",
+      "tb_source": "book/textbook/chapters/62-distributed-training.tex",
+      "wb_source": "book/workbook/chapters/62-distributed-training.tex"
+    },
+    {
+      "number": 30,
+      "title": "增量解码",
+      "tb_source": "book/textbook/chapters/51-incremental-decoding-cache.tex",
+      "wb_source": "book/workbook/chapters/51-incremental-decoding-cache.tex"
+    },
+    {
+      "number": 31,
+      "title": "批处理调度",
+      "tb_source": "book/textbook/chapters/63-batching-scheduling.tex",
+      "wb_source": "book/workbook/chapters/63-batching-scheduling.tex"
+    },
+    {
+      "number": 32,
+      "title": "模型服务架构",
+      "tb_source": "book/textbook/chapters/64-serving-architecture.tex",
+      "wb_source": "book/workbook/chapters/64-serving-architecture.tex"
+    },
+    {
+      "number": 33,
+      "title": "推理计算优化",
+      "tb_source": "book/textbook/chapters/52-inference-algorithms.tex",
+      "wb_source": "book/workbook/chapters/52-inference-algorithms.tex"
+    },
+    {
+      "number": 34,
+      "title": "模型优化",
+      "tb_source": "book/textbook/chapters/53-model-optimization.tex",
+      "wb_source": "book/workbook/chapters/53-model-optimization.tex"
+    },
+    {
+      "number": 35,
+      "title": "双向语言建模",
+      "tb_source": "book/textbook/chapters/25-bidirectional-mlm.tex",
+      "wb_source": "book/workbook/chapters/25-bidirectional-mlm.tex"
+    },
+    {
+      "number": 36,
+      "title": "混合专家模型",
+      "tb_source": "book/textbook/chapters/27-mixture-experts.tex",
+      "wb_source": "book/workbook/chapters/27-mixture-experts.tex"
+    },
+    {
+      "number": 37,
+      "title": "长上下文建模",
+      "tb_source": "book/textbook/chapters/28-long-context.tex",
+      "wb_source": "book/workbook/chapters/28-long-context.tex"
+    },
+    {
+      "number": 38,
+      "title": "开源模型体系",
+      "tb_source": "book/textbook/chapters/29-open-models.tex",
+      "wb_source": "book/workbook/chapters/29-open-models.tex"
+    },
+    {
+      "number": 39,
+      "title": "视觉 Transformer",
+      "tb_source": "book/textbook/chapters/81-vision-transformer.tex",
+      "wb_source": "book/workbook/chapters/81-vision-transformer.tex"
+    },
+    {
+      "number": 40,
+      "title": "多模态建模",
+      "tb_source": "book/textbook/chapters/82-multimodal-alignment.tex",
+      "wb_source": "book/workbook/chapters/82-multimodal-alignment.tex"
+    },
+    {
+      "number": 41,
+      "title": "扩散模型的概率原理",
+      "tb_source": "book/textbook/chapters/83-diffusion-probability.tex",
+      "wb_source": "book/workbook/chapters/83-diffusion-probability.tex"
+    },
+    {
+      "number": 42,
+      "title": "条件视觉生成",
+      "tb_source": "book/textbook/chapters/84-conditional-vision.tex",
+      "wb_source": "book/workbook/chapters/84-conditional-vision.tex"
+    }
+  ],
+  "transfers": [
+    {
+      "chapter": 1,
+      "kind": "exercise",
+      "sha256": "d1747565c4a8d75c198598aa87de6f6be4441e1534b08a5a1b40201a59fc4d67"
+    },
+    {
+      "chapter": 1,
+      "kind": "interview",
+      "sha256": "865bbefd69c309b8c3df7850d518e7abe2ad247166105381683aece1e27f04a3"
+    },
+    {
+      "chapter": 2,
+      "kind": "exercise",
+      "sha256": "157efd4e0bf1c5763d2e7bcca45c178439cc8f9def0c687cb1885a740513d565"
+    },
+    {
+      "chapter": 2,
+      "kind": "interview",
+      "sha256": "8ff411c65b59cfc14e56807e3ebb8a634764928999eadbf214ae0fa7ecba8a4e"
+    },
+    {
+      "chapter": 3,
+      "kind": "exercise",
+      "sha256": "263728e2e5553f42c470d8f3ff5524440e8bc4cf5ed62cb0a0f98813716b4239"
+    },
+    {
+      "chapter": 3,
+      "kind": "interview",
+      "sha256": "943613c93a66f013b276d3ca893c301f524f7d6db4f6b6c995052a9db19a89e5"
+    },
+    {
+      "chapter": 4,
+      "kind": "exercise",
+      "sha256": "95fbcebd3685ce3ee8194bdff78a773e4392eb06607dd3962eb7d7c79a1278b0"
+    },
+    {
+      "chapter": 4,
+      "kind": "interview",
+      "sha256": "81f4b5b046177082722fe67a3c01eaeb9f59bda58f528e1cacf51e212b299589"
+    },
+    {
+      "chapter": 5,
+      "kind": "exercise",
+      "sha256": "df165a83c6100d74c151e8a074b1c362a721c1188472c4b31efbaa4b9cfe31f8"
+    },
+    {
+      "chapter": 5,
+      "kind": "interview",
+      "sha256": "4580ca891e76d65eaf61de854866beac5d979a61d3c4ec874eca71962dfaaa00"
+    },
+    {
+      "chapter": 6,
+      "kind": "exercise",
+      "sha256": "a0bc3f0f5c6afd7ed2bfb12edc9e4904361ede57a3bbe4163617ac6a57064553"
+    },
+    {
+      "chapter": 6,
+      "kind": "interview",
+      "sha256": "134b662564ad2542d15680a3bb958a4622cf18ca30ad3d5416e3a7e6cccbddb2"
+    },
+    {
+      "chapter": 7,
+      "kind": "exercise",
+      "sha256": "05918be28f30271e3b1e931967cad1d39fca7ebd13be1164b5b0957b9a7cb0cb"
+    },
+    {
+      "chapter": 7,
+      "kind": "interview",
+      "sha256": "c510051b8d5ddf76182605c42e21858a714ea3b2bcd790ec7dfebaae4d8e44d3"
+    },
+    {
+      "chapter": 8,
+      "kind": "exercise",
+      "sha256": "656a2145da06831c7260018812e8483529f1898a865fcefd1d8df313c014d205"
+    },
+    {
+      "chapter": 8,
+      "kind": "interview",
+      "sha256": "7d9d6169cc93bbcb1fbaf7f8f117e152877c488c7caf522c9053cdfa5dfa25b7"
+    },
+    {
+      "chapter": 9,
+      "kind": "exercise",
+      "sha256": "bf5c60e1da74f5bf7fb61356a4ed1a2f44a095c82745bb73b3481dd5c3d97fbf"
+    },
+    {
+      "chapter": 9,
+      "kind": "interview",
+      "sha256": "a2b3454873680d7dbfd8f6293c61d333ee5ee43193b36f8507a5f9ccf6b79771"
+    },
+    {
+      "chapter": 10,
+      "kind": "exercise",
+      "sha256": "0529a894b5e8ea45d95be9be9f60f8de7d20b287799ef641ff322dd18fe2cbf9"
+    },
+    {
+      "chapter": 10,
+      "kind": "interview",
+      "sha256": "e7b453690fedbe667c766a1bbeabb2e5ec6f6ad5afcfda68992048e757274a2f"
+    },
+    {
+      "chapter": 11,
+      "kind": "exercise",
+      "sha256": "2219e8ca9ee95a3802eb93c7705e54c67d2559fdc1b3f334bef360f7542d8ec9"
+    },
+    {
+      "chapter": 11,
+      "kind": "interview",
+      "sha256": "bca1176350648adddd168eae9cb7c816ccec36b0d038effc513ce75c1d0b9675"
+    },
+    {
+      "chapter": 12,
+      "kind": "exercise",
+      "sha256": "032d21482cfe2113dc63ad9eb9bd1fcf3f26737403943c325dbf86421c14d8df"
+    },
+    {
+      "chapter": 12,
+      "kind": "interview",
+      "sha256": "18c9c641f3ec71864b2c1c2a154d1c8713c96a60621537c94f62efecbee7c774"
+    },
+    {
+      "chapter": 13,
+      "kind": "exercise",
+      "sha256": "5bd2d8f2b6ff16296da86221241b50babeef656c0b9e4fb5b8b9e42d7e56199c"
+    },
+    {
+      "chapter": 13,
+      "kind": "interview",
+      "sha256": "4eb8aba6acffa918f4bd9e9bcfb8232e528773ccbf12dc9db9d31dfd6d4f31a1"
+    },
+    {
+      "chapter": 14,
+      "kind": "exercise",
+      "sha256": "f7378aed465268898474a4807fd6ca131850b4e687f6a1361aab26aaf349b1a7"
+    },
+    {
+      "chapter": 14,
+      "kind": "interview",
+      "sha256": "6f44eb1ba1d1b523d33c3b9b26dc549f72862b0ff904ef9df25b4304acc6918c"
+    },
+    {
+      "chapter": 15,
+      "kind": "exercise",
+      "sha256": "14be1552a314d5263bf3026f1c60c17db295ac4bfb14a2e55856fdbcd30a653f"
+    },
+    {
+      "chapter": 15,
+      "kind": "interview",
+      "sha256": "39eaf1b7fb16b13b35ad01ad5057b8c420cdf5604f68985058815fd12830fb3b"
+    },
+    {
+      "chapter": 16,
+      "kind": "exercise",
+      "sha256": "e93d7313711348d268e0659d9926d557a4355f606f4fb2361faa24df14445c59"
+    },
+    {
+      "chapter": 16,
+      "kind": "interview",
+      "sha256": "09573fcd424a8cb70a04b65427de03ceaa9f2b1c01c1bc6cba860045f0c1f337"
+    },
+    {
+      "chapter": 17,
+      "kind": "exercise",
+      "sha256": "3e422d9e3512592464c6989895edd8e777b0517fcdff1bd95030914431ed14fd"
+    },
+    {
+      "chapter": 17,
+      "kind": "interview",
+      "sha256": "913624c34975fd129ae30f0ab834a8fe427e0b9f61ba62179a0b64f580d37f9c"
+    },
+    {
+      "chapter": 18,
+      "kind": "exercise",
+      "sha256": "b131282555c673d2188afb5aea049e1052efa91f3e528b8e16940906458162f4"
+    },
+    {
+      "chapter": 18,
+      "kind": "interview",
+      "sha256": "e886d409d41386cb6b8125555e54f1894b15886c714ce8c44191ecfde800c820"
+    },
+    {
+      "chapter": 19,
+      "kind": "exercise",
+      "sha256": "8784ace55ca1f6b8e62e8f3e295727b60699df9eda6027dc99736575d47f1926"
+    },
+    {
+      "chapter": 19,
+      "kind": "interview",
+      "sha256": "4fdc96000e5e61f3937c0e04106696f8396eba864f4a91a93867845d746aa6a0"
+    },
+    {
+      "chapter": 20,
+      "kind": "exercise",
+      "sha256": "62861e8a91d8c2e25af8a6c594a86104b8e4416e371b34d220e7e7d141fbd372"
+    },
+    {
+      "chapter": 20,
+      "kind": "interview",
+      "sha256": "ede63a9b23b0a1a281241b8f8aa4ef73f96bffb596acec387a47c5874cc3e495"
+    },
+    {
+      "chapter": 21,
+      "kind": "exercise",
+      "sha256": "c04b3076b7a07b1f4f7cbdac43d3af4c4ce7868c24687c06e2f2090afe0af4b5"
+    },
+    {
+      "chapter": 21,
+      "kind": "interview",
+      "sha256": "e8ab38f244aa783c084601d9cf077dd06e83716b4bf79e7aaf8ca7040f641eb2"
+    },
+    {
+      "chapter": 22,
+      "kind": "exercise",
+      "sha256": "f9656ae662c3986a3209348b2637e3beae0421d68c54118b36484bc8ea0446d1"
+    },
+    {
+      "chapter": 22,
+      "kind": "interview",
+      "sha256": "1356e49bfbec3b95c0f859f0e4c7e2f6268af1d0a32af72b53e24716072dc2e9"
+    },
+    {
+      "chapter": 23,
+      "kind": "exercise",
+      "sha256": "921d126dce3155a9dc54e33f02f21b5e062f9d0b24a5c9c4e2557398aaf0e885"
+    },
+    {
+      "chapter": 23,
+      "kind": "interview",
+      "sha256": "0612f05027a047ac80956f320207c75df35862b1e56693536ba3acc5a1e42010"
+    },
+    {
+      "chapter": 24,
+      "kind": "exercise",
+      "sha256": "77f1b4c34cedab242509be6e0295703433bac471e1ef81adaf5a73c1217e1fc4"
+    },
+    {
+      "chapter": 24,
+      "kind": "interview",
+      "sha256": "016c3fec0eb788999e11bdd1690f1059fdf2f00b00018c84fe3aed010199abef"
+    },
+    {
+      "chapter": 25,
+      "kind": "exercise",
+      "sha256": "3f3eb99441ad5354a7a3d05f5042c644771ef123f9b49978e0253a897decddd3"
+    },
+    {
+      "chapter": 25,
+      "kind": "interview",
+      "sha256": "623d0ee5412ffe3cf38247e3fb52eb5fb7eeab318124a89e53d4fa003b887793"
+    },
+    {
+      "chapter": 26,
+      "kind": "exercise",
+      "sha256": "d37615dd8dd5f3d8469f3688ba1b6103f486818a37325e24bac4ad8ec92f17a4"
+    },
+    {
+      "chapter": 26,
+      "kind": "interview",
+      "sha256": "c8961bc322b103bbe58a1d9db2f42b0e144ce18f360c00ea31ff4a45f144e520"
+    },
+    {
+      "chapter": 27,
+      "kind": "exercise",
+      "sha256": "b6dbc70e053f670bd87cc48913b86b9c687dfae7cb4e9e0328774a810907dad0"
+    },
+    {
+      "chapter": 27,
+      "kind": "interview",
+      "sha256": "cb30363e69f4288479fb33ee81e1b60c27a5db0365838c7bc1b4990485d3549c"
+    },
+    {
+      "chapter": 28,
+      "kind": "exercise",
+      "sha256": "be9274cac9255f0cd2fdb215871579aabd9bb1947c6ecc053141dfa62def225b"
+    },
+    {
+      "chapter": 28,
+      "kind": "interview",
+      "sha256": "afae034e5bab0c10abf28391abf610f90bec4ba00f382abdbdda41ebafe53098"
+    },
+    {
+      "chapter": 29,
+      "kind": "exercise",
+      "sha256": "61bd6b1f0a5b1d543664a148eaff3110e8061269da8fff74da31c81cef64d219"
+    },
+    {
+      "chapter": 29,
+      "kind": "interview",
+      "sha256": "c36b9a7dd61fc259850a14822bf1e0df2122a1ebdbe06e9101858ace22c54fef"
+    },
+    {
+      "chapter": 30,
+      "kind": "exercise",
+      "sha256": "ab8a2cc62b814a6f8c0629048c6cecbeb6f21786749f202d039849f2e48ef773"
+    },
+    {
+      "chapter": 30,
+      "kind": "interview",
+      "sha256": "fac41110996a9d7e0394e2fac61b5b5ba05695f627ec2ab99759b05fabca568f"
+    },
+    {
+      "chapter": 31,
+      "kind": "exercise",
+      "sha256": "dc4144b34745445606f93ed9df1d361347f53845ebd808f51573e42099dda6d6"
+    },
+    {
+      "chapter": 31,
+      "kind": "interview",
+      "sha256": "d076bfaed67dad4f34601ab08e7bc886899172a28df7cb842f86f3b66c1fe8b4"
+    },
+    {
+      "chapter": 32,
+      "kind": "exercise",
+      "sha256": "626bf5f6c6a1dac2bad9e890ee4aee36c53c863f76de2470f6267ad6ac69b06e"
+    },
+    {
+      "chapter": 32,
+      "kind": "interview",
+      "sha256": "27f7844637a9c2f8547f8ee8d1b8029496bf46b3a10745d57581fd560ddf0fca"
+    },
+    {
+      "chapter": 33,
+      "kind": "exercise",
+      "sha256": "0050e8150a2e582d4036de6895b5306c1c1e8b45ed2476dd6830ac796e80a496"
+    },
+    {
+      "chapter": 33,
+      "kind": "interview",
+      "sha256": "490e496d8cbf8b9114477508a22455462f9c38b8ce935b0f8ee3d5bc69480795"
+    },
+    {
+      "chapter": 34,
+      "kind": "exercise",
+      "sha256": "a4c30d4afccdfe553a68f1af481bc0bb4e03e7ba39db03418a949094d1331350"
+    },
+    {
+      "chapter": 34,
+      "kind": "interview",
+      "sha256": "4e3c02b4515f925fa125a4d2efcca820ebccc249e0943de0a91b3aab54ba66ad"
+    },
+    {
+      "chapter": 35,
+      "kind": "exercise",
+      "sha256": "ad7346ac00e56447ae88f9753f03a7e18864704aac124d237b9a492e7f8c9e4c"
+    },
+    {
+      "chapter": 35,
+      "kind": "interview",
+      "sha256": "0d488f5b67d887056b8dfa918b675db8f40f35839cc97462083c65a35fc52ac1"
+    },
+    {
+      "chapter": 36,
+      "kind": "exercise",
+      "sha256": "d2b7243bbe699f11d437db49e4bd90b0232baa3699025df9ca77011d4445a87c"
+    },
+    {
+      "chapter": 36,
+      "kind": "interview",
+      "sha256": "1c8c1fbaea8393a2b28ee9ca2638269301e5abe9e93880dc38f7010c4587d2ac"
+    },
+    {
+      "chapter": 37,
+      "kind": "exercise",
+      "sha256": "33871216f467874daf2f2c3fedb297b16699453c92f42c19673c55598b57db12"
+    },
+    {
+      "chapter": 37,
+      "kind": "interview",
+      "sha256": "ab680d1dd4f24be9367997771311ffe2bc9f7ea355bd372eca6cf4a8090ec00d"
+    },
+    {
+      "chapter": 38,
+      "kind": "exercise",
+      "sha256": "d856df55661d247fa74de39b2ea1513723f39ea68256b13f36307e7f8f55c9b3"
+    },
+    {
+      "chapter": 38,
+      "kind": "interview",
+      "sha256": "51987ab03c3f7c31a0672fb9ed77633a8cad7f1fd33d0f5a490a64344caf1d2f"
+    },
+    {
+      "chapter": 39,
+      "kind": "exercise",
+      "sha256": "31c8acd6a1e6fccb19efeab18b36fa6090a05d2ffc89700503de192bdd981f3d"
+    },
+    {
+      "chapter": 39,
+      "kind": "interview",
+      "sha256": "4c30fdf6b8b2775ecf8640318147f3d19f52c8e297d0a28e3ff89d3a85246a76"
+    },
+    {
+      "chapter": 40,
+      "kind": "exercise",
+      "sha256": "b61f1c2087fd8edb1c9b61e85a85b205967fea88c2f3347e120553525770f857"
+    },
+    {
+      "chapter": 40,
+      "kind": "interview",
+      "sha256": "c85aa02abf220815930a7916760c1b10580406b1ce056967fc1927c23d0bba88"
+    },
+    {
+      "chapter": 41,
+      "kind": "exercise",
+      "sha256": "a9375a817aca097c2b513740eb1fca4aa8ced1465432052dcd21ab86e3c1e776"
+    },
+    {
+      "chapter": 41,
+      "kind": "interview",
+      "sha256": "1aa085b2f44c7223aecd1596ef8ef76d142901af95619ef7d276a7e57d93a309"
+    },
+    {
+      "chapter": 42,
+      "kind": "exercise",
+      "sha256": "3dedad345682bae2ba807c83481b6b82cfc1397b6caefbf5951c89ac680043f5"
+    },
+    {
+      "chapter": 42,
+      "kind": "interview",
+      "sha256": "76cf6402dd0f9bffb12fcf2313633cfa313aff8d3285eedce918243f34b19abe"
+    }
+  ],
+  "labs": [
+    {
+      "number": 1,
+      "title": "分类、张量与训练闭环",
+      "wb_source": "book/workbook/labs/01-10_foundations.tex",
+      "nb_source": "notebook/10_foundations.ipynb",
+      "sha256": "28960cab66095a4f9141094e3bf2639630905ba8d3483db6ea0d2b2f32670e17",
+      "main_chapters": [
+        2,
+        3,
+        17
+      ],
+      "wb_source_headings": [
+        {
+          "cell_index": 8,
+          "heading": "3.1．深度学习训练闭环"
+        },
+        {
+          "cell_index": 9,
+          "heading": "3.2．One-hot 原理实现与等价性"
+        },
+        {
+          "cell_index": 12,
+          "heading": "3.3．两层 MLP 的 NumPy 实现"
+        },
+        {
+          "cell_index": 17,
+          "heading": "4.1．形状、数值与指标证据"
+        },
+        {
+          "cell_index": 17,
+          "heading": "4.2．One-hot 的可证伪不变量"
+        },
+        {
+          "cell_index": 17,
+          "heading": "4.3．PyTorch 参考实现对照"
+        },
+        {
+          "cell_index": 19,
+          "heading": "5.1．原理对象与 PyTorch 对象的映射"
+        },
+        {
+          "cell_index": 19,
+          "heading": "5.2．从显式 One-hot 迁移到稀疏库接口"
+        },
+        {
+          "cell_index": 19,
+          "heading": "5.3．训练与泛化概念"
+        },
+        {
+          "cell_index": 20,
+          "heading": "5.4．常见模型架构与适用范围"
+        }
+      ],
+      "functions_used": [
+        "my_classification_metrics",
+        "my_one_hot",
+        "my_sigmoid"
+      ],
+      "execution_status": "not_executed"
+    },
+    {
+      "number": 2,
+      "title": "数据资产与稳定划分",
+      "wb_source": "book/workbook/labs/02-20_dataset.tex",
+      "nb_source": "notebook/20_dataset.ipynb",
+      "sha256": "6b361ff7368a8a29723c5ca118f5784c582f8e32b4afba3190fd2c02e5c9c576",
+      "main_chapters": [
+        18,
+        20,
+        23
+      ],
+      "wb_source_headings": [
+        {
+          "cell_index": 5,
+          "heading": "3.1．确定性构造候选句对"
+        },
+        {
+          "cell_index": 7,
+          "heading": "3.2．源记录校验"
+        },
+        {
+          "cell_index": 9,
+          "heading": "3.3．JSONL 序列化与原子发布"
+        },
+        {
+          "cell_index": 11,
+          "heading": "4.1．记录、Schema 与内容哈希"
+        },
+        {
+          "cell_index": 13,
+          "heading": "5.1．使用 `load_dataset` 加载权威源资产"
+        },
+        {
+          "cell_index": 15,
+          "heading": "5.2．使用 `map` 与 `filter` 建立可追踪变换"
+        },
+        {
+          "cell_index": 17,
+          "heading": "5.3．确定性生成 `DatasetDict`"
+        },
+        {
+          "cell_index": 22,
+          "heading": "5.4．Arrow 持久化与重载"
+        }
+      ],
+      "functions_used": [
+        "my_locate_project_directory",
+        "my_build_parallel_pairs",
+        "my_add_quality_columns"
+      ],
+      "execution_status": "not_executed"
+    },
+    {
+      "number": 3,
+      "title": "BPE与分词制品",
+      "wb_source": "book/workbook/labs/03-21_tokenizer.tex",
+      "nb_source": "notebook/21_tokenizer.ipynb",
+      "sha256": "d495946be7dc30d1a4c694da41e047f0b647d4dc8ecb1d1b7fd5f01a8eaa2d2c",
+      "main_chapters": [
+        4
+      ],
+      "wb_source_headings": [
+        {
+          "cell_index": 7,
+          "heading": "3.1．BPE 训练、编码与解码"
+        },
+        {
+          "cell_index": 9,
+          "heading": "4.1．原理实现与 `tiktoken` 对照"
+        },
+        {
+          "cell_index": 11,
+          "heading": "4.2．BPE 合并演化：边界如何逐轮收缩"
+        },
+        {
+          "cell_index": 14,
+          "heading": "5.1．固化 `tiktoken` 中间资产"
+        },
+        {
+          "cell_index": 16,
+          "heading": "5.2．特殊 Token 与模型协议"
+        },
+        {
+          "cell_index": 17,
+          "heading": "5.3．接入 Transformers 标准接口"
+        },
+        {
+          "cell_index": 19,
+          "heading": "5.4．Hugging Face Tokenizer 的分层结构"
+        },
+        {
+          "cell_index": 21,
+          "heading": "5.5．加载 Hub Tokenizer"
+        },
+        {
+          "cell_index": 23,
+          "heading": "5.6．特殊 Token 契约检查"
+        },
+        {
+          "cell_index": 25,
+          "heading": "5.7．单条文本与 `BatchEncoding`"
+        },
+        {
+          "cell_index": 27,
+          "heading": "5.8．批量输入、padding 与 truncation"
+        },
+        {
+          "cell_index": 29,
+          "heading": "5.9．Encoder–Decoder 标签与损失屏蔽"
+        }
+      ],
+      "functions_used": [
+        "my_locate_project_directory",
+        "my_sha256_file",
+        "my_is_clean_record"
+      ],
+      "execution_status": "not_executed"
+    },
+    {
+      "number": 4,
+      "title": "Transformer与翻译",
+      "wb_source": "book/workbook/labs/04-30_transformer.tex",
+      "nb_source": "notebook/30_transformer.ipynb",
+      "sha256": "8fa27687b8b6c80637974c9c1f049dbbdde5d399cf14cdc603891858ed33241a",
+      "main_chapters": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        37
+      ],
+      "wb_source_headings": [
+        {
+          "cell_index": 24,
+          "heading": "3.1．多头注意力"
+        },
+        {
+          "cell_index": 34,
+          "heading": "3.2．逐位置前馈网络（FFN）"
+        },
+        {
+          "cell_index": 36,
+          "heading": "3.3．Add & Norm：残差连接、LayerNorm 与 Pre/Post-Norm"
+        },
+        {
+          "cell_index": 38,
+          "heading": "3.4．Encoder Layer 与 Encoder Stack"
+        },
+        {
+          "cell_index": 40,
+          "heading": "3.5．Decoder Layer 与 Cross-Attention"
+        },
+        {
+          "cell_index": 43,
+          "heading": "4.1．端到端翻译闭环"
+        },
+        {
+          "cell_index": 45,
+          "heading": "4.2．形状与因果性验证"
+        },
+        {
+          "cell_index": 47,
+          "heading": "4.3．翻译批次与 Teacher Forcing"
+        },
+        {
+          "cell_index": 49,
+          "heading": "4.4．带正则化、学习率调度与早停的训练"
+        },
+        {
+          "cell_index": 51,
+          "heading": "4.5．从 `<s>` 开始自回归生成"
+        },
+        {
+          "cell_index": 53,
+          "heading": "4.6．Cross-Attention 对齐可视化"
+        },
+        {
+          "cell_index": 55,
+          "heading": "5.1．对齐 `torch.nn.Transformer` 的职责与接口"
+        },
+        {
+          "cell_index": 59,
+          "heading": "5.2．与 `nn.Transformer` 的契约级验证"
+        },
+        {
+          "cell_index": 61,
+          "heading": "5.3．迁移到主流 MarianMT"
+        }
+      ],
+      "functions_used": [
+        "my_encode_content",
+        "my_encode",
+        "my_batch_encode"
+      ],
+      "execution_status": "not_executed"
+    },
+    {
+      "number": 5,
+      "title": "自回归生成",
+      "wb_source": "book/workbook/labs/05-31_nlp_gpt.tex",
+      "nb_source": "notebook/31_nlp_gpt.ipynb",
+      "sha256": "324fe5443109642c85d0c54a497056149aca067e6b66dd9d3364f2d40c5ec5f5",
+      "main_chapters": [
+        4,
+        5,
+        8
+      ],
+      "wb_source_headings": [
+        {
+          "cell_index": 7,
+          "heading": "3.1．因果多头自注意力"
+        },
+        {
+          "cell_index": 9,
+          "heading": "3.2．GPT Block 与最小 GPT"
+        },
+        {
+          "cell_index": 11,
+          "heading": "4.1．训练与自回归生成"
+        },
+        {
+          "cell_index": 17,
+          "heading": "4.2．因果注意力热力图：信息流边界是否成立"
+        },
+        {
+          "cell_index": 20,
+          "heading": "4.3．Next-token 概率与序列解码：temperature、top-k 与 beam search"
+        },
+        {
+          "cell_index": 23,
+          "heading": "5.1．Hugging Face Transformers 接口"
+        }
+      ],
+      "functions_used": [
+        "my_encode",
+        "my_decode",
+        "my_get_batch"
+      ],
+      "execution_status": "not_executed"
+    },
+    {
+      "number": 6,
+      "title": "评估与发布证据",
+      "wb_source": "book/workbook/labs/09-50_model_evaluation.tex",
+      "nb_source": "notebook/50_model_evaluation.ipynb",
+      "sha256": "a17220139382277e486331b8efdf81ffd5dfb3546b9f77afe9d10b74bb0eb20e",
+      "main_chapters": [
+        9,
+        14
+      ],
+      "wb_source_headings": [
+        {
+          "cell_index": 9,
+          "heading": "3.1．离线任务指标与混淆结构"
+        },
+        {
+          "cell_index": 12,
+          "heading": "3.2．生成评估：词面接近与事实正确"
+        },
+        {
+          "cell_index": 13,
+          "heading": "3.3．LLM-as-a-Judge 的校准"
+        },
+        {
+          "cell_index": 15,
+          "heading": "3.4．人工评测：Rubric、盲法与分歧"
+        },
+        {
+          "cell_index": 17,
+          "heading": "4.1．聚合指标与逐例失败"
+        },
+        {
+          "cell_index": 22,
+          "heading": "4.2．统计显著性、置信区间与多种子"
+        },
+        {
+          "cell_index": 24,
+          "heading": "4.3．切片、鲁棒性与高风险失败"
+        },
+        {
+          "cell_index": 29,
+          "heading": "4.4．在线实验协议与部署准入门禁"
+        },
+        {
+          "cell_index": 31,
+          "heading": "4.5．成本—延迟—质量 Pareto 前沿"
+        },
+        {
+          "cell_index": 33,
+          "heading": "4.6．可复现评测记录"
+        },
+        {
+          "cell_index": 35,
+          "heading": "5.1．原理对象与生产对象映射"
+        },
+        {
+          "cell_index": 35,
+          "heading": "5.2．迁移验证"
+        }
+      ],
+      "functions_used": [
+        "my_validate_prediction_matrix",
+        "my_normalize_text",
+        "my_prompt_fingerprint"
+      ],
+      "execution_status": "not_executed"
+    },
+    {
+      "number": 7,
+      "title": "安全边界与评估",
+      "wb_source": "book/workbook/labs/11-70_model_safety.tex",
+      "nb_source": "notebook/70_model_safety.ipynb",
+      "sha256": "2a54d1767013591853547e2b4a7218ea3037aaa80c1590ca6f712749810bd7fb",
+      "main_chapters": [
+        10
+      ],
+      "wb_source_headings": [
+        {
+          "cell_index": 7,
+          "heading": "3.1．风险登记与优先级"
+        },
+        {
+          "cell_index": 9,
+          "heading": "3.2．风险管理生命周期"
+        },
+        {
+          "cell_index": 10,
+          "heading": "3.3．基于资产与现实影响的威胁建模"
+        },
+        {
+          "cell_index": 11,
+          "heading": "3.4．数据清单与投毒风险"
+        },
+        {
+          "cell_index": 13,
+          "heading": "3.5．模型供应链与制品完整性"
+        },
+        {
+          "cell_index": 16,
+          "heading": "4.1．行为政策与安全评测"
+        },
+        {
+          "cell_index": 21,
+          "heading": "4.2．风险登记矩阵与发布门禁"
+        },
+        {
+          "cell_index": 24,
+          "heading": "4.3．Prompt Injection、RAG 与工具权限"
+        },
+        {
+          "cell_index": 27,
+          "heading": "4.4．PII、密钥与多租户隔离"
+        },
+        {
+          "cell_index": 28,
+          "heading": "4.5．输入输出策略与结构化约束"
+        },
+        {
+          "cell_index": 30,
+          "heading": "4.6．安全监控与最小化采集"
+        },
+        {
+          "cell_index": 31,
+          "heading": "4.7．事件响应与证据保全"
+        },
+        {
+          "cell_index": 33,
+          "heading": "5.1．原理对象与生产控制映射"
+        },
+        {
+          "cell_index": 33,
+          "heading": "5.2．迁移验证"
+        }
+      ],
+      "functions_used": [
+        "my_risk_score",
+        "my_sha256",
+        "my_evaluate_records"
+      ],
+      "execution_status": "not_executed"
+    },
+    {
+      "number": 8,
+      "title": "上下文学习",
+      "wb_source": "book/workbook/labs/13-91_prompt_reasoning.tex",
+      "nb_source": "notebook/91_prompt_reasoning.ipynb",
+      "sha256": "ae25e1e73e8052d4c2c2946bab11a5f4f1d251a920a0c5c2eb778481cae2d178",
+      "main_chapters": [
+        11
+      ],
+      "wb_source_headings": [
+        {
+          "cell_index": 6,
+          "heading": "3.1．四种提示策略与统一输出契约"
+        },
+        {
+          "cell_index": 8,
+          "heading": "3.2．指令模型接口"
+        },
+        {
+          "cell_index": 10,
+          "heading": "3.3．Self-Consistency 最终答案聚合"
+        },
+        {
+          "cell_index": 15,
+          "heading": "4.1．提示策略的统一评测"
+        },
+        {
+          "cell_index": 20,
+          "heading": "5.1．原理对象与 Transformers 对象映射"
+        },
+        {
+          "cell_index": 20,
+          "heading": "5.2．迁移验证"
+        }
+      ],
+      "functions_used": [
+        "my_terms",
+        "my_example_score",
+        "my_select_examples"
+      ],
+      "execution_status": "not_executed"
+    },
+    {
+      "number": 9,
+      "title": "RAG与有界智能体",
+      "wb_source": "book/workbook/labs/12-90_llm_applications.tex",
+      "nb_source": "notebook/90_llm_applications.ipynb",
+      "sha256": "5a02147ab240d3ec2747290410281387b3d2a047252e86d7da090260e478ae95",
+      "main_chapters": [
+        12,
+        14,
+        15,
+        16
+      ],
+      "wb_source_headings": [
+        {
+          "cell_index": 6,
+          "heading": "3.1．RAG 检索与证据组装"
+        },
+        {
+          "cell_index": 15,
+          "heading": "3.2．RAG 基线验证"
+        },
+        {
+          "cell_index": 20,
+          "heading": "3.3．工具调用：模型提议与程序执行"
+        },
+        {
+          "cell_index": 22,
+          "heading": "3.4．Agent：固定 Workflow 与 ReAct"
+        },
+        {
+          "cell_index": 26,
+          "heading": "3.5．基于证据的模型生成"
+        },
+        {
+          "cell_index": 28,
+          "heading": "4.1．应用链路基础检查"
+        },
+        {
+          "cell_index": 30,
+          "heading": "5.1．原理对象与生产对象映射"
+        },
+        {
+          "cell_index": 30,
+          "heading": "5.2．迁移验证"
+        }
+      ],
+      "functions_used": [
+        "my_tokenize",
+        "my_make_document",
+        "my_chunk_document"
+      ],
+      "execution_status": "not_executed"
+    },
+    {
+      "number": 10,
+      "title": "预训练与检查点恢复",
+      "wb_source": "book/workbook/labs/06-40_pre_training.tex",
+      "nb_source": "notebook/40_pre_training.ipynb",
+      "sha256": "f8b92fdc65b2d30d2ee25cb44681e5fbe3b4a02d60cf0488df05bd33db3d2b9b",
+      "main_chapters": [
+        2,
+        17,
+        19,
+        23,
+        29
+      ],
+      "wb_source_headings": [
+        {
+          "cell_index": 14,
+          "heading": "3.1．最小 Decoder-Only 因果语言模型"
+        },
+        {
+          "cell_index": 21,
+          "heading": "3.2．AdamW、Warmup 与 Cosine Decay"
+        },
+        {
+          "cell_index": 23,
+          "heading": "4.1．训练与验证闭环"
+        },
+        {
+          "cell_index": 26,
+          "heading": "4.2．Checkpoint 恢复一致性"
+        },
+        {
+          "cell_index": 29,
+          "heading": "5.1．Hugging Face `Trainer` 职责映射"
+        },
+        {
+          "cell_index": 30,
+          "heading": "5.2．加载固定版本的真实语料与 Tokenizer"
+        },
+        {
+          "cell_index": 32,
+          "heading": "5.3．把文本段转换为固定长度训练块"
+        },
+        {
+          "cell_index": 34,
+          "heading": "5.4．建立可审计的真实训练预算"
+        },
+        {
+          "cell_index": 36,
+          "heading": "5.5．执行训练并比较固定留出验证指标"
+        },
+        {
+          "cell_index": 38,
+          "heading": "5.6．机制可视化：调度轨迹与训练证据"
+        }
+      ],
+      "functions_used": [
+        "my_pack_documents",
+        "my_collate",
+        "my_build_optimizer"
+      ],
+      "execution_status": "not_executed"
+    },
+    {
+      "number": 11,
+      "title": "SFT、DPO与GRPO",
+      "wb_source": "book/workbook/labs/07-41_post_training.tex",
+      "nb_source": "notebook/41_post_training.ipynb",
+      "sha256": "785aea81150c5a6bcd3d47997002d25f5decaca08696173dfcd429286162fe75",
+      "main_chapters": [
+        20,
+        24,
+        25,
+        26
+      ],
+      "wb_source_headings": [
+        {
+          "cell_index": 10,
+          "heading": "3.1．回答区域的 Label Mask"
+        },
+        {
+          "cell_index": 16,
+          "heading": "3.2．Dynamic Padding 与 Packing"
+        },
+        {
+          "cell_index": 18,
+          "heading": "3.3．最小 Causal LM 与 SFT 基线"
+        },
+        {
+          "cell_index": 22,
+          "heading": "3.4．最小训练循环"
+        },
+        {
+          "cell_index": 24,
+          "heading": "4.1．Loss、Perplexity 与生成结果"
+        },
+        {
+          "cell_index": 26,
+          "heading": "4.2．后训练方法的验证坐标"
+        },
+        {
+          "cell_index": 27,
+          "heading": "4.3．DPO 偏好目标验证"
+        },
+        {
+          "cell_index": 32,
+          "heading": "4.4．GRPO 组内优势验证"
+        },
+        {
+          "cell_index": 37,
+          "heading": "5.1．映射到 Hugging Face TRL"
+        }
+      ],
+      "functions_used": [
+        "my_format_prompt",
+        "my_encode_sft_record",
+        "my_padding_report"
+      ],
+      "execution_status": "not_executed"
+    },
+    {
+      "number": 12,
+      "title": "LoRA与适配器生命周期",
+      "wb_source": "book/workbook/labs/08-42_peft.tex",
+      "nb_source": "notebook/42_peft.ipynb",
+      "sha256": "54c67315ce4a9c0d1dead7b61f8d82fea364416eea95b1800e03974f4fbb4b79",
+      "main_chapters": [
+        21,
+        22
+      ],
+      "wb_source_headings": [
+        {
+          "cell_index": 8,
+          "heading": "3.1．LoRA 线性层"
+        },
+        {
+          "cell_index": 10,
+          "heading": "4.1．低秩任务增量的可学习性"
+        },
+        {
+          "cell_index": 18,
+          "heading": "4.2．合并、拆分与重载一致性"
+        },
+        {
+          "cell_index": 20,
+          "heading": "4.3．目标模块与可训练参数范围"
+        },
+        {
+          "cell_index": 22,
+          "heading": "5.1．Qwen3 身份与角色一致性数据契约"
+        },
+        {
+          "cell_index": 24,
+          "heading": "5.2．Qwen3 Chat Template、Assistant Mask 与 LoRA 配置"
+        },
+        {
+          "cell_index": 26,
+          "heading": "5.3．训练、冻结探针、重载与行为验收"
+        },
+        {
+          "cell_index": 28,
+          "heading": "5.4．LoRA 与 QLoRA 的实现边界"
+        },
+        {
+          "cell_index": 29,
+          "heading": "5.5．PEFT 方法体系与选型依据"
+        }
+      ],
+      "functions_used": [
+        "my_parameter_budget",
+        "my_lora_story_color_limit",
+        "my_draw_lora_story_cells"
+      ],
+      "execution_status": "not_executed",
+      "framework_practice": {
+        "frameworks": [
+          "Transformers",
+          "PEFT",
+          "TRL",
+          "LLaMA-Factory",
+          "Axolotl"
+        ],
+        "label": "lab:framework-finetuning",
+        "entry": "book/workbook/examples/train_adapter.py",
+        "execution_status": "not_executed"
+      }
+    },
+    {
+      "number": 13,
+      "title": "训练数据生产",
+      "wb_source": "book/workbook/labs/15-A20_data_engineering.tex",
+      "nb_source": "notebook/A20_data_engineering.ipynb",
+      "sha256": "91a6ea9acd799ed3d0706ae0334edb7e575f4bd7bed245976e0ffec74addd071",
+      "main_chapters": [
+        18,
+        20,
+        23
+      ],
+      "wb_source_headings": [
+        {
+          "cell_index": 5,
+          "heading": "3.1．Schema 校验与规范化路由"
+        },
+        {
+          "cell_index": 7,
+          "heading": "3.2．抽取、规范化与 PII 处理"
+        },
+        {
+          "cell_index": 9,
+          "heading": "3.3．质量评分与原因码"
+        },
+        {
+          "cell_index": 11,
+          "heading": "3.4．精确去重与近似去重"
+        },
+        {
+          "cell_index": 16,
+          "heading": "3.5．污染检测与评测隔离"
+        },
+        {
+          "cell_index": 18,
+          "heading": "3.6．稳定划分与来源混合"
+        },
+        {
+          "cell_index": 20,
+          "heading": "3.7．Tokenizer、Packing 与 Sharding 契约"
+        }
+      ],
+      "functions_used": [
+        "my_deep_freeze",
+        "my_required_text",
+        "my_adapt_document_text"
+      ],
+      "execution_status": "not_executed"
+    },
+    {
+      "number": 14,
+      "title": "验证器与推理预算",
+      "wb_source": "book/workbook/labs/16-A30_reasoning_model.tex",
+      "nb_source": "notebook/A30_reasoning_model.ipynb",
+      "sha256": "ca4e52c135ac7ae917712df944aa7407e2ba30c0f752f8ddaa027fd4ae7ffc0a",
+      "main_chapters": [
+        24,
+        26
+      ],
+      "wb_source_headings": [
+        {
+          "cell_index": 6,
+          "heading": "3.1．推理轨迹监督的标签掩码"
+        },
+        {
+          "cell_index": 8,
+          "heading": "3.2．拒绝采样与步骤验证"
+        },
+        {
+          "cell_index": 13,
+          "heading": "3.3．结果、偏好、过程与可验证奖励"
+        },
+        {
+          "cell_index": 15,
+          "heading": "3.4．经验证的推理蒸馏"
+        },
+        {
+          "cell_index": 16,
+          "heading": "3.5．测试时计算的预算分配"
+        },
+        {
+          "cell_index": 18,
+          "heading": "3.6．预算化服务接口"
+        }
+      ],
+      "functions_used": [
+        "my_execute_steps",
+        "my_masked_causal_lm_loss",
+        "my_verify_candidate"
+      ],
+      "execution_status": "not_executed"
+    },
+    {
+      "number": 15,
+      "title": "资源预算与配置",
+      "wb_source": "book/workbook/labs/14-A10_resource_planning.tex",
+      "nb_source": "notebook/A10_resource_planning.ipynb",
+      "sha256": "f099540f0d66651cb4642d0300aa0282c6ff47a727495f8f6fa76112e97538fa",
+      "main_chapters": [
+        23,
+        27,
+        28,
+        36,
+        37,
+        38
+      ],
+      "wb_source_headings": [
+        {
+          "cell_index": 6,
+          "heading": "3.1．推理显存模型"
+        },
+        {
+          "cell_index": 8,
+          "heading": "3.2．训练显存模型"
+        },
+        {
+          "cell_index": 13,
+          "heading": "3.3．显存与期限的联合约束"
+        },
+        {
+          "cell_index": 15,
+          "heading": "3.4．CPU、内存、存储与网络"
+        },
+        {
+          "cell_index": 17,
+          "heading": "3.5．7B 与 70B 的量级参考"
+        },
+        {
+          "cell_index": 18,
+          "heading": "3.6．任务类型与显存口径"
+        }
+      ],
+      "functions_used": [
+        "my_estimate_parameter_breakdown",
+        "my_estimate_inference_memory",
+        "my_estimate_training_memory"
+      ],
+      "execution_status": "not_executed"
+    },
+    {
+      "number": 16,
+      "title": "训练效率与并行等价性",
+      "wb_source": "book/workbook/labs/17-A40_training_optimization.tex",
+      "nb_source": "notebook/A40_training_optimization.ipynb",
+      "sha256": "47363312c8952fad63bb29ae2ef011369456c9f8a101a6075c128877c6cdad52",
+      "main_chapters": [
+        19,
+        21,
+        22,
+        28,
+        29,
+        36
+      ],
+      "wb_source_headings": [
+        {
+          "cell_index": 7,
+          "heading": "3.1．固定实验基线"
+        },
+        {
+          "cell_index": 10,
+          "heading": "3.2．Batch 语义与标签掩码"
+        },
+        {
+          "cell_index": 13,
+          "heading": "3.3．无效 Token 比例"
+        },
+        {
+          "cell_index": 18,
+          "heading": "3.4．Causal LM 与损失基线"
+        },
+        {
+          "cell_index": 22,
+          "heading": "3.5．参数更新循环"
+        },
+        {
+          "cell_index": 24,
+          "heading": "3.6．质量基线"
+        },
+        {
+          "cell_index": 26,
+          "heading": "3.7．梯度累积"
+        },
+        {
+          "cell_index": 29,
+          "heading": "3.8．混合精度：FP32 → BF16/FP16"
+        },
+        {
+          "cell_index": 31,
+          "heading": "3.9．梯度检查点"
+        },
+        {
+          "cell_index": 34,
+          "heading": "3.10．学习率、优化器与更新语义"
+        },
+        {
+          "cell_index": 38,
+          "heading": "5.1．分布式训练方法图谱"
+        },
+        {
+          "cell_index": 39,
+          "heading": "5.2．DeepSpeed ZeRO-1、ZeRO-2 与 ZeRO-3"
+        },
+        {
+          "cell_index": 40,
+          "heading": "5.3．混合并行与互联拓扑"
+        },
+        {
+          "cell_index": 41,
+          "heading": "5.4．数据并行的等价性基线"
+        },
+        {
+          "cell_index": 43,
+          "heading": "5.5．张量并行的等价性基线"
+        }
+      ],
+      "functions_used": [
+        "my_format_prompt",
+        "my_encode_sft_record",
+        "my_padding_report"
+      ],
+      "execution_status": "not_executed",
+      "framework_practice": {
+        "frameworks": [
+          "DeepSpeed",
+          "FSDP2",
+          "Accelerate",
+          "Megatron-LM"
+        ],
+        "label": "lab:framework-distributed",
+        "entry": "book/workbook/examples/train_adapter.py",
+        "execution_status": "not_executed"
+      }
+    },
+    {
+      "number": 17,
+      "title": "部署制品与故障恢复",
+      "wb_source": "book/workbook/labs/10-60_inference_deployment.tex",
+      "nb_source": "notebook/60_inference_deployment.ipynb",
+      "sha256": "c9cc3be625df16e06fa7e8fe13e0fb529438a8e4709c604fbfa3a22a22e9c7dc",
+      "main_chapters": [
+        30,
+        31,
+        32
+      ],
+      "wb_source_headings": [
+        {
+          "cell_index": 5,
+          "heading": "3.1．不可变模型制品"
+        },
+        {
+          "cell_index": 9,
+          "heading": "3.2．稳定的推理 API"
+        },
+        {
+          "cell_index": 14,
+          "heading": "3.3．Gateway、Router、Scheduler 与 Worker 的职责"
+        },
+        {
+          "cell_index": 18,
+          "heading": "4.1．不可变修订的发布与回滚"
+        },
+        {
+          "cell_index": 21,
+          "heading": "4.2．Token 负载与队列容量规划"
+        },
+        {
+          "cell_index": 29,
+          "heading": "4.3．指标、日志与追踪的关联"
+        },
+        {
+          "cell_index": 32,
+          "heading": "4.4．故障域、背压与恢复验证"
+        },
+        {
+          "cell_index": 36,
+          "heading": "5.1．原理对象与生产组件映射"
+        },
+        {
+          "cell_index": 36,
+          "heading": "5.2．迁移验证"
+        }
+      ],
+      "functions_used": [
+        "my_plan_replicas"
+      ],
+      "execution_status": "not_executed",
+      "framework_practice": {
+        "frameworks": [
+          "vLLM",
+          "SGLang",
+          "TensorRT-LLM"
+        ],
+        "label": "lab:framework-serving",
+        "execution_status": "not_executed"
+      }
+    },
+    {
+      "number": 18,
+      "title": "推理缓存与调度",
+      "wb_source": "book/workbook/labs/18-A50_inference_optimization.tex",
+      "nb_source": "notebook/A50_inference_optimization.ipynb",
+      "sha256": "0e093a38b7054fe1ac598340c7f44df71aaae7f72f61b02f9f3f967eea62b270",
+      "main_chapters": [
+        28,
+        30,
+        31,
+        32,
+        33,
+        34,
+        37
+      ],
+      "wb_source_headings": [
+        {
+          "cell_index": 16,
+          "heading": "3.1．朴素自回归生成"
+        },
+        {
+          "cell_index": 18,
+          "heading": "3.2．KV Cache、Prefix Cache 与响应缓存"
+        },
+        {
+          "cell_index": 24,
+          "heading": "3.3．推理内存预算"
+        },
+        {
+          "cell_index": 29,
+          "heading": "3.4．批处理、Padding 与长度分桶"
+        },
+        {
+          "cell_index": 31,
+          "heading": "3.5．Continuous Batching 的状态转换"
+        },
+        {
+          "cell_index": 37,
+          "heading": "5.1．PyTorch SDPA"
+        },
+        {
+          "cell_index": 39,
+          "heading": "5.2．FlashAttention 与 HBM 访问"
+        },
+        {
+          "cell_index": 41,
+          "heading": "5.3．量化模型的推理执行"
+        },
+        {
+          "cell_index": 44,
+          "heading": "5.4．`torch.compile` 的成本与收益边界"
+        },
+        {
+          "cell_index": 46,
+          "heading": "5.5．静态形状与动态形状"
+        },
+        {
+          "cell_index": 48,
+          "heading": "5.6．Speculative Decoding"
+        },
+        {
+          "cell_index": 49,
+          "heading": "5.7．Transformers `generate()`"
+        },
+        {
+          "cell_index": 52,
+          "heading": "5.8．TTFT、TPOT 与吞吐基准"
+        },
+        {
+          "cell_index": 54,
+          "heading": "5.9．Replica、TP、PP 与混合部署"
+        },
+        {
+          "cell_index": 56,
+          "heading": "5.10．权重、适配器与 KV Cache 的分层"
+        }
+      ],
+      "functions_used": [
+        "my_format_prompt",
+        "my_encode_sft_record",
+        "my_move_batch"
+      ],
+      "execution_status": "not_executed"
+    },
+    {
+      "number": 19,
+      "title": "压缩与部署产物",
+      "wb_source": "book/workbook/labs/19-A60_model_compression.tex",
+      "nb_source": "notebook/A60_model_compression.ipynb",
+      "sha256": "6d7b5aa7f9a20d1bc55e8a4bdd09b815fc1162d193b1346e4534312ce16d8876",
+      "main_chapters": [
+        34
+      ],
+      "wb_source_headings": [
+        {
+          "cell_index": 7,
+          "heading": "3.1．非结构化剪枝及其执行边界"
+        },
+        {
+          "cell_index": 9,
+          "heading": "3.2．结构化剪枝与矩阵形状"
+        },
+        {
+          "cell_index": 11,
+          "heading": "3.3．低秩分解与矩阵近似"
+        },
+        {
+          "cell_index": 16,
+          "heading": "3.4．量化的数值表示与执行路径"
+        },
+        {
+          "cell_index": 34,
+          "heading": "3.5．知识蒸馏的原理实现"
+        },
+        {
+          "cell_index": 48,
+          "heading": "4.1．组合压缩的增量验证"
+        }
+      ],
+      "functions_used": [
+        "my_global_magnitude_prune",
+        "my_prune_mlp_hidden",
+        "my_factorize_linear_svd"
+      ],
+      "execution_status": "not_executed"
+    },
+    {
+      "number": 20,
+      "title": "双向编码与掩码预测",
+      "wb_source": "book/workbook/labs/22-E30_nlp_bert.tex",
+      "nb_source": "notebook/E30_nlp_bert.ipynb",
+      "sha256": "8778522535ad084a8b1592aa4675627dec2f63beb6debaa250c258f2ccdf7ea8",
+      "main_chapters": [
+        4,
+        35
+      ],
+      "wb_source_headings": [
+        {
+          "cell_index": 7,
+          "heading": "3.1．WordPiece 文本编码"
+        },
+        {
+          "cell_index": 11,
+          "heading": "3.2．三类 Embedding 的组合"
+        },
+        {
+          "cell_index": 15,
+          "heading": "3.3．双向多头自注意力"
+        },
+        {
+          "cell_index": 19,
+          "heading": "3.4．Encoder Layer：Attention、FFN 与残差"
+        },
+        {
+          "cell_index": 23,
+          "heading": "3.5．预训练目标：MLM 与 NSP"
+        },
+        {
+          "cell_index": 27,
+          "heading": "3.6．下游序列分类"
+        },
+        {
+          "cell_index": 30,
+          "heading": "4.1．双向 Attention 与 Causal Mask 对照"
+        }
+      ],
+      "functions_used": [
+        "my_wordpiece",
+        "my_encode"
+      ],
+      "execution_status": "not_executed"
+    },
+    {
+      "number": 21,
+      "title": "开放模型制品审计",
+      "wb_source": "book/workbook/labs/20-E10_open_model.tex",
+      "nb_source": "notebook/E10_open_model.ipynb",
+      "sha256": "ba6f1d1612155302c0394bd34ed7fdbb987c885c8dc9718e7e77db56e0abc105",
+      "main_chapters": [
+        36,
+        38
+      ],
+      "wb_source_headings": [
+        {
+          "cell_index": 7,
+          "heading": "3.1．Top-k Expert 路由与负载分布"
+        },
+        {
+          "cell_index": 11,
+          "heading": "5.1．Qwen 与 DeepSeek：代表性结构案例"
+        },
+        {
+          "cell_index": 12,
+          "heading": "5.2．Kimi、GLM 与 MiniMax：品牌谱系与架构差异"
+        },
+        {
+          "cell_index": 13,
+          "heading": "5.3．Llama、Gemma、Phi、gpt-oss 与 Nemotron"
+        },
+        {
+          "cell_index": 14,
+          "heading": "5.4．模型仓库文件与证据层级"
+        },
+        {
+          "cell_index": 16,
+          "heading": "5.5．从 `config.json` 还原模型结构"
+        },
+        {
+          "cell_index": 18,
+          "heading": "5.6．Tokenizer、特殊 Token 与 Chat Template"
+        },
+        {
+          "cell_index": 20,
+          "heading": "5.7．Safetensors、权重索引与张量结构"
+        },
+        {
+          "cell_index": 22,
+          "heading": "5.8．Adapter、量化格式、多模态资产与自定义代码"
+        },
+        {
+          "cell_index": 24,
+          "heading": "5.9．配置—Tokenizer—权重一致性验证"
+        },
+        {
+          "cell_index": 26,
+          "heading": "5.10．`Model Audit Manifest`"
+        }
+      ],
+      "functions_used": [
+        "my_rms_norm",
+        "my_top_k_route",
+        "my_kv_cache_elements"
+      ],
+      "execution_status": "not_executed"
+    },
+    {
+      "number": 22,
+      "title": "图像补丁与视觉编码",
+      "wb_source": "book/workbook/labs/23-E40_cv_vit.tex",
+      "nb_source": "notebook/E40_cv_vit.ipynb",
+      "sha256": "be17cbce72f902ba515818f9ce27f5cf7b24f89d0af6ddf0ea149a3b0f32a2a4",
+      "main_chapters": [
+        39
+      ],
+      "wb_source_headings": [
+        {
+          "cell_index": 7,
+          "heading": "3.1．Patchify：图像到 Token 序列"
+        },
+        {
+          "cell_index": 11,
+          "heading": "3.2．Patch Embedding：切分与投影"
+        },
+        {
+          "cell_index": 15,
+          "heading": "3.3．`[CLS]` Token 与位置编码"
+        },
+        {
+          "cell_index": 19,
+          "heading": "3.4．Pre-LayerNorm Transformer Encoder"
+        },
+        {
+          "cell_index": 23,
+          "heading": "3.5．最小 ViT 集成实现"
+        },
+        {
+          "cell_index": 25,
+          "heading": "3.6．标准模型接口"
+        },
+        {
+          "cell_index": 35,
+          "heading": "3.7．下游微调与分类头适配"
+        }
+      ],
+      "functions_used": [
+        "my_patchify"
+      ],
+      "execution_status": "not_executed"
+    },
+    {
+      "number": 23,
+      "title": "多模态连接与标签",
+      "wb_source": "book/workbook/labs/21-E20_multimodal_llm.tex",
+      "nb_source": "notebook/E20_multimodal_llm.ipynb",
+      "sha256": "a1b56ff4940ac6fd99134ba486617911fba1e7d0e8ce761ccbec4cabe7417a4c",
+      "main_chapters": [
+        40
+      ],
+      "wb_source_headings": [
+        {
+          "cell_index": 6,
+          "heading": "3.1．视觉编码与 Patch Token 表示"
+        },
+        {
+          "cell_index": 8,
+          "heading": "3.2．Projector 与 Resampler 的维度及长度变换"
+        },
+        {
+          "cell_index": 10,
+          "heading": "3.3．多模态序列与 Label Mask"
+        },
+        {
+          "cell_index": 15,
+          "heading": "3.4．分阶段训练与解冻策略"
+        },
+        {
+          "cell_index": 17,
+          "heading": "4.1．视觉 Token 流与 Label Mask 证据图"
+        }
+      ],
+      "functions_used": [
+        "my_draw_connector_block",
+        "my_draw_connector_arrow"
+      ],
+      "execution_status": "not_executed"
+    },
+    {
+      "number": 24,
+      "title": "扩散与条件生成",
+      "wb_source": "book/workbook/labs/24-E50_cv_diffusion.tex",
+      "nb_source": "notebook/E50_cv_diffusion.ipynb",
+      "sha256": "a1d1f39ead56be3d0a0703e78ada9fea118ae68e96d0fd3224b101f3e08b55f3",
+      "main_chapters": [
+        41,
+        42
+      ],
+      "wb_source_headings": [
+        {
+          "cell_index": 9,
+          "heading": "3.1．前向扩散：逐步加噪"
+        },
+        {
+          "cell_index": 16,
+          "heading": "3.2．时间步的正弦嵌入与条件注入"
+        },
+        {
+          "cell_index": 20,
+          "heading": "3.3．噪声预测器：带时间条件的 U-Net"
+        },
+        {
+          "cell_index": 24,
+          "heading": "3.4．训练目标：预测噪声"
+        },
+        {
+          "cell_index": 28,
+          "heading": "3.5．文本条件与 Cross-Attention"
+        },
+        {
+          "cell_index": 32,
+          "heading": "3.6．Classifier-Free Guidance（CFG）"
+        },
+        {
+          "cell_index": 36,
+          "heading": "3.7．潜空间与 VAE"
+        },
+        {
+          "cell_index": 40,
+          "heading": "3.8．反向采样：从噪声到图像"
+        }
+      ],
+      "functions_used": [
+        "my_linear_beta_schedule",
+        "my_extract",
+        "my_add_noise"
+      ],
+      "execution_status": "not_executed"
+    }
+  ],
+  "transfer_provenance": "transfers记录分册时的原章号与原内容哈希，不因后续合章而改写；当前42章结构以chapters和labs为准。"
+}

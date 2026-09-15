@@ -1,0 +1,27 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[lfs picture]
+
+\node[storage] (patch) {Patch Tokens\\\scriptsize $[B,N_v,d_v]$};
+\node[compute, right=of patch] (proj) {Project to LLM Space\\\scriptsize $d_v\to d$};
+\node[storage, below=of patch] (query) {Learned Queries\\\scriptsize $[B,M,d]$};
+\node[compute, right=22mm of $(proj)!0.5!(query)$] (resample) {Cross-Attention Resampler\\\scriptsize Q: queries; K/V: vision};
+\node[storage, right=of resample] (prefix) {Visual Prefix\\\scriptsize $[B,M,d]$};
+\node[storage, below=18mm of prefix] (text) {Text Embedding\\\scriptsize $[B,N_t,d]$};
+\coordinate (fusioneast) at ($(prefix.east)!0.5!(text.east)$);
+\node[interface, anchor=west] (concat) at ($(fusioneast)+(18mm,0)$) {Concatenate\\\scriptsize $[B,M+N_t,d]$};
+\node[block, right=of concat] (decoder) {Causal Decoder};
+\draw[data arrow] (patch) -- (proj);
+\draw[data arrow] (proj) -- (resample);
+\draw[data arrow] (query) -- (resample);
+\draw[data arrow] (resample) -- (prefix);
+\draw[data arrow] (prefix) -- (concat);
+\draw[data arrow] (text) -- (concat);
+\draw[data arrow] (concat) -- (decoder);
+\node[group, fit=(patch)(proj)(query)(resample)(prefix), label={[title]above:视觉 Token 压缩与维度对齐}] {};
+
+\end{tikzpicture}
+\end{document}

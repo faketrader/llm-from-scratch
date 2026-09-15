@@ -1,0 +1,64 @@
+\workbookchapter{优化及泛化}
+
+\begin{exerciselist}
+\exerciseitem\optional 对 $F(u,v)=\frac{2u^2+8v^2}{2}$，求梯度下降对任意初值收敛的学习率区间，以及平衡最坏方向收缩因子的学习率。解释边界取值为何不能保证收敛。
+
+\begin{workbookanswers}
+梯度为 $(2u,8v)$，迭代因子为 $1-2\eta$、$1-8\eta$。对任意初值趋零需两者模均小于1，故 $0<\eta<\frac{1}{4}$。最小化最大模时令 $1-2\eta=-(1-8\eta)$，得 $\eta=\frac{1}{5}$，收缩因子 $\frac{3}{5}$。$\eta=0$ 不移动；$\eta=\frac{1}{4}$ 的陡方向因子−1，非零初值等幅振荡。
+\end{workbookanswers}
+
+\exerciseitem\optional 对式\tbobject{eq:opt-spectral}，证明目标值满足 $F(\theta_k)\leq\rho^{2k}F(\theta_0)$。指出正定假设在证明中的作用。
+
+\begin{workbookanswers}
+将正定矩阵正交对角化 $H=U\Lambda U^{\mathsf T}$，令 $a=U^{\mathsf T}\theta_0$。则 $F(\theta_k)=\frac12\sum_i\lambda_i(1-\eta\lambda_i)^{2k}a_i^2\le\rho^{2k}\frac12\sum_i\lambda_i a_i^2$。正定性保证各项权重为正且稳定区间内 $\rho<1$；半正定时目标仍可能下降，但零特征方向不收缩，不能推出参数趋唯一零点。
+\end{workbookanswers}
+
+\exerciseitem 某总体的单样本梯度协方差为 $\Sigma$。在有放回独立抽样下将批量从 $B$ 增加到 $4B$，梯度标准差如何变化？若每个批量内样本梯度完全相同，为什么这一结论不再成立？
+
+\begin{workbookanswers}
+独立有放回时 $\operatorname{Cov}(\bar g_B)=\frac{\Sigma}{B}$；批量变为 $4B$ 后任一固定投影方向的标准差减半，均方范数噪声减为四分之一。若批内梯度完全相同，交叉协方差与对角项同量级，平均仍是同一个随机梯度，方差不随批量下降。
+\end{workbookanswers}
+
+\exerciseitem\optional 从式\tbobject{eq:opt-noise-floor}求一维二次目标的稳态期望损失。解释固定批量时降低学习率的收益及其代价。
+
+\begin{workbookanswers}
+令误差递推 $e_{k+1}=(1-\eta h)e_k-\eta\xi_k$，条件零均值噪声方差为 $\frac{s^2}{B}$。稳态二阶矩满足 $v=(1-\eta h)^2v+\frac{\eta^2s^2}{B}$，解得 $v=\frac{\eta s^2}{[Bh(2-\eta h)]}$；乘 $\frac{h}{2}$ 得损失 $\frac{\eta s^2}{[2B(2-\eta h)]}$。需 $0<\eta h<2$。减小步长降低噪声底，但收缩因子趋近1，达到稳态更慢。
+\end{workbookanswers}
+
+\exerciseitem\optional 对负半轴斜率为 $0.1$ 的分段线性激活，推导输入宽度为 $256$ 时的前向初始化方差。说明“保持二阶矩”与“每次具体初始化均保持范数”的区别。
+
+\begin{workbookanswers}
+对称零均值预激活满足 $\mathbb E\phi(z)^2=\frac{(1+0.1^2)\mathbb Ez^2}{2}$。下一层前向二阶矩乘子为 $\frac{256s_W^2(1.01)}{2}$；令其为1得 $s_W^2=\frac{2}{256\times1.01}\approx0.00773515$。结论是对随机权重及输入取期望的尺度保持，不保证每次抽到的矩阵是等距映射。
+\end{workbookanswers}
+
+\exerciseitem 在式\tbobject{eq:opt-dropout-reg}中改用平方损失的一半，写出对应的惩罚系数。若掩码不独立，需要加入什么交叉项？
+
+\begin{workbookanswers}
+取保留概率 $q$，半平方损失的额外项为 $\frac{1-q}{2q}\sum_jw_j^2a_j^2$。若掩码相关，读出方差还含 $2\sum_{j<k}\frac{w_jw_ka_ja_k\operatorname{Cov}(m_j,m_k)}{q^2}$；半平方损失对应增加其一半。这里假设各掩码的边缘保留率均为q，且条件于固定a求期望。
+\end{workbookanswers}
+
+\exerciseitem 若对目标函数整体乘以正常数 $c$，固定学习率的梯度下降会发生什么变化？如何同时调整学习率和正则系数，保留原来的数据项与惩罚项比例及更新轨迹？
+
+\begin{workbookanswers}
+原目标 $F=L+\lambda\Omega$。整体改为 $cF$ 时梯度乘c，故用 $\eta'=\frac{\eta}{c}$ 可保留更新，目标内部$\lambda$不变。若接口只把数据损失改为 $cL$，需同时设 $\lambda'=c\lambda$，再用 $\frac{\eta}{c}$。若只改学习率而不改相对惩罚系数，优化的是另一目标；自适应优化器还需单独核查$\epsilon$等状态，不直接套本结论。
+\end{workbookanswers}
+
+\exerciseitem 某公司按记录随机划分同一客户的多次交易，并在全部记录上拟合标准化器。分别指出两类泄漏，并为“预测未见客户的未来交易”设计训练、验证和测试边界。
+
+\begin{workbookanswers}
+逐记录随机划分泄漏客户特征，全部数据拟合标准化器又泄漏测试分布。可固定时间截点 $t_0<t_1$，训练仅用训练客户在 $t\le t_0$ 的记录；验证用另一组未见客户在 $(t_0,t_1]$ 的目标；测试用再一组未见客户在 $t>t_1$ 的目标。任何历史特征只能取预测时可获得的数据；客户身份跨集合互斥，预处理仅在训练集拟合，超参数在验证后冻结。需报告新客户群体选择与上线群体是否相符。
+\end{workbookanswers}
+
+\exerciseitem\optional 推导收缩例题中使偏差平方与预测方差之和最小的 $a$，说明为什么计算出的最优值不能直接作为未知总体上的可用超参数。
+
+\begin{workbookanswers}
+待最小化项为 $(1-a)^2\mu^2+\frac{a^2\sigma^2}{n}$。求导得 $-2(1-a)\mu^2+\frac{2a\sigma^2}{n}=0$，所以 $a^*=\frac{\mu^2}{\mu^2+\frac{\sigma^2}{n}}$；二阶导非负，非退化时为正。若两项均为零任意a等价。$\mu$、$\sigma$未知，不能使用测试真值选a；可在独立验证中选择或构造训练内估计并评估其误差。
+\end{workbookanswers}
+
+\exerciseitem 一个模型的训练损失与验证损失都很高，开发者准备增强正则化。设计检查顺序，区分损失统计口径不一致、数据或标签错误、优化失败和容量不足；说明哪些证据才支持过拟合判断，以及小批次拟合检查的局限。
+
+\begin{workbookanswers}
+先在相同评估模式下重算可比的数据损失，统一有效目标分母并区分正则项，核对训练与验证的预处理、标签和划分。再固定一个人工核验的小批次，关闭随机扰动，检查能否显著降低损失，同时记录梯度、更新幅度和非有限数值。小批次仍难拟合时，依次检查计算路径、学习率和参数更新，再通过受控容量变化检验表达能力；仅凭高损失不能认定容量不足。训练数据损失持续改善而独立验证退化，且已排除分布与统计口径变化，才支持过拟合判断。小批次拟合成功只能排除部分实现与优化故障，不能证明全量训练充分或模型能够泛化。
+\end{workbookanswers}
+
+\end{exerciselist}

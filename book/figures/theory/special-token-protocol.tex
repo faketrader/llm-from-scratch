@@ -1,0 +1,22 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[lfs picture]
+
+\node[storage] (text) {原始文本 A / B};
+\node[compute, right=of text] (post) {Tokenizer 后处理器\\\scriptsize 插入 CLS / BOS / SEP / EOS};
+\node[storage, right=of post] (ids) {\texttt{input\_ids}\\\scriptsize $[B,T]$};
+\node[interface, above right=8mm and 18mm of ids] (model) {模型 config\\\scriptsize pad / decoder start};
+\node[interface, right=18mm of ids] (gen) {生成 config\\\scriptsize EOS 停止条件};
+\node[compute, below right=8mm and 18mm of ids] (train) {训练预处理\\\scriptsize PAD label $\mapsto-100$};
+\draw[data arrow] (text) -- (post);
+\draw[data arrow] (post) -- (ids);
+\draw[control arrow] (ids) -- (model);
+\draw[control arrow] (ids) -- (gen);
+\draw[control arrow] (ids) -- (train);
+\node[group, fit=(model)(gen)(train), label={[title]above:角色映射不等于自动行为}] {};
+
+\end{tikzpicture}
+\end{document}

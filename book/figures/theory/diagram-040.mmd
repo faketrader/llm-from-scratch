@@ -1,0 +1,12 @@
+flowchart TD
+    F["固定模型、数据、Loss 与 Global Batch"] --> B{"主要瓶颈"}
+    B -->|"Padding / Input"| D["Packing、分桶、预取"]
+    B -->|"计算与激活"| A["BF16/FP16、Checkpointing、融合与编译"]
+    B -->|"训练状态"| Z["ZeRO / FSDP"]
+    B -->|"单层或模型容量"| T["TP / PP"]
+    B -->|"长上下文或 MoE"| X["CP / SP / EP"]
+    D --> V["统一验收"]
+    A --> V
+    Z --> V
+    T --> V
+    X --> V

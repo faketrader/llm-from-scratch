@@ -1,0 +1,469 @@
+\documentclass[../textbook.tex]{subfiles}
+\begin{document}
+\bookchapter{Transformer 网络结构}{ch:rev-transformer}
+
+注意力算子解决位置之间如何交换信息，位置表示则使计算能够区分绝对或相对顺序，但二者尚未构成完整的语言模型。每个位置的表示还需要非线性变换，多层网络需要可训练的梯度路径，输入和输出需要与词元空间连接。Transformer 将这些职责组织为重复的网络层，并通过可见性规则定义信息能够沿什么方向传播。
+
+本章从逐位置前馈网络、残差与归一化出发，组装编码器、解码器及编码器—解码器结构，最后完成从输入特征到预测概率的逐步计算。原始 Transformer 的后置归一化与整流激活配置，以及采用前置归一化、平滑激活或门控前馈网络的变体，将分别定义。共享组件不意味着函数相同，更不意味着不同配置的权重可以直接互换。注意力算子的推导见\bookxref{ch:attention}，位置进入计算的不同方式见\bookxref{ch:position-representation}；本章着重讨论这些机制怎样组成可训练网络。
+
+\section{网络层的职责及张量约定}
+
+\subsection{位置交互及特征变换}
+设输入为 $X\in\Real^{B\times T\times d}$，其中 $B$ 为批大小，$T$ 为序列长度，$d$ 为隐藏维数。\term{多头注意力}{Multi-Head Attention}{MHA}在自注意力模式下将不同位置的信息汇入当前表示；逐位置前馈网络只沿特征轴计算，所有位置共享同一组参数。两者交替堆叠，使跨位置交互得到的特征能够被非线性重组，再影响下一层的读取。
+
+残差流保持形状 $[B,T,d]$，成为各子层共同读写的表示空间。注意力的输出投影和前馈网络的下投影都必须回到维数 $d$，才能与输入逐元素相加。残差连接既不是通道拼接，也不是将不同层的特征简单平均。
+
+\begin{center}
+\begin{tabularx}{\linewidth}{lX}
+\toprule 符号 & 含义与形状\\\midrule
+$B,S,T$ & 批大小、源序列长度、目标序列长度。\\
+$d,h,d_h$ & 隐藏维数、注意力头数、单头维数；标准等宽结构满足 $d=hd_h$。\\
+$f$ & 前馈网络中间维数，不必固定为 $4d$。\\
+$N_e,N_d$ & 编码器层数、解码器层数。\\
+$X,C$ & 目标状态 $[B,T,d]$、源端记忆 $[B,S,d]$。\\
+$V_{\mathrm{vocab}}$ & 输出词表大小，与注意力值矩阵 $V$ 区分。\\
+$\gamma,\beta$ & 归一化增益与偏置，均为 $d$ 维向量。\\
+$J_F$ & 将张量展平后，函数 $F$ 相对于输入的雅可比。\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{bookassumptions}[结构推导的共同假设]
+所有子层在有效位置保持隐藏维数；标准多头结构满足 $d=hd_h$；注意力每个有效查询至少有一个可见键；LayerNorm 与 RMSNorm 沿特征轴计算，除显式手算例外均使用 $\epsilon>0$。掩码与输入位置均视为给定的非训练状态。
+\end{bookassumptions}
+
+矩阵公式使用行向量约定，即 $XW$；求导时为方便讨论，将单个位置视为列向量，雅可比按“输出分量对输入分量”排列。二者只是记号选择，参数存储布局必须在实现中对应。除明确说明外，结构公式省略 Dropout，其影响将在训练部分单独讨论。
+
+\subsection{注意力子层的接口}
+令查询侧输入为 $X_q\in\Real^{T\times d}$，键值侧输入为 $X_k\in\Real^{S\times d}$。第 $r$ 个头计算
+\begin{align}
+ Q_r&=X_qW_{Q,r},&K_r&=X_kW_{K,r},&V_r&=X_kW_{V,r},\\
+ A_r&=\softmax(\frac{Q_rK_r^{\mathsf T}}{\sqrt{d_h}}+M),&&
+ O_r=A_rV_r.
+\end{align}
+其中三个投影矩阵为 $d\times d_h$，$M$ 为 $T\times S$ 加性掩码，Softmax 沿键轴归一化。拼接各头再乘 $W_O\in\Real^{d\times d}$，得到 $T\times d$ 输出。自注意力令两侧输入相同；交叉注意力则允许两侧来自不同网络、具有不同长度。
+
+“自注意力中 $Q=K=V$”通常只是对接口输入来源的简写，投影后的三个矩阵一般并不相等。三个投影可以打包为一次矩阵乘法，但仍具有独立参数区间，并未发生权重共享。交叉注意力的查询与键值来自不同张量，不能用一个输入无条件完成全部三组投影。
+
+\section{前馈网络、激活及门控}
+
+\subsection{两层前馈网络的非线性作用}
+\term{逐位置前馈网络}{Feed-Forward Network}{FFN}定义为
+\begin{equation}\label{eq:rev-tr-ffn}
+ F(X)=\phi(XW_1+b_1)W_2+b_2,
+ \quad W_1\in\Real^{d\times f},\quad W_2\in\Real^{f\times d}.
+\end{equation}
+$b_1\in\Real^f,b_2\in\Real^d$ 按位置广播，张量路径为 $[B,T,d]\to[B,T,f]\to[B,T,d]$。隐藏宽度 $f$ 控制可用中间特征数量；它是结构超参数，不由注意力头数决定。
+
+如果去掉激活函数，两个仿射变换可以合成一个仿射变换：
+\begin{equation}
+ (XW_1+b_1)W_2+b_2=X(W_1W_2)+(b_1W_2+b_2).
+\end{equation}
+因此仅增加中间宽度并不能提供同样的非线性表达能力。激活使不同输入采用不同的有效特征组合。例如 ReLU 把负预激活置零，其局部雅可比相当于在两个投影之间插入与输入有关的对角选择矩阵。
+
+把无偏置 FFN 写为逐中间特征的和，可得到
+\begin{equation}
+ F(x)=\sum_{j=1}^{f}\phi(xw_{1,j})w_{2,j}^{\mathsf T},
+\end{equation}
+$w_{1,j}$ 为上投影第 $j$ 列，$w_{2,j}^{\mathsf T}$ 为下投影第 $j$ 行。上投影检测输入方向，下投影组合输出方向，激活控制该项的系数。这是一种代数解释，不能由此把每个隐藏单元强行命名为某一事实或知识条目。
+
+\subsection{ReLU 及 GELU}
+原始 Transformer 使用\term{整流线性单元}{Rectified Linear Unit}{ReLU} $\operatorname{ReLU}(u)=\max(0,u)$\cite{vaswani2017attention}。其正半轴导数为一，负半轴导数为零，零点不可微，实现需采用约定的次梯度。ReLU 的输出非负，但经过下投影与残差相加后，最终表示仍可具有任意符号。
+
+\term{高斯误差线性单元}{Gaussian Error Linear Unit}{GELU}使用标准正态分布函数 $\Phi$\cite{hendrycks2016gelu}：
+\begin{equation}
+ \operatorname{GELU}(u)=u\Phi(u),\qquad
+ \Phi(u)=\int_{-\infty}^{u}\frac{e^{-\frac{t^2}{2}}}{\sqrt{2\pi}}\dif t.
+\end{equation}
+其导数由乘积规则得到
+\begin{equation}
+ \operatorname{GELU}'(u)=\Phi(u)+u\frac{e^{-\frac{u^2}{2}}}{\sqrt{2\pi}}.
+\end{equation}
+与 ReLU 在负区间直接截断不同，GELU 对负输入仍可能输出较小负值。例如 $u=-1$ 时输出约为 $-0.1587$，$u=1$ 时约为 $0.8413$，零点导数为 $0.5$。这描述了平滑变换的形状，并不证明采用 GELU 的模型在所有任务上都优于 ReLU。
+
+一种常用近似为
+\begin{equation}
+ \operatorname{GELU}(u)\approx\frac u2
+ \left[1+\tanh\left(\sqrt{\frac2\pi}(u+0.044715u^3)\right)\right].
+\end{equation}
+精确形式与近似形式并非逐位等价。迁移检查点或核对数值时，需要匹配所采用的定义，而不能仅检查配置中是否出现“GELU”这一名称。
+
+\subsection{GLU、GEGLU 及 SwiGLU}
+\term{门控线性单元}{Gated Linear Unit}{GLU}将两条投影分支逐元素相乘。省略偏置时，可以统一写为
+\begin{equation}\label{eq:rev-tr-glu}
+ F_{\mathrm{gate}}(X)=[g(XW_g)\odot(XW_u)]W_d,
+ \quad W_g,W_u\in\Real^{d\times f},\quad W_d\in\Real^{f\times d}.
+\end{equation}
+经典 GLU 的门函数为 Sigmoid；\term{高斯误差线性门控单元}{GELU-Gated Linear Unit}{GEGLU}使用 GELU；\term{Swish门控线性单元}{Swish-Gated Linear Unit}{SwiGLU}采用 Swish 门，本文取其参数为一，即\term{Sigmoid线性单元}{Sigmoid Linear Unit}{SiLU}，写为 $\operatorname{SiLU}(u)=u\sigma(u)$，其中 $\sigma(u)=\frac{1}{1+e^{-u}}$\cite{shazeer2020glu}。门控分支与内容分支都由当前输入决定，最后仍通过下投影回到残差宽度。
+
+\begin{center}
+\includegraphics[width=.9\linewidth]{\subfix{../../figures/theory/revision-ch08-gated-ffn.pdf}}
+\captionof{figure}{两层 FFN 与门控 FFN。门控结构新增输入投影，并通过逐元素乘法形成输入相关的交互。}\label{fig:rev-tr-ffn}
+\end{center}
+
+图\ref{fig:rev-tr-ffn}中的两条分支在同一中间维数上对齐。对单个中间分量，若 $a=xw_g,b=xw_u$，输出乘积为 $g(a)b$，其微分为
+\begin{equation}
+ \dif[g(a)b]=b\,g'(a)\dif a+g(a)\dif b.
+\end{equation}
+这表明两条分支相互调制梯度。Sigmoid 门取值在零与一之间，而 SiLU 门可以为负且没有有限正上界，因而 SwiGLU 的“门”不能简单解释为开启概率，也不会自动形成稀疏专家路由。
+
+无偏置两层 FFN 的参数量为 $2df$，同宽门控 FFN 为 $3df$。公平比较时应区分保持中间维数与保持参数预算：若原 FFN 宽度为 $4d$，等参数门控宽度约为 $\frac{8d}{3}$，因为 $3d(\frac{8d}{3})=2d(4d)$。实际维数还可能为硬件对齐取整。门控 FFN 不能仅靠更换式\eqref{eq:rev-tr-ffn}中的激活名称实现，因为其线性投影数量已经改变。
+
+\section{残差连接及梯度传播}
+
+\subsection{低秩增量更新}
+将任一保持形状的子层写为 $F$，残差更新为
+\begin{equation}
+ x_{\ell+1}=x_\ell+F_\ell(x_\ell).
+\end{equation}
+当 $F_\ell$ 接近零时，该层接近恒等映射。网络不必让一个全新的复合变换从随机初始化中学习如何复制所有输入信息，而可以围绕已有表示学习修正。
+
+对输入求导得到
+\begin{equation}
+ J_\ell=I+J_{F_\ell},\qquad
+ \frac{\partial\mathcal L}{\partial x_\ell}
+ =(I+J_{F_\ell})^{\mathsf T}
+ \frac{\partial\mathcal L}{\partial x_{\ell+1}}.
+\end{equation}
+上游梯度既直接传回，也经过子层雅可比传回。堆叠多层后，端到端雅可比是这些矩阵的有序乘积，不能把矩阵乘积随意改写成标量乘积，也不能忽略各层的输入依赖。
+
+\subsection{恒等路径的稳定性边界}
+即使每层都有 $I$ 项，梯度仍可能放大或衰减。一维构造中，若 $F_\ell(x)=ax$，则 $L$ 层导数为 $(1+a)^L$；$a=0.1$ 时随深度增长，$a=-0.1$ 时随深度衰减，$a=-1$ 时甚至直接为零。残差提供可用路径，参数、尺度、归一化和优化过程共同决定实际稳定性。
+
+残差流方差也不必固定。若输入与增量近似不相关，则相加后的方差约为两者方差之和；若相关，还包含协方差项。因此深层网络常配合归一化、初始化或残差缩放。采用 $x_{\ell+1}=x_\ell+\alpha_\ell F_\ell(x_\ell)$ 会把雅可比改为 $I+\alpha_\ell J_{F_\ell}$，缩放影响前向和反向，不能当作对网络函数无影响的实现优化。
+
+\section{LayerNorm 及 RMSNorm}
+
+\subsection{LayerNorm 的统计轴}
+\term{层归一化}{Layer Normalization}{LayerNorm}按一个位置的特征维计算统计量\cite{ba2016layernorm}。对 $x\in\Real^d$，定义
+\begin{align}
+ \mu&=\frac1d\sum_{i=1}^{d}x_i,&
+ c&=x-\mu\mathbf1,&
+ s&=\sqrt{\frac1d c^{\mathsf T}c+\epsilon},\\
+ \widehat x&=\frac cs,&
+ \operatorname{LN}(x)&=\gamma\odot\widehat x+\beta.&&
+\end{align}
+$\epsilon>0$ 防止零方差造成除零，$\gamma,\beta\in\Real^d$ 是可训练向量。这里除以 $d$，不是用于估计总体方差的无偏修正 $d-1$。归一化目标是变换当前向量，不是进行无偏统计估计。
+
+LayerNorm 不在批轴或时间轴聚合，因此批大小和其他样本不会直接改变当前位置的统计量。但此前注意力若错误读取填充位置，污染已经进入当前向量，LayerNorm 并不能消除这种信息泄漏。它也不同于依赖训练阶段移动统计量的典型 BatchNorm。
+
+\subsection{不变性及其边界}
+对整体平移 $x+a\mathbf1$，中心化结果不变，所以 LayerNorm 精确消除该方向。忽略 $\epsilon$ 且方差非零时，正比例缩放也被消除；有非零 $\epsilon$ 时只在其相对方差足够小时近似成立。负比例缩放会改变中心化向量的符号，不能称为相同输出。
+
+以 $x=(1,3)$ 为例，在 $\gamma=(1,1),\beta=(0,0)$ 下，均值为二，方差为一，输出为 $\frac{-1,1}{\sqrt{1+\epsilon}}$。$x'=(11,13)$ 的输出相同。加上可学习仿射变换后，输出未必仍为零均值或单位方差；$\gamma$ 的各分量不同，$\beta$ 也可以引入偏移。
+
+\subsection{LayerNorm 雅可比推导}
+令中心化矩阵 $P=I-\frac{\mathbf1\mathbf1^{\mathsf T}}{d}$，则 $c=Px$、$P^{\mathsf T}=P$、$Pc=c$。有
+\begin{equation}
+ \dif c=P\dif x,\qquad
+ \dif s=\frac{c^{\mathsf T}\dif x}{ds}.
+\end{equation}
+对 $\widehat x=\frac{c}{s}$ 应用商法则，得到
+\begin{equation}
+ \dif\widehat x=
+ \left(\frac Ps-\frac{cc^{\mathsf T}}{ds^3}\right)\dif x,
+ \qquad
+ J_{\mathrm{LN}}=\operatorname{diag}(\gamma)
+ \left(\frac Ps-\frac{cc^{\mathsf T}}{ds^3}\right).
+\end{equation}
+这不是一个简单的对角缩放：均值和尺度计算使同一位置的各特征相互耦合。设输出上游梯度为 $g$，令 $h=\gamma\odot g$，则输入梯度也可写为
+\begin{equation}\label{eq:rev-tr-lnback}
+ \nabla_x\mathcal L=\frac1s
+ \left[h-\overline h\mathbf1-\widehat x\,
+ \overline{h\odot\widehat x}\right],
+ \quad \overline h=\frac1d\sum_i h_i.
+\end{equation}
+仿射参数梯度分别为 $g\odot\widehat x$ 和 $g$，训练时再对批及位置求和。式\eqref{eq:rev-tr-lnback}说明某一特征上的损失会通过统计量影响其他特征，因此不能把均值与方差当作不参与求导的常数。
+
+\subsection{RMSNorm 的尺度归一化}
+\term{均方根归一化}{Root Mean Square Normalization}{RMSNorm}保留均值，仅用均方根缩放\cite{zhang2019rmsnorm}：
+\begin{equation}
+ r=\sqrt{\frac1d x^{\mathsf T}x+\epsilon},\qquad
+ \operatorname{RMSNorm}(x)=\gamma\odot\frac xr.
+\end{equation}
+这里采用无偏置版本，参数量为 $d$；LayerNorm 的增益与偏置共为 $2d$。RMSNorm 不具有整体平移不变性。对 $(1,3)$，其输出为 $\frac{1,3}{\sqrt{5+\epsilon}}$，与 LayerNorm 的 $\frac{-1,1}{\sqrt{1+\epsilon}}$ 明显不同。
+
+相同的微分方法给出
+\begin{equation}
+ J_{\mathrm{RMS}}=\operatorname{diag}(\gamma)
+ \left(\frac Ir-\frac{xx^{\mathsf T}}{dr^3}\right).
+\end{equation}
+LayerNorm 多出中心化投影 $P$，RMSNorm 则保留均值方向。二者都将尺度变换与梯度传播联系起来，但不存在由这两条公式就能推导出的“RMSNorm 必然更准确”结论。计算代价也应区分算子开销与整网开销，不能把某项归一化的局部加速直接当作模型吞吐收益。
+
+\section{Pre-LN 及 Post-LN 的结构差异}
+
+\subsection{两种子层的定义}
+对一个注意力或 FFN 子层 $F$，\term{后置层归一化}{Post-Layer Normalization}{Post-LN}将归一化放在残差相加之后；\term{前置层归一化}{Pre-Layer Normalization}{Pre-LN}将其放在子层输入端：
+\begin{align}
+ y_{\mathrm{post}}&=\operatorname{LN}(x+F(x)),\\
+ y_{\mathrm{pre}}&=x+F(\operatorname{LN}(x)).
+\end{align}
+同样的 $F$ 和同样的归一化参数通常产生不同结果。Post-LN 的残差分支最终也经过归一化，Pre-LN 的主残差流则绕过本子层归一化。因此，“Add \& Norm”应展开为具体运算顺序，不能作为一个不区分位置的方框。
+
+\begin{center}
+\includegraphics[width=.9\linewidth]{\subfix{../../figures/theory/revision-ch08-norm-paths.pdf}}
+\captionof{figure}{归一化位置改变前向函数和反向路径。Pre-LN 的恒等项绕过本子层归一化，末端归一化仍影响最终损失。}\label{fig:rev-tr-norm}
+\end{center}
+
+沿图\ref{fig:rev-tr-norm}的路径应用链式法则，二者雅可比分别为
+\begin{align}
+ J_{\mathrm{post}}&=J_{\mathrm{LN}}(x+F(x))[I+J_F(x)],\\
+ J_{\mathrm{pre}}&=I+J_F(\operatorname{LN}(x))J_{\mathrm{LN}}(x).
+\end{align}
+Pre-LN 有显式不经过本子层归一化的恒等项；Post-LN 的两条局部路径都需乘归一化雅可比。关于初始化附近梯度的研究说明，归一化位置会改变深层训练行为\cite{xiong2020layernorm}。但该结构分析并没有消除学习率、初始化、深度和数据分布的影响。
+
+\begin{bookinsight}[归一化位置不能作为等价替换]
+Pre-LN 的局部雅可比保留显式恒等项，Post-LN 的全部局部路径经过归一化。两者具有不同函数与优化性质；改变顺序后必须重新核对训练配置和权重语义，而不能仅比较张量形状。
+\end{bookinsight}
+
+\subsection{堆叠末端及配置一致性}
+典型 Pre-LN 堆叠在最后添加一次归一化，再进入输出头，以控制主残差流到预测层的尺度。末端归一化应作为完整模型的一部分记录，不能因为每层已有归一化就省略。其雅可比仍处于损失到主干的路径中，因此不能说 Pre-LN 的全部梯度均不受归一化影响。
+
+本章将原论文配置记为“Post-LN、LayerNorm、ReLU”，将一个便于比较的变体记为“Pre-LN、LayerNorm、GELU、末端 LayerNorm”。RMSNorm 与 SwiGLU 是另外两项独立设计选择，不由 Pre-LN 自动推出。逐项改变配置才能判断差异来源；一次同时替换三项设置后观察到损失变化，不能全部归因于其中一项。
+
+\section{三类模块结构及四种可见性}
+
+\subsection{编码器及因果解码器}
+\term{仅编码器}{Encoder-only}{}结构堆叠自注意力和 FFN，通常允许有效位置双向读取，输出上下文表示，之后连接分类、标注或检索任务头。\term{仅解码器}{Decoder-only}{}结构通常堆叠因果自注意力和 FFN，再预测下一词元。它不是把原始解码器原封不动保留，因为通常已经删除交叉注意力子层。
+
+模块组成与可见性是两个维度。一个堆叠是否含交叉注意力属于模块问题；某个位置是否能读取另一个位置属于掩码问题。可通过不同掩码在相似模块上训练不同目标，不能仅凭“Decoder”名称判断全部信息路径。
+
+\subsection{编码器—解码器的数据流}
+\term{编码器—解码器}{Encoder--Decoder}{}先将源输入 $x_{1:S}$ 编码为记忆 $C\in\Real^{B\times S\times d}$；解码器根据右移后的目标前缀查询这份记忆，输出 $[B,T,d]$ 表示。交叉注意力的查询来自目标侧，键和值来自源侧，权重形状为 $[B,h,T,S]$。
+
+\begin{figure}[!tbp]
+\centering
+\includegraphics[width=.94\linewidth]{\subfix{../../figures/theory/revision-ch08-architecture.pdf}}
+\caption{原始 Transformer 的编码器—解码器架构（Post-LN）。主数据流自下而上；灰色旁路显式表示残差连接，加法后执行 LayerNorm。蓝色跨列箭头将最终源记忆送入每个解码器层。依据原始结构绘制\cite{vaswani2017attention}。}\label{fig:rev-tr-architecture}
+\end{figure}
+
+阅读图\ref{fig:rev-tr-architecture}时，先沿源侧观察记忆的形成，再沿目标侧观察三个子层如何更新目标表示。交叉注意力的查询来自目标侧，因此输出长度为 $T$；键和值来自源侧，其长度为 $S$。训练时，右移操作使位置 $t$ 的输入不包含待预测的 $y_t$，因果掩码再阻止该位置读取后续目标输入。图中各子层均先残差相加、后归一化。
+
+图中的上下游连接需要由层内公式具体化。以原始 Post-LN 顺序定义编码器第 $\ell$ 层，且各归一化参数独立：
+\begin{align}
+ U_\ell&=\operatorname{LN}_{\ell,1}
+ [C_{\ell-1}+\operatorname{MHA}_{e,\ell}(C_{\ell-1},C_{\ell-1})],\\
+ C_\ell&=\operatorname{LN}_{\ell,2}[U_\ell+F_{e,\ell}(U_\ell)].
+\end{align}
+这里 MHA 的两个输入分别表示查询侧与键值侧。源嵌入加位置表示得到 $C_0$，最终 $C=C_{N_e}$。不同层通常具有独立参数；“堆叠相同结构”不等于重复使用同一组权重。
+
+对应解码器层包含三个子层：
+\begin{align}
+ U_\ell&=\operatorname{LN}_{\ell,1}
+ [X_{\ell-1}+\operatorname{MHA}_{c,\ell}(X_{\ell-1},X_{\ell-1})],\\
+ Z_\ell&=\operatorname{LN}_{\ell,2}
+ [U_\ell+\operatorname{MHA}_{x,\ell}(U_\ell,C)],\\
+ X_\ell&=\operatorname{LN}_{\ell,3}[Z_\ell+F_{d,\ell}(Z_\ell)].
+\end{align}
+下标 $c$ 表示目标侧因果自注意力，$x$ 表示交叉注意力。每个目标层使用同一份最终源记忆，但各层的交叉注意力投影参数独立。源序列不随目标生成增长，因此编码器可以在生成前运行一次。
+
+Pre-LN 解码器则可写为
+\begin{align}
+ U_\ell&=X_{\ell-1}+\operatorname{MHA}_{c,\ell}
+ (\operatorname{LN}_{\ell,1}(X_{\ell-1}),\operatorname{LN}_{\ell,1}(X_{\ell-1})),\\
+ Z_\ell&=U_\ell+\operatorname{MHA}_{x,\ell}(\operatorname{LN}_{\ell,2}(U_\ell),C),\\
+ X_\ell&=Z_\ell+F_{d,\ell}(\operatorname{LN}_{\ell,3}(Z_\ell)).
+\end{align}
+这里明确选择只归一化交叉注意力查询侧输入，$C$ 已由源端网络输出；若另一配置还归一化源记忆，应另作定义，不能在实现中无说明地增加运算。
+
+\subsection{编码器、因果及前缀掩码对照}
+令 $A_{ij}=1$ 表示位置 $i$ 允许读取位置 $j$，并暂时不含填充。对长度四的序列，双向、因果和前两位置为条件前缀的掩码分别为
+\begin{equation}
+ A_{\mathrm{bi}}=\begin{bmatrix}1&1&1&1\\1&1&1&1\\1&1&1&1\\1&1&1&1\end{bmatrix},\quad
+ A_{\mathrm{causal}}=\begin{bmatrix}1&0&0&0\\1&1&0&0\\1&1&1&0\\1&1&1&1\end{bmatrix},\quad
+ A_{\mathrm{prefix}}=\begin{bmatrix}1&1&0&0\\1&1&0&0\\1&1&1&0\\1&1&1&1\end{bmatrix}.
+\end{equation}
+\term{前缀解码器}{Prefix Decoder}{}的条件部分可双向交互，生成部分读取全部前缀及生成历史。设前缀长度为 $P$，其规则为
+\begin{equation}
+ A_{ij}=\mathbf1[(i\le P\land j\le P)\lor(i>P\land j\le i)].
+\end{equation}
+训练若把前缀内部各位置也按普通下一词元目标评分，可能发生泄漏，因为前缀状态可读取前缀未来；应按实际目标选择监督位置。前缀双向条件化不等于拥有独立编码器和交叉注意力，两者的信息变换与参数结构仍不同。
+
+第四种情况是交叉注意力，其矩阵为 $T\times S$，一般允许每个目标查询读取全部有效源位置。它不在源轴应用目标侧因果三角形。填充、文档隔离或流式源输入可以进一步限制各类掩码，但应在任务定义中明确。
+
+\subsection{多层因果性定理}
+如果初始位置 $i$ 的状态只依赖输入 $x_{\le i}$，且每层位置 $i$ 只读取前层 $j\le i$ 的状态，那么下一层位置 $i$ 也只依赖 $x_{\le i}$。逐位置 FFN、残差和特征轴归一化都不会引入其他时间位置，因此归纳可知任意层均满足因果性。
+
+编码器—解码器中，同样的结论是目标位置仅依赖源输入及真实目标前缀，而非未来目标。这个证明的前提包括正确右移：若把当前位置真实目标直接作为同位置输入，即使使用下三角掩码，也已在初始表示中泄漏答案。所谓因果注意力指生成顺序上的信息约束，并非统计学中的因果识别。\footnote{改变未来输入检验早期输出，是检验特定前向路径的信息隔离；它既不证明模型理解了因果关系，也不穷尽所有数据泄漏来源。}
+
+\section{张量路径及参数核算}
+
+\subsection{单层形状表}
+标准等宽多头注意力要求 $d=hd_h$。以下以目标自注意力和普通两层 FFN 为例，偏置按末轴广播。
+\begin{center}
+\begin{tabularx}{\linewidth}{lXX}
+\toprule 运算 & 输入或参数 & 输出\\\midrule
+QKV 投影 & $[B,T,d]$，三个 $d\times d$ 矩阵 & 三个 $[B,T,d]$\\
+拆头 & $d=hd_h$ & 三个 $[B,h,T,d_h]$\\
+缩放点积 & $\frac{QK^{\mathsf T}}{\sqrt{d_h}}$ & $[B,h,T,T]$\\
+归一化与读取 & 掩码后 Softmax，再乘 $V$ & $[B,h,T,d_h]$\\
+拼头与输出投影 & 拼接末轴，乘 $d\times d$ & $[B,T,d]$\\
+残差与归一化 & 两条 $[B,T,d]$ 支路 & $[B,T,d]$\\
+FFN 上投影与激活 & $d\times f$ & $[B,T,f]$\\
+FFN 下投影 & $f\times d$ & $[B,T,d]$\\
+词表输出头 & $d\times V_{\mathrm{vocab}}$ & $[B,T,V_{\mathrm{vocab}}]$\\
+\bottomrule
+\end{tabularx}
+\end{center}
+交叉注意力将键值长度换为 $S$，分数形状为 $[B,h,T,S]$，输出仍为目标侧 $[B,T,d]$。其输出长度由查询数决定，不由源长度决定。
+
+\subsection{参数量核算}
+带偏置的标准 MHA 具有四个 $d\times d$ 投影及四个 $d$ 维偏置，共 $4d^2+4d$ 个参数；带偏置普通 FFN 为 $2df+f+d$；两个 LayerNorm 共为 $4d$。因此，编码器层或仅解码器层的参数量为
+\begin{equation}
+ P_{\mathrm{layer}}=4d^2+2df+f+9d.
+\end{equation}
+含交叉注意力的解码器层有两组 MHA、一个 FFN 和三个 LayerNorm，总计
+\begin{equation}
+ P_{\mathrm{encdec\ layer}}=8d^2+2df+f+15d.
+\end{equation}
+两式不含嵌入、位置参数、末端归一化及输出头，也不适用于直接删偏置、共享键值头或门控 FFN 的配置。
+
+例如 $d=512,f=2048$ 时，前者为 $\num{3152384}$，后者为 $\num{4204032}$。六个编码器层与六个解码器层合计 $\num{44138496}$ 个参数，但这不是模型总参数量。若使用无偏置 SwiGLU 和两次无偏置 RMSNorm，仅解码器层对应为 $4d^2+3df+2d$，比较时必须同时说明投影是否含偏置。
+
+\subsection{权重共享的前提及梯度}
+若目标嵌入为 $E\in\Real^{V_{\mathrm{vocab}}\times d}$，输出头可以共享其转置：
+\begin{equation}
+ z_t=h_tE^{\mathsf T}+b_{\mathrm{out}}.
+\end{equation}
+独立输出矩阵被省去，减少 $V_{\mathrm{vocab}}d$ 个参数。共享矩阵收到输入查表和输出投影两条路径的梯度之和。输出路径的 Softmax 通常使许多词表行得到梯度，因而即使某行在嵌入查表中被设为不更新，也不能推断它在共享输出路径中绝对不变。
+
+源嵌入、目标嵌入和输出头是否能够进一步共享，需要兼容的词表编号及维数。仅仅词表大小相同不够，同一行必须指向同一词元。共享降低参数自由度，并非保证输入表示与输出语义天然一致；这一约束是否有益仍由训练目标和数据决定。
+
+\subsection{计算及存储规模}
+标准自注意力投影规模为 $O(BTd^2)$，两次注意力矩阵乘法为 $O(BT^2d)$，普通 FFN 为 $O(BTdf)$。显式保存逐头权重需要 $O(BhT^2)$ 元素。交叉注意力包含 $O(BTSd)$ 的读取计算，并有源侧和目标侧投影。
+
+保持总宽度 $d$ 不变而增加头数，标准投影总参数量并不会线性增加；每头维数相应缩小。然而显式注意力矩阵含头轴，存储开销可能改变。高效内核可以避免完整物化权重矩阵，这改变访存和执行路径，不能据此说密集注意力在数学上已经不包含位置对之间的交互。
+
+\phantomsection\label{q:ch8:example:01}
+以下构造一个两位置、单头、隐藏维数为二的因果 Pre-LN 层，使用普通 ReLU FFN。它是为了便于逐步核对的具体数学网络，不代表推荐训练配置。输入已包含嵌入和位置表示：
+\begin{equation}
+ X=\begin{bmatrix}1&3\\4&2\end{bmatrix},\qquad
+ W_Q=W_K=W_V=W_O=I_2.
+\end{equation}
+所有偏置为零，所有归一化增益为一，省略 Dropout。本例各次方差非零，为获得简洁精确值取 $\epsilon=0$；实际实现应保持正 $\epsilon$ 并相应计算数值。
+
+前馈矩阵取
+\begin{equation}
+ W_1=\begin{bmatrix}1&0&1\\0&1&-1\end{bmatrix},\qquad
+ W_2=\begin{bmatrix}1&0\\0&1\\1&-1\end{bmatrix}.
+\end{equation}
+层后再做一次最终 LayerNorm，并采用三词元输出头
+\begin{equation}
+ W_{\mathrm{out}}=\begin{bmatrix}1&0&-1\\0&1&1\end{bmatrix},
+\end{equation}
+三列依次对应词元 $A,B,C$。本例使用独立输出矩阵，不进行权重共享。
+
+逐行归一化得到
+\begin{equation}
+ \widehat X=\operatorname{LN}(X)=\begin{bmatrix}-1&1\\1&-1\end{bmatrix}.
+\end{equation}
+因投影为恒等矩阵，$Q=K=V=\widehat X$。缩放分数与因果权重为
+\begin{equation}
+ S=\frac{QK^{\mathsf T}}{\sqrt2}
+ =\begin{bmatrix}\sqrt2&-\sqrt2\\-\sqrt2&\sqrt2\end{bmatrix},\qquad
+ A=\begin{bmatrix}1&0\\1-p&p\end{bmatrix},
+ \quad p=\frac{e^{\sqrt2}}{e^{\sqrt2}+e^{-\sqrt2}}.
+\end{equation}
+$p\approx0.944193$。第一行只允许一个键，故权重严格为一；第二行比较两个键。记 $c=2p-1\approx0.888386$，则
+\begin{equation}
+ O=AV=\begin{bmatrix}-1&1\\c&-c\end{bmatrix},\qquad
+ U=X+O=\begin{bmatrix}0&4\\4+c&2-c\end{bmatrix}.
+\end{equation}
+注意力改变了表示，输出维数仍为二，因而可以与输入相加。
+
+$U$ 两行的特征大小关系没有逆转，因此
+\begin{equation}
+ \operatorname{LN}(U)=\begin{bmatrix}-1&1\\1&-1\end{bmatrix}.
+\end{equation}
+进入 FFN 后，
+\begin{align}
+ \operatorname{LN}(U)W_1&=\begin{bmatrix}-1&1&-2\\1&-1&2\end{bmatrix},\\
+ \operatorname{ReLU}(\operatorname{LN}(U)W_1)&=\begin{bmatrix}0&1&0\\1&0&2\end{bmatrix},\\
+ F(\operatorname{LN}(U))&=\begin{bmatrix}0&1\\3&-2\end{bmatrix}.
+\end{align}
+第二条残差得到
+\begin{equation}
+ H=U+F(\operatorname{LN}(U))
+ =\begin{bmatrix}0&5\\7+c&-c\end{bmatrix}.
+\end{equation}
+此处 FFN 的中间维数为三，输出重新回到二。若遗漏下投影，则无法进行这次残差相加。
+
+末端归一化后，$\overline H=[(-1,1);(1,-1)]$。于是词表分数为
+\begin{equation}
+ Z=\overline H W_{\mathrm{out}}=
+ \begin{bmatrix}-1&1&2\\1&-1&-2\end{bmatrix}.
+\end{equation}
+逐行 Softmax 得到近似概率
+\begin{equation}
+ P=\begin{bmatrix}
+ 0.035119&0.259496&0.705385\\
+ 0.843795&0.114195&0.042010
+ \end{bmatrix}.
+\end{equation}
+若两个监督目标分别为 $B,A$，平均负对数似然为
+\begin{equation}
+ \mathcal L=-\frac12[\log(0.259496)+\log(0.843795)]\approx0.759429.
+\end{equation}
+至此，输入、归一化、注意力、两条残差、FFN、末端归一化、词表投影和损失已经形成完整计算链。
+
+二维且 $\epsilon=0$ 的 LayerNorm 把任意两个不相等分量归一化为相同或相反的符号模式，这使本例中若干归一化结果重复。它是特意选择低维数带来的性质，不代表高维 Transformer 会将注意力信息普遍抹除。改变归一化位置、增加维数或使用正 $\epsilon$，数值路径都会相应改变。\footnote{二维例题适合检验计算顺序，不适合据此评价归一化的表达能力或训练效果。结构示例与效果证据必须区分。}
+
+\section{训练及推理接口}
+
+\subsection{分类概率模型}
+Transformer 特征主干接收连续表示并返回连续表示。完整语言模型还需要分词器、嵌入、位置机制、输出词表层、目标函数与生成循环。仅得到 $[B,T,d]$ 输出不意味着已经定义了词元概率，更不意味着已经实现训练和推理。
+
+训练时，源文本 $x$ 和真实目标 $y$ 定义条件似然
+\begin{equation}
+ p_\theta(y\mid x)=\prod_{t=1}^{T}p_\theta(y_t\mid y_{<t},x).
+\end{equation}
+\term{教师强制}{Teacher Forcing}{}使用真实目标前缀，右移后的目标输入与因果掩码使各位置可并行计算。目标为 $(A,B,\mathrm{EOS})$ 时，输入为 $(\mathrm{BOS},A,B)$，同位置输出分别监督三个目标。填充标签应排除，提示或条件前缀是否监督则由目标定义决定。
+
+生成时用模型已选词元替代真实前缀。编码器记忆可复用，解码器逐步追加目标词元，并在 EOS 或长度上限处终止。缓存可以避免重复计算历史键值，但不会把自回归决策依赖变成完全并行。缓存正确性要求位置编号、掩码、精度和参数与完整前向一致。
+
+\begin{bookalgorithm}[教师强制的训练前向]
+\textbf{输入：}源词元、含 EOS 的目标词元、模型参数、目标有效长度。\textbf{输出：}有效目标位置的平均损失。\textbf{状态：}源记忆、各目标层表示及监督位置集合。
+\begin{enumerate}
+\item 对源序列构造填充掩码，计算嵌入和位置表示，经编码器得到源记忆。
+\item 构造相对于目标右移一位的解码器输入：首位置为启动词元，其余位置取前一个真实目标；保持输入与目标逐位置配对。
+\item 构造目标因果掩码、目标填充掩码和交叉注意力源掩码，依次执行全部解码器层。
+\item 经规定的末端归一化及词表投影得到分数，只在选中目标位置累计交叉熵并按有效位置数归一化。
+\item 本次前向在全部目标位置处理完毕时结束；若有效监督数为零，跳过该批或按明确规则报告，而不进行零分母平均。
+\end{enumerate}
+\textbf{不变量：}位置 $t$ 的预测只依赖源输入与 $y_{<t}$；显式右移与库内部的下一词元配对只能采用一套，不能重复移位。
+\end{bookalgorithm}
+
+\begin{bookalgorithm}[条件生成的自回归执行]
+\textbf{输入：}源序列、启动与终止词元、最大生成长度、固定模型和词元选择策略。\textbf{输出：}每条样本的生成词元序列。\textbf{状态：}源记忆、已生成前缀、可选键值缓存、样本终止标志。
+\begin{enumerate}
+\item 关闭训练随机性，编码源序列一次；将目标前缀初始化为启动词元，各样本标为未终止。
+\item 对未终止样本计算当前最后有效目标位置的分布。使用缓存时同步更新位置编号、可见性和当前层键值。
+\item 按规定策略选择下一词元并追加到前缀；生成 EOS 的样本标为终止，后续不再追加普通生成内容。
+\item 若全部样本终止或达到长度上限，返回结果；否则回到步骤二。
+\end{enumerate}
+\textbf{不变量：}缓存内容与当前模型参数及前缀对应；终止样本不再改变其已生成答案。模型前向、词元选择和停止策略分别承担不同职责。
+\end{bookalgorithm}
+
+\subsection{正则化及评价口径}
+训练中的\term{随机失活}{Dropout}{}可以作用于注意力权重、FFN 中间表示或残差增量。按保留概率校正的 Dropout 在期望上保持对应分量的尺度，但一次采样会改变前向输出；注意力权重经过 Dropout 后，单次实现的行和也不必仍为一。进行确定性结构对照时必须关闭随机性，或对齐全部随机状态。
+
+标签平滑将独热目标替换为 $q=(1-\eta)e_y+\eta u$，$u$ 为规定的参考分布。损失为 $-\sum_vq_v\log p_v$，与普通真实标签负对数似然不同。若训练记录平滑损失而验证记录未平滑损失，不能直接将二者差值解释为泛化间隙。
+
+训练集用于参数更新，验证集用于选择检查点和停止时机，测试集用于最终评价。固定小语料中的损失下降或少量正确译文，只能支持有限范围内的优化与行为观察。精确匹配会把合法同义表达判错，字符或词片段指标也不能覆盖全部语义质量；评价指标与划分应在专门评估中明确。注意力热力图可用于定位读取模式，但仍不构成独立的因果归因。
+
+\subsection{结构等价性及制品边界}
+从原理实现迁移到框架时，应先对齐参数，再对齐投影布局、归一化位置、激活定义、偏置、掩码和末端输出层。两个独立随机初始化的网络不具有直接数值可比性。形状相同只是必要条件，前向和反向应在指定精度容差内比较。
+
+布尔掩码的真值方向是接口约定，不能脱离具体接口解释。将“允许读取”矩阵转换为“禁止读取”矩阵时需要取反；加性掩码则直接作用于分数。优化提示也不能替代对实际可见性矩阵的核验。错误提示可能使后端选择不适用的执行路径，故接口封装应显式保存掩码语义。
+
+模型制品还包含非训练参数状态，例如固定位置编码、频率、最大长度及归一化常数。可保存这些状态，也可按固定配置精确重建；只保存可训练权重并不能普遍保证重载一致。现成翻译模型的分词器、特殊词元、位置机制与权重是一组配套对象，不应与另一个原理模型的整数输入混用。
+
+因果性检验可以固定参数并关闭随机性，扰动未来目标，检查更早位置输出是否保持不变；填充隔离检验可改变被屏蔽位置的内容，检查有效输出；归一化检验则应覆盖常量向量和很小方差。这些证据验证数学与接口一致性，不直接证明训练质量、吞吐或生产可用性，后者还需要相应的数据和系统验证。
+
+
+
+
+
+
+\chapterreferences
+\end{document}

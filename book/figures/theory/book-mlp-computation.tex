@@ -1,0 +1,17 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex,amsmath}
+\usetikzlibrary{arrows.meta,positioning}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[lfs picture,node distance=9mm and 10mm]
+\node[storage] (x) {$X$\\$B\times d$};
+\node[compute,right=of x] (z) {$XW_1+b_1$\\$B\times h$};
+\node[compute,right=of z] (a) {$A=\operatorname{ReLU}(Z)$\\$B\times h$};
+\node[compute,right=of a] (u) {$U=AW_2+b_2$\\$B\times C$};
+\node[block,below=of u] (loss) {Softmax 与交叉熵\\标量损失 $\mathcal L$};
+\node[storage,left=of loss] (y) {目标 $Y$\\$B\times C$};
+\draw[->] (x)--(z);\draw[->] (z)--(a);\draw[->] (a)--(u);\draw[->] (u)--(loss);\draw[->] (y)--(loss);
+\draw[->,dashed] (loss.east)--++(8mm,0)|-node[above,pos=.7]{反向：$G=\frac{P-Y}{B}$}(u.north);
+\draw[->,dashed] (u.north)--++(0,12mm)-|node[above,pos=.25]{$GW_2^{\mathsf T}\odot\mathbf1[Z>0]$}(z.north);
+\end{tikzpicture}
+\end{document}

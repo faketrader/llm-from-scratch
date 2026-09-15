@@ -1,0 +1,32 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[lfs picture]
+
+\node[title] (pt) {原论文：Post-Norm};
+\node[storage, below=of pt] (px) {$x$};
+\node[compute, right=of px] (psub) {Sublayer};
+\node[compute, right=of psub] (pdrop) {Dropout};
+\node[interface, right=of pdrop] (padd) {Add};
+\node[compute, right=of padd] (pln) {LayerNorm};
+\node[storage, right=of pln] (py) {$y$};
+\draw[data arrow] (px) -- (psub) -- (pdrop) -- (padd) -- (pln) -- (py);
+\draw[residual] (px.south) -- ++(0,-6mm) -| node[label text, below, near start]{恒等残差} (padd.south);
+\node[group, fit=(pt)(px)(psub)(pdrop)(padd)(pln)(py)] {};
+\node[title, below=25mm of pt] (rt) {现代常用：Pre-Norm};
+\node[storage, below=of rt] (rx) {$x$};
+\node[compute, right=of rx] (rln) {LayerNorm};
+\node[compute, right=of rln] (rsub) {Sublayer};
+\node[compute, right=of rsub] (rdrop) {Dropout};
+\node[interface, right=of rdrop] (radd) {Add};
+\node[storage, right=of radd] (ry) {$y$};
+\draw[data arrow] (rx) -- (rln) -- (rsub) -- (rdrop) -- (radd) -- (ry);
+\draw[residual] (rx.south) -- ++(0,-6mm) -| node[label text, below, near start]{恒等残差} (radd.south);
+\node[compute, below=of ry] (final) {Stack 末尾\\Final LayerNorm};
+\draw[control arrow] (ry) -- (final);
+\node[group, fit=(rt)(rx)(rln)(rsub)(rdrop)(radd)(ry)(final)] {};
+
+\end{tikzpicture}
+\end{document}

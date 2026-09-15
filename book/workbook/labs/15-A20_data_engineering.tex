@@ -1,0 +1,31 @@
+\chapter{训练数据生产}
+\label{lab:A20_data_engineering}
+
+\noindent\textbf{配套文件：}\path{notebook/A20_data_engineering.ipynb}\par
+\noindent\textbf{教材关联：}\bookxrefshort{ch:data-engineering}、\bookxrefshort{ch:pretraining-scaling}、\bookxrefshort{ch:supervised-finetuning}。
+
+\section*{实验目标}
+把来源记录追踪到训练分片，同时控制污染和泄漏。
+
+\section*{准备及定位}
+先阅读本册实验总则，确认Notebook中的依赖与资产单元。原理计算、库接口迁移和真实模型训练可能具有不同资源要求，应分别记录设备、版本及运行范围。
+
+源码定位可从下列函数开始；应结合前置数据与配置单元阅读。
+\begin{itemize}
+\item \texttt{my\_deep\_freeze}
+\item \texttt{my\_required\_text}
+\item \texttt{my\_adapt\_document\_text}
+\end{itemize}
+
+\section*{操作及观察}
+\begin{enumerate}
+\item 对不同源Schema进行规范化路由，将错误记录隔离并保留原因码。
+\item 依次处理规范化、PII、质量判定和去重，比较每一步的保留集合。
+\item 核对稳定划分、来源混合与评测污染规则，检查近重复候选的实际相似度。
+\item 检查tokenizer、packing和sharding中的来源区间覆盖，记录输出清单和内容哈希。
+\end{enumerate}
+
+\section*{结果判读及提交}
+提交转换血缘、拒绝统计、分片清单与污染检查。近似去重候选不等于重复事实；同一来源衍生样本不应跨划分泄漏。
+
+提交时附上所执行单元范围、环境与制品身份、原始结果及失败说明。将未运行项目明确列出，不能用Notebook中已有输出替代本次执行证据。

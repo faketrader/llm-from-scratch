@@ -1,0 +1,26 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[lfs picture]
+
+\node[storage] (req) {已通过部署入口的请求};
+\node[interface, right=of req] (sched) {Token Budget Scheduler};
+\node[compute, right=of sched] (prefill) {Prefill\\\scriptsize prompt tokens};
+\node[storage, below=of prefill] (kv) {KV Block Manager\\\scriptsize paged blocks};
+\node[compute, left=of kv] (decode) {Decode\\\scriptsize one token / step};
+\node[compute, left=of decode] (sample) {Sampler};
+\node[storage, below=of sample] (stream) {Streaming Token};
+\node[storage, above=of prefill] (artifact) {权重 / Adapter / Kernel};
+\draw[data arrow] (req) -- (sched) -- (prefill) -- (kv) -- (decode) -- (sample) -- (stream);
+\draw[control arrow] (artifact) -- (prefill);
+\coordinate (artifactright) at ($(artifact.east)+(10mm,0)$);
+\coordinate (artifactbottom) at ($(decode.south)+(0,-10mm)$);
+\draw[control arrow] (artifact.east) -- (artifactright)
+  -- (artifactright |- artifactbottom) -- (artifactbottom) -- (decode.south);
+\draw[control arrow] (sample.north) |- node[label text, above]{未结束请求回队} (sched.south);
+\node[group, fit=(prefill)(kv)(decode), label={[title]right:模型执行与 KV 生命周期}] {};
+
+\end{tikzpicture}
+\end{document}

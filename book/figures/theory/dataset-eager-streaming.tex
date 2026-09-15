@@ -1,0 +1,24 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[lfs picture]
+
+\node[storage] (files) {远端或本地数据文件};
+\node[decision, right=18mm of files] (mode) {读取模式};
+\node[storage, above right=10mm and 17mm of mode] (arrow) {Arrow 表与索引};
+\node[compute, right=of arrow] (random) {随机访问 / 全局 shuffle\\切片与物化};
+\node[interface, below right=10mm and 17mm of mode] (iter) {\texttt{IterableDataset}};
+\node[compute, right=of iter] (lazy) {惰性 map / filter\\按需组成 batch};
+\node[interface, right=23mm of $(random)!0.5!(lazy)$] (loader) {训练迭代器};
+\draw[data arrow] (files) -- (mode);
+\draw[data arrow] (mode) -- node[label text, above, sloped]{常规加载} (arrow);
+\draw[data arrow] (arrow) -- (random);
+\draw[data arrow] (mode) -- node[label text, below, sloped]{\texttt{streaming=True}} (iter);
+\draw[data arrow] (iter) -- (lazy);
+\draw[data arrow] (random) -- (loader);
+\draw[data arrow] (lazy) -- (loader);
+
+\end{tikzpicture}
+\end{document}

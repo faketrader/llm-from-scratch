@@ -1,0 +1,11 @@
+flowchart LR
+    P["Prompt"] --> G["Policy 生成 G 条 Rollout"]
+    G --> R1["规则 / Verifier Reward"]
+    G --> R2["Reward Model"]
+    G --> R3["安全与格式 Reward"]
+    R1 --> S["加权 Reward"]
+    R2 --> S
+    R3 --> S
+    S --> A["组内标准化 Advantage"]
+    A --> O["Clipped Policy Objective + KL"]
+    O --> U["Policy Update"]

@@ -1,0 +1,109 @@
+\chapter{推理服务}
+\label{lab:60_inference_deployment}
+
+\noindent\textbf{配套文件：}\path{notebook/60_inference_deployment.ipynb}\par
+\noindent\textbf{教材关联：}\bookxrefshort{ch:incremental-decoding-cache}、\bookxrefshort{ch:batching-scheduling}、\bookxrefshort{ch:serving-architecture}。
+
+\section*{实验目标}
+用明确的对象身份和状态转换分析服务可靠性。
+
+\section*{准备及定位}
+先阅读本册实验总则，确认Notebook中的依赖与资产单元。原理计算、库接口迁移和真实模型训练可能具有不同资源要求，应分别记录设备、版本及运行范围。
+
+源码定位可从下列函数开始；应结合前置数据与配置单元阅读。
+\begin{itemize}
+\item \texttt{my\_plan\_replicas}
+\end{itemize}
+
+\section*{操作及观察}
+\begin{enumerate}
+\item 检查不可变制品、配置及请求Schema，记录模型修订身份。
+\item 沿Gateway、Router、Scheduler、Worker逐层追踪请求与资源责任。
+\item 用给定负载计算队列和副本需求，逐项列出容量假设。
+\item 检查取消、背压、故障与回滚路径，区分已接收、已执行和结果未知。
+\end{enumerate}
+
+\section*{结果判读及提交}
+提交制品清单、请求时序、容量推导和恢复判据。配置验证与容量估算不是线上压测，也不能证明服务已经部署。
+
+提交时附上所执行单元范围、环境与制品身份、原始结果及失败说明。将未运行项目明确列出，不能用Notebook中已有输出替代本次执行证据。
+
+
+先固定模型权重、分词器、聊天模板、精度与最大输入输出长度。框架实践以vLLM完成服务链条，再把同一制品迁移到SGLang；TensorRT-LLM作为平台与制品约束的对照\cite{vllm2026framework,sglang2026framework,nvidia2026tensorrtframework}。推理引擎接收完整模型目录；若实验\ref{lab:42_peft}生成的是适配器，应先完成合并和独立验证，或另外核查引擎的动态适配器支持。
+
+命令接口分别按vLLM 0.29.0与SGLang 0.5.19核对。为两个引擎使用独立环境，按各自发行版的加速器安装说明准备软件；不能假定它们与训练环境共享同一PyTorch、CUDA和算子依赖。记录包锁或镜像摘要、驱动、GPU型号和引擎启动参数。模型与数据由实验执行者预先准备，书籍编译不触发下载。
+
+先用单卡可容纳的模型验证请求路径，之后再研究量化与多卡并行。可用显存不仅要容纳权重，还要留出缓存、激活与工作空间；标称上下文长度也不等于既定并发下可以承载的长度。
+
+在vLLM环境中启动本地服务，保留启动日志：
+\begin{verbatim}
+vllm serve /absolute/model-snapshot \
+  --host 127.0.0.1 --port 8000 \
+  --generation-config vllm
+\end{verbatim}
+\texttt{--generation-config vllm}使对照不隐式继承模型目录中的生成默认值；请求仍需显式给出采样与停止条件\cite{vllm2026framework}。先读取\texttt{/v1/models}确认实际服务模型名称，再向\texttt{/v1/chat/completions}发送请求。以下客户端只使用Python标准库；将其保存为实验记录中的\path{request.py}，首次以端口8000运行。
+\begin{verbatim}
+import json
+import sys
+import urllib.request
+
+base = sys.argv[1].rstrip("/")
+opener = urllib.request.build_opener(
+    urllib.request.ProxyHandler({}))
+with opener.open(base + "/v1/models", timeout=30) as r:
+    models = json.load(r)["data"]
+if len(models) != 1:
+    raise ValueError("Select and bind one served model explicitly")
+body = {
+    "model": models[0]["id"],
+    "messages": [{"role": "user", "content": "请简述梯度累积。"}],
+    "temperature": 0,
+    "max_tokens": 128,
+    "stream": False,
+}
+request = urllib.request.Request(
+    base + "/v1/chat/completions",
+    data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+    headers={"Content-Type": "application/json"})
+with opener.open(request, timeout=120) as r:
+    result = json.load(r)
+assert result.get("choices"), result
+print(json.dumps(result, ensure_ascii=False, indent=2))
+\end{verbatim}
+\begin{verbatim}
+python /absolute/run/request.py http://127.0.0.1:8000
+\end{verbatim}
+保存完整响应，检查模型身份、内容、停止原因和词元计数。状态码成功只能证明请求被处理，回答是否正确仍需任务判据。上述非流式客户端不能测量首词元或逐词元延迟；这些指标需要流式事件时间或服务器遥测。对外服务时，将认证、TLS、限流及访问控制接到经过验证的入口，不能直接把本地检查地址替换为公网监听便称为部署完成。
+
+推理模型还要核查“模型支持”和“引擎接口支持”两个条件。先从固定版本的模型卡与引擎请求文档确认推理强度的字段名、允许值、默认值和用量字段，再向测试服务发送一个支持值和一个故意无效的值。保存原始请求、响应和服务日志；只有错误可识别、响应能回显或日志能证明最终生效值时，才把该参数纳入跨引擎对照。OpenAI兼容路径不保证实现OpenAI全部字段，不能看到\texttt{/v1/chat/completions}便假定\texttt{reasoning\_effort}有效。
+
+停止前一引擎并确认显存释放，再在SGLang环境启动相同模型目录：
+\begin{verbatim}
+python -m sglang.launch_server \
+  --model-path /absolute/model-snapshot \
+  --host 127.0.0.1 --port 30000
+python /absolute/run/request.py http://127.0.0.1:30000
+\end{verbatim}
+参数定义与启动路径见相应版本源码和官方请求说明\cite{sglang2026serverargs,sglang2026requests}。客户端读取实际模型名称，避免把端口切换误当作全部迁移工作。比较模板渲染后的输入词元、特殊词元、EOS及有效生成参数；相同消息JSON可能在不同配置下形成不同输入。
+
+对确定性设置仍应声明允许的数值或答案差异。内核、批组成和浮点规约可能改变生成轨迹；不能仅凭\texttt{temperature=0}要求不同引擎逐字相同。若引擎支持所需logprobs，可先比较固定前缀的分数，再用保留测试集评估任务质量。
+
+构造来自实际目标负载的短、中、长输入组，分别准备低共享前缀和高共享前缀两组，固定期望输出长度与停止规则。对于支持推理强度的模型，再按实际支持档位分层；每轮只使用一个档位，并记录请求值与最终生效值。先预热，再逐级增加并发或到达率；使用两者共同支持的接口回放同一请求清单，保存原始事件和错误。只改变一个因素，避免把量化、并行数、推理强度和请求分布同时更换。
+
+\begin{center}
+\begin{tabularx}{\linewidth}{p{29mm}XX}
+\toprule 指标 & 采集位置 & 判读要求\\\midrule
+首词元与逐词元延迟 & 流式客户端或引擎遥测 & 区分排队、预填充与解码；网络事件未必一词元一事件。\\
+端到端延迟与尾延迟 & 请求发送至完成 & 报告分位数、样本量和超时。\\
+有效吞吐 & 固定测量窗口 & 统计满足质量与延迟门槛的请求或输出词元。\\
+缓存与显存 & 引擎与设备指标 & 区分模型、缓存与工作空间，注明冷热条件。\\
+失败比例 & 客户端与服务日志 & 保留超时、取消、资源不足和异常停止。\\
+推理用量 & 响应用量与引擎遥测 & 分开记录内部推理与可见输出；缺少字段时注明不可观测。\\
+\bottomrule
+\end{tabularx}
+\end{center}
+只看成功请求的平均延迟会隐藏丢弃与超时。闭环固定并发和开环固定到达率也有不同的排队含义，应分别说明。比较前缀缓存时，冷启动成本与稳定命中收益分开计量，并核对缓存开启状态和模型身份。
+
+在可控实验服务上取消长请求，观察连接结束后缓存是否回收；发出超出长度限制的请求，核查错误是否可解释；终止一个工作进程，记录检测和恢复时间。故障之后再次验证模型身份、固定探针和容量。对TensorRT-LLM的迁移，另行核对GPU支持、执行后端、模型转换或加载步骤、精度与构建成本，不能把某个后端的要求推广到整个项目。
+
+提交制品哈希、引擎与硬件版本、完整启动配置、固定请求清单、能力探测结果、质量对照、分档负载曲线和故障结果。首次请求、稳定运行与恢复分别标记。框架声明的特性可以作为选型条件，实验结论必须来自本次保存的运行证据。
