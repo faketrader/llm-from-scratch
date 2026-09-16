@@ -1,92 +1,106 @@
 \workbookchapter{上下文学习}
 
-\begin{exerciselist}
-\exerciseitem 用条件概率说明：改变少样本示例与执行一次参数微调有何不同？为什么零样本不代表模型从未学习过该任务？
+\begin{exercises}
+\begin{exercise} 用条件概率说明：改变少样本示例与执行一次参数微调有何不同？为什么零样本不代表模型从未学习过该任务？
 
-\begin{workbookanswers}
+\begin{solution}
 上下文学习在固定$\theta$下改变条件，比较$p_\theta(y\mid x,D_1)$与$p_\theta(y\mid x,D_2)$；微调更新$\theta'=\theta-\eta\nabla_\theta\mathcal L$，之后即使不再提供D也可能改变输出。零样本只说明当前上下文没有任务示例，不排除预训练中已见任务或同源数据。两者均须隔离评测样本。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 为式\tbobject{eq:ch31-selection}设计一个包含相关性、技能覆盖和冗余的具体评分，说明评分可以使用哪些信息、不得使用哪些测试信息。
+\begin{exercise} 为式\tbobject{eq:ch31-selection}设计一个包含相关性、技能覆盖和冗余的具体评分，说明评分可以使用哪些信息、不得使用哪些测试信息。
 
-\begin{workbookanswers}
+\begin{solution}
 可令 $F(S)=\sum_{i\in S}r_i+\lambda\sum_k\min(1,\sum_{i\in S}a_{ik})-\gamma\sum_{i<j\in S}\operatorname{sim}(i,j)$，约束$\sum_{i\in S}l_i\le B_D$。$r_i$来自查询相似度，$a_{ik}$来自预先标注技能，冗余来自示例内容；权重在开发集确定。禁止使用测试答案、测试判定结果或按最终测试分数逐题挑示例，查询本身可作为已允许输入。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 给出两个示例排列，使最后出现的标签不同。设计能够区分顺序效应与示例内容效应的成对实验。
+\begin{exercise} 给出两个示例排列，使最后出现的标签不同。设计能够区分顺序效应与示例内容效应的成对实验。
 
-\begin{workbookanswers}
+\begin{solution}
 选同一对示例$(x_a,A),(x_b,B)$，顺序一为a后b，顺序二为b后a；最后标签分别为B和A。对每个保留问题同时运行两序列，固定模板、词元预算、模型和种子方案，记录配对差；在多组示例对上重复。这样内容集合不变，差异可归于顺序及其位置交互；若同时替换示例，则无法隔离二者。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 对三个标签概率 $(0.5,0.3,0.2)$ 与偏好估计 $(0.6,0.2,0.2)$ 计算上下文校准结果，并解释为何均衡标签未必符合真实任务先验。
+\begin{exercise}\optional 对三个标签概率 $(0.5,0.3,0.2)$ 与偏好估计 $(0.6,0.2,0.2)$ 计算上下文校准结果，并解释为何均衡标签未必符合真实任务先验。
 
-\begin{workbookanswers}
+\begin{solution}
 按逐类相除，未归一化量为 $(\frac{5}{6},\frac{3}{2},1)$，和为$\frac{10}{3}$，故校准后的概率为
 \[
 (\frac{1}{4},\frac{9}{20},\frac{3}{10})=(0.25,0.45,0.30).
 \]
 原最大类变成第二类。除去内容无关偏好依赖其估计有效；真实业务标签可能本就不均衡，强迫均衡会抹掉有用先验，应使用开发数据和校准目标论证。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 构造五条路径，使最大概率路径的答案不同于边缘概率最大的答案，完整列出两种决策。
+\begin{exercise} 构造五条路径，使最大概率路径的答案不同于边缘概率最大的答案，完整列出两种决策。
 
-\begin{workbookanswers}
+\begin{solution}
 令五路径概率为$0.30,0.25,0.20,0.15,0.10$，首条答案A，第二、三、五条答案B，第四条答案C。最大概率路径给A；答案边缘概率为$P(A)=0.30,P(B)=0.55,P(C)=0.15$，故边缘最大给B。概率必须覆盖同一分布并和为1，不能只列未归一化分数冒充路径概率。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 证明独立采样频率估计的均值和方差，并说明温度采样改变了哪个分布。
+\begin{exercise} 证明独立采样频率估计的均值和方差，并说明温度采样改变了哪个分布。
 
-\begin{workbookanswers}
+\begin{solution}
 令$Z_k=\mathbf1\{Y_k=a\}$，独立同分布时$E[Z_k]=p_a$、$\operatorname{Var}Z_k=p_a(1-p_a)$。$\hat p_a=K^{-1}\sum Z_k$因此无偏，方差为$\frac{p_a(1-p_a)}{K}$；相关时另有$2K^{-2}\sum_{i<j}\operatorname{Cov}(Z_i,Z_j)$。温度及截断改变实际采样分布，频率估计的是变换后的答案边缘，而非未变换模型分布。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 对 $p=0.4,K=5$ 计算二元多数正确概率。再构造三个答案的分布，使正确答案概率仍为 $0.4$ 却是唯一众数。
+\begin{exercise} 对 $p=0.4,K=5$ 计算二元多数正确概率。再构造三个答案的分布，使正确答案概率仍为 $0.4$ 却是唯一众数。
 
-\begin{workbookanswers}
+\begin{solution}
 二元多数需要至少三票，概率为 $10(0.4)^3(0.6)^2+5(0.4)^4(0.6)+(0.4)^5=0.31744$，低于单次0.4。三答案可取正确A概率0.4，错误B、C各0.3；A虽不过半却是唯一众数。大样本最高票收敛到众数需要独立同分布，不能套二元超过半数公式。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 五条候选产生 $2:2:1$ 时，为什么奇数候选不能排除平票？设计不依赖标准答案的处理规则。
+\begin{exercise} 五条候选产生 $2:2:1$ 时，为什么奇数候选不能排除平票？设计不依赖标准答案的处理规则。
 
-\begin{workbookanswers}
+\begin{solution}
 奇数只防止两类别平分全部选票，多类别仍可出现两个最高各2票。预先规定先比较独立验证器，再在并列者中用固定规则或额外预算采样；若必须稳定可用规范化答案的固定顺序，但应说明这种规则不增加正确性。禁止查看标准答案再解平票；解析失败须另计。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 区分候选覆盖率 $1-(1-p)^K$、最高票正确率和验证选择正确率，并说明三者的前提。
+\begin{exercise} 区分候选覆盖率 $1-(1-p)^K$、最高票正确率和验证选择正确率，并说明三者的前提。
 
-\begin{workbookanswers}
+\begin{solution}
 独立同分布、单次正确概率p时，候选至少一个正确为 $1-(1-p)^K$；它只描述可用候选覆盖。最高票还取决于错误答案如何分散及平票规则。验证选择又取决于验证器漏判、误判和选择政策，理想无误选择器下成功率才可等于覆盖率。相关或自适应生成时第一式本身也未必成立。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 给定当前票数 $5:2:1$、最多还有两条候选，判断是否可以保持最高票决策不变地提前停止。若还有四条会怎样？
+\begin{exercise} 给定当前票数 $5:2:1$、最多还有两条候选，判断是否可以保持最高票决策不变地提前停止。若还有四条会怎样？
 
-\begin{workbookanswers}
+\begin{solution}
 当前领先差$5-2=3$。只剩2条时第二名至多4，原第一名不可被追平，可停止而不改变最高票结果；仍须满足其他强制验收。剩4条时第二名可到6，不能提前确定。若规则对平票的处理不同，安全条件仍可采用严格领先差大于剩余候选数。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 修改综合算例，使一条错误候选通过算术执行但违反题意，说明验证器还应检查哪些条件。
+\begin{exercise} 修改综合算例，使一条错误候选通过算术执行但违反题意，说明验证器还应检查哪些条件。
 
-\begin{workbookanswers}
+\begin{solution}
 错误候选可执行表达式$30(6-1)=150$，在当前参数上数值碰巧正确，却把满减30解释为赠送一件；换为单价40仍满减30时，该解释给200，正确为210。更直接的错误答案$30\times6=180$算术可执行但遗漏优惠。验证器需核对实体、单位、数量、优惠条件和运算与题意的对应，并用受控变体检验泛化；只检查程序能运行不足够。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 在固定预算下比较增加示例与增加候选的取舍，分别考虑无前缀缓存、共享前缀以及并行生成三种执行条件。
+\begin{exercise}\optional 在固定预算下比较增加示例与增加候选的取舍，分别考虑无前缀缓存、共享前缀以及并行生成三种执行条件。
 
-\begin{workbookanswers}
+\begin{solution}
 无缓存时增加示例长度$\Delta L$会被K候选重复读取，附加输入成本近似$K\Delta L$；增加候选还需完整提示与新输出。共享前缀可降低重复预填充/计费，但缓存读取仍非零，且身份必须相同。并行降低部分墙钟等待，不自动降低词元或设备总成本，还受并发容量限制。用开发集估计各选择的质量边际提升，在同费用和期限下求可行组合，不凭候选数决定。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 为结构化答案定义单位、等价表达、缺失值和解析失败规则，并分别写出总体支持率与条件支持率。
+\begin{exercise} 为结构化答案定义单位、等价表达、缺失值和解析失败规则，并分别写出总体支持率与条件支持率。
 
-\begin{workbookanswers}
+\begin{solution}
 例如长度答案统一为米，允许有限数值容差；集合按无序集合规范化，未提供单位的值只有任务明确默认单位时才转换。空字段、无答案和解析失败用不同状态。若K条中m条可解析、其中n条支持答案a，总体支持率为$\frac{n}{K}$，条件支持率为$\frac{n}{m}$；m为零时后者未定义。排除失败会夸大可交付支持。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 设计提示迁移报告，说明更换模型后哪些结论必须重新评价，以及如何避免用多个候选夸大测试样本数。
+\begin{exercise} 设计提示迁移报告，说明更换模型后哪些结论必须重新评价，以及如何避免用多个候选夸大测试样本数。
 
-\begin{workbookanswers}
+\begin{solution}
 报告模型、模板、示例身份与顺序、分词长度、采样、解析、工具和预算；新模型需重测格式、校准、任务正确性和成本，旧结论不能按模型名继承。同题K候选属于嵌套重复，先按题得到固定决策或以题为簇重采样。报告问题数与每题候选数，不将100题五候选称为500个独立测试任务。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\end{exerciselist}
+\end{exercises}

@@ -17,7 +17,7 @@
     \lfsoptionalmark
   }
 \msg_new:nnn { lfs } { missing-workbook-answer }
-  { Each~exercise~must~be~followed~by~one~workbookanswers~environment. }
+  { Each~exercise~must~be~followed~by~one~solution~environment. }
 \cs_new_protected:Npn \lfs_workbook_typeset_answer:nnnn #1#2#3#4
   {
     \par\medskip
@@ -37,7 +37,7 @@
           { \exp_not:n {#1} }
       }
   }
-\NewDocumentEnvironment{workbookanswers}{+b}
+\NewDocumentEnvironment{solution}{+b}
   {
     \bool_if:NTF \g_lfs_workbook_answer_pending_bool
       {
@@ -47,7 +47,7 @@
       { \msg_error:nn { lfs } { missing-workbook-answer } }
   }
   {}
-\NewDocumentCommand{\printworkbookanswers}{}
+\NewDocumentCommand{\printsolutions}{}
   {\seq_map_inline:Nn \g_lfs_workbook_answers_seq {##1}}
 \NewDocumentCommand{\workbookchapter}{m}
   {
@@ -68,14 +68,14 @@
   {（\prop_item:Nn\g_lfs_tb_numbers_prop{#1}）}
 \NewDocumentCommand{\tbnumberref}{m}
   {（\prop_item:Nn\g_lfs_tb_numbers_prop{#1}）}
-\NewDocumentEnvironment{exerciselist}{}
+\NewDocumentEnvironment{exercises}{}
   {\begin{enumerate}[labelwidth=3.2em,leftmargin=4em,labelsep=.6em,align=right]}
   {
     \bool_if:NT \g_lfs_workbook_answer_pending_bool
       { \msg_error:nn { lfs } { missing-workbook-answer } }
     \end{enumerate}
   }
-\NewDocumentCommand{\exerciseitem}{}
+\NewDocumentEnvironment{exercise}{}
   {
     \bool_if:NT \g_lfs_workbook_answer_pending_bool
       { \msg_error:nn { lfs } { missing-workbook-answer } }
@@ -92,6 +92,7 @@
     \exp_args:NV \label \g_lfs_workbook_question_label_tl
     \bool_gset_true:N \g_lfs_workbook_answer_pending_bool
   }
+  {}
 \ExplSyntaxOff
 
 % 保留“篇—章”的真实结构，同时将章级目录项排成紧凑、可扫描的列表。

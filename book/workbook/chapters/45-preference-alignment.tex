@@ -1,21 +1,23 @@
 \workbookchapter{人类反馈学习}
 
-\begin{exerciselist}
-\exerciseitem 推导二元奖励模型损失对两个奖励输出的梯度，解释它们为何符号相反。
+\begin{exercises}
+\begin{exercise} 推导二元奖励模型损失对两个奖励输出的梯度，解释它们为何符号相反。
 
-\begin{workbookanswers}
+\begin{solution}
 令 $d=r_w-r_l$，$L=-\log\sigma(d)$，则 $\frac{\partial L}{\partial d}=\sigma(d)-1$。对优选为 $\sigma(d)-1$，对拒选为 $1-\sigma(d)$，相加为零。目标只识别差值；两输出共同平移不会改变该样本损失。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 构造比较图不连通的例子，说明哪些奖励偏移无法由数据识别。
+\begin{exercise}\optional 构造比较图不连通的例子，说明哪些奖励偏移无法由数据识别。
 
-\begin{workbookanswers}
+\begin{solution}
 四回答只比较a与b、c与d。分别对第一连通分量加常数u、第二分量加v，所有已观测差值不变，故u-v不可辨识。没有跨分量比较不能由数据确定a与c的相对奖励；正则可能选出数值解，但那是额外约束而非数据证据。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 由式\tbobject{eq:pref-optimal-policy}推导式\tbobject{eq:pref-optimal-proof}，说明有限支持假设的作用。
+\begin{exercise} 由式\tbobject{eq:pref-optimal-policy}推导式\tbobject{eq:pref-optimal-proof}，说明有限支持假设的作用。
 
-\begin{workbookanswers}
+\begin{solution}
 在参考正支持上令 $\pi^*(y)=\frac{\pi_0(y)e^{\frac{r(y)}{\beta}}}{Z}$。利用恒等式
 \[
 \log(\frac{\pi}{\pi_0})=\log(\frac{\pi}{\pi^*})+\frac{r}{\beta}-\log Z,
@@ -25,60 +27,70 @@
 J(\pi)=\beta\log Z-\beta\mathrm{KL}(\pi\|\pi^*).
 \]
 由KL非负性得到最优策略。有限支持及有限奖励确保Z有限；参考为零处不能随意赋正质量，否则KL无穷。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 将两回答算例的 $\beta$ 改为2，计算最优策略与目标值。
+\begin{exercise} 将两回答算例的 $\beta$ 改为2，计算最优策略与目标值。
 
-\begin{workbookanswers}
+\begin{solution}
 未归一化质量为 $(0.8,0.2e^{\frac{\log4}{2}})=(0.8,0.4)$，Z=1.2，策略 $(\frac{2}{3},\frac{1}{3})$。期望奖励 $\frac{\log4}{3}\approx0.462098$，KL为 $\frac23\log(\frac{5}{6})+\frac13\log(\frac{5}{3})\approx0.048728$，目标约0.364643，等于 $2\log1.2$。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 证明同提示奖励加常数不改变最优策略；讨论不同提示的常数是否影响跨提示奖励直接比较。
+\begin{exercise} 证明同提示奖励加常数不改变最优策略；讨论不同提示的常数是否影响跨提示奖励直接比较。
 
-\begin{workbookanswers}
+\begin{solution}
 同提示加c使各未归一化质量同乘 $e^{\frac{c}{\beta}}$，归一化后策略不变，J增加c。不同提示各有不可辨识偏移时，跨提示直接比较奖励均值会受任意常数影响；须有共同校准或只作同提示比较，不能把排序奖励当绝对效用。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 从 DPO 损失推导梯度，并比较间隔为零、很正和很负时的系数。
+\begin{exercise} 从 DPO 损失推导梯度，并比较间隔为零、很正和很负时的系数。
 
-\begin{workbookanswers}
+\begin{solution}
 设相对间隔Delta，损失 $-\log\sigma(\beta\Delta)$，对参数梯度为 $-\beta\sigma(-\beta\Delta)\nabla\Delta$。Delta=0时系数-beta/2，很正时趋0，很负时趋-beta。链式梯度提高相对对数概率差，但共享归一化使各回答绝对概率变化不能仅由符号判断。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 为三个回答构造优选绝对概率下降而偏好间隔上升的另一例子。
+\begin{exercise} 为三个回答构造优选绝对概率下降而偏好间隔上升的另一例子。
 
-\begin{workbookanswers}
+\begin{solution}
 参考固定，策略从 $(p_w,p_l,p_o)=(0.4,0.3,0.3)$ 改为 $(0.35,0.15,0.5)$。优选概率下降，但比值从$\frac{4}{3}$升至$\frac{7}{3}$，相对间隔增 $\log(\frac{7}{4})>0$，DPO损失下降。第三个回答吸收质量，说明排序改善不保证优选绝对概率增加。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 解释序列平均对数概率为何一般不是原序列分布的对数概率。
+\begin{exercise} 解释序列平均对数概率为何一般不是原序列分布的对数概率。
 
-\begin{workbookanswers}
+\begin{solution}
 序列概率为条件概率乘积，其log为逐词元log之和。平均后得到 $\frac{\log p(y)}{T(y)}$，指数为 $p(y)^{\frac{1}{T(y)}}$，对所有序列求和一般不为1；若重新归一化还需新的配分函数。因此长度平均目标属于新的偏好尺度，不可直接代回原最优策略恒等式。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 推导序列 KL 的链式表达，指出采样分布改变时哪一步不再成立。
+\begin{exercise} 推导序列 KL 的链式表达，指出采样分布改变时哪一步不再成立。
 
-\begin{workbookanswers}
+\begin{solution}
 对同一初始提示，$\mathrm{KL}(\pi\|\pi_0)=\mathbb E_{y\sim\pi}\sum_t\log[\frac{\pi(y_t|h_t)}{\pi_0(y_t|h_t)}]$。再按pi的历史分布条件取期望，得 $\sum_t\mathbb E_{h_t\sim\pi}\mathrm{KL}(\pi(\cdot|h_t)\|\pi_0(\cdot|h_t))$。若轨迹从mu来且不校正，外层历史分布与动作分布都变，通常不再等于此序列KL。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 比较组内总体标准差与样本标准差对同一组优势幅度的影响。
+\begin{exercise}\optional 比较组内总体标准差与样本标准差对同一组优势幅度的影响。
 
-\begin{workbookanswers}
+\begin{solution}
 对G个非全等样本，总体方差分母 $G$，样本方差分母 $G-1$；后者标准差乘 $\sqrt{\frac{G}{G-1}}$，在 $\epsilon=0$ 时优势幅度乘 $\sqrt{\frac{G-1}{G}}$。若分母保留正 $\epsilon$，比例应为 $\frac{s_{\rm pop}+\epsilon}{s_{\rm sample}+\epsilon}$。均值仍零，但训练尺度不同；全等时需明确epsilon或跳过规则，不能除零。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 设计参考概率缓存的身份字段，分析模板或终止标记变化后的失效条件。
+\begin{exercise} 设计参考概率缓存的身份字段，分析模板或终止标记变化后的失效条件。
 
-\begin{workbookanswers}
+\begin{solution}
 保存参考权重/适配器摘要、分词器、完整模板、精度、截断/停止协议、提示与回答词元、计分掩码、位置/可见性及是否求和。模板或EOT变化会改变词元/条件/计分区域，原概率即失效；若只改变不参与前向的报告名称，缓存可保留。不能只用原始问题字符串作键。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 针对“回答越来越长、奖励上升、事实性下降”的现象，提出可区分标注偏差、评分漏洞和候选分布漂移的评估设计。
+\begin{exercise} 针对“回答越来越长、奖励上升、事实性下降”的现象，提出可区分标注偏差、评分漏洞和候选分布漂移的评估设计。
 
-\begin{workbookanswers}
+\begin{solution}
 固定原问题和候选，制作保持事实相同的长短改写测标注长度偏好；对评分器加入事实错误但风格合规的对抗候选测漏洞；冻结问题及采样预算重评旧新策略，隔离候选分布漂移。由独立事实核验者盲评并分长度/领域报告。若改变验证器，保留版本交叉矩阵，不能仅凭奖励曲线诊断原因。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\end{exerciselist}
+\end{exercises}

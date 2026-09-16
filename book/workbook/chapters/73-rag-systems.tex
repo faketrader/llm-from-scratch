@@ -1,88 +1,102 @@
 \workbookchapter{检索增强生成}
 
-\begin{exerciselist}
-\exerciseitem 从序列潜变量和逐词元潜变量的定义分别推导两种 RAG 分解，说明为什么交换乘积与求和一般不成立。
+\begin{exercises}
+\begin{exercise} 从序列潜变量和逐词元潜变量的定义分别推导两种 RAG 分解，说明为什么交换乘积与求和一般不成立。
 
-\begin{workbookanswers}
+\begin{solution}
 序列潜变量z在整条答案中固定，由全概率得 $p(y\mid q)=\sum_zp(z\mid q)\prod_t p(y_t\mid q,z,y_{<t})$。逐词元潜变量$z_t$分别边缘化则为 $\prod_t\sum_{z_t}p(z_t\mid q)p(y_t\mid q,z_t,y_{<t})$。展开后一式包含$z_1\ne z_2$等跨文档项，前式不含，通常不能交换。它们是不同生成假设，不是同一实现的两种加速写法。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 给出三个文档的检索概率及二词元条件概率，自行计算两种边缘概率；再截断至前两篇，比较保留原概率质量与局部重归一化。
+\begin{exercise} 给出三个文档的检索概率及二词元条件概率，自行计算两种边缘概率；再截断至前两篇，比较保留原概率质量与局部重归一化。
 
-\begin{workbookanswers}
+\begin{solution}
 取权重$(0.5,0.3,0.2)$，两位置条件概率分别$(0.8,0.2),(0.2,0.8),(0.5,0.5)$，均针对同一目标前缀。序列概率$0.5(0.16)+0.3(0.16)+0.2(0.25)=0.178$；词元概率$(0.4+0.06+0.1)(0.1+0.24+0.1)=0.2464$。只留前二且保留原权重，分别为0.128、$0.46\times0.34=0.1564$，是截断质量而非完整归一化分布。局部重归一化权重$(0.625,0.375)$后为0.16、$0.575\times0.425=0.244375$，改变了定义；两种截断不能混报。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 推导候选集合固定时检索逻辑值的梯度 $p_i-\gamma_i$。若候选遗漏唯一有效证据，解释这个梯度不能解决什么问题。
+\begin{exercise} 推导候选集合固定时检索逻辑值的梯度 $p_i-\gamma_i$。若候选遗漏唯一有效证据，解释这个梯度不能解决什么问题。
 
-\begin{workbookanswers}
+\begin{solution}
 令$Z=\sum_i p_i a_i$且固定$a_i$及候选集合，$\frac{\partial Z}{\partial s_j}=\sum_i a_ip_i(\delta_{ij}-p_j)=p_ja_j-p_jZ$。于是 $\frac{\partial(-\log Z)}{\partial s_j}=p_j-\frac{p_ja_j}{Z}=p_j-\gamma_j$。候选外文档无此局部梯度；若有效证据完全遗漏，更新最多在错误候选中重新分配概率，不能直接创造候选或修复事实性。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 对重排器的成对逻辑损失求正负候选分数的偏导，并说明为什么候选采样分布影响训练目标。
+\begin{exercise} 对重排器的成对逻辑损失求正负候选分数的偏导，并说明为什么候选采样分布影响训练目标。
 
-\begin{workbookanswers}
+\begin{solution}
 令$\Delta=s^+-s^-$，$\ell=\log(1+e^{-\Delta})$，则 $\frac{\partial\ell}{\partial s^+}=-\frac{1}{1+e^\Delta}$、$\frac{\partial\ell}{\partial s^-}=\frac{1}{1+e^\Delta}$。梯度下降提升正例相对分数。训练期望取决于采到哪些查询和负例，曝光偏差及假负例会改变优化对象；部署候选与训练候选不同也可能失配。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 在本章320词元例题中，为 $d_2$ 增加40词元的必要定义，重新求满足预算且覆盖尽可能多事实的组合。写明并列最优时的选择规则。
+\begin{exercise} 在本章320词元例题中，为 $d_2$ 增加40词元的必要定义，重新求满足预算且覆盖尽可能多事实的组合。写明并列最优时的选择规则。
 
-\begin{workbookanswers}
+\begin{solution}
 $d_2$增至220，$d_2+d_3=340$超预算；$d_1+d_3=340$也不可行，三片段最短组合仍超320。最多覆盖两要点：$d_2$单独覆盖A、B用220，$d_3+d_4$覆盖B、C用220，$d_1+d_4$覆盖A、B用320，$d_2+d_4$用320仍只A、B。可预先规定先最大覆盖、再最短、再总重排分数，则选$d_3+d_4$（1.45高于0.85），并明确缺A；若A为必备硬约束，则选$d_2$。题设没有要点优先级，不能声称唯一最优。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 为含有历史日期和对话指代的问题设计两条改写，列出不得变化的约束，并构造一个检索分数提高却问题语义改变的反例。
+\begin{exercise}\optional 为含有历史日期和对话指代的问题设计两条改写，列出不得变化的约束，并构造一个检索分数提高却问题语义改变的反例。
 
-\begin{workbookanswers}
+\begin{solution}
 原问“它在去年生效时的退费条件是什么”，先解析“它”为产品P、去年为明确年份Y。改写一为“产品P，Y年生效版本，退费适用条件”；改写二为“P Y年条款：退款例外与生效日期”。产品、年份、所问条件均不能改变。改成“P最新退款优惠”可能命中新页面更多，却把历史约束和退费规则变为当前营销内容。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 将“某负责人所管理服务的故障数”分解为有依赖关系的查询图，说明负责人变更与数据快照怎样进入数据契约。
+\begin{exercise}\optional 将“某负责人所管理服务的故障数”分解为有依赖关系的查询图，说明负责人变更与数据快照怎样进入数据契约。
 
-\begin{workbookanswers}
+\begin{solution}
 节点一按目标历史时点读取项目负责人，输出人ID及任期；节点二按同一快照查其服务归属区间；节点三按服务ID与目标月统计故障，按事件ID去重。任务图为一到二到三，服务间计数可在二后并行。负责人变更用有效时间关联而不是当前姓名，所有结果带快照/水位和时间窗；无法得到一致历史快照时说明估计范围。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 构造一句带有真实引用 ID 但来源不支持的答案，分别说明格式、定位和语义检查的结果。
+\begin{exercise} 构造一句带有真实引用 ID 但来源不支持的答案，分别说明格式、定位和语义检查的结果。
 
-\begin{workbookanswers}
+\begin{solution}
 来源ID d7真实定位到“普通任务上限30分钟”，答案却写“维护窗口也一律30分钟[d7]”。ID格式检查通过，版本与页码定位通过，但来源不包含维护窗口规则，语义支持检查失败。应返回不支持/需补充例外证据，不能把真实URL当作每条论断正确的充分条件。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 在拒答成本模型中令答对也有成本 $C_c$，推导新的回答条件，说明该模型在哪些情况下不足以表达部分回答。
+\begin{exercise}\optional 在拒答成本模型中令答对也有成本 $C_c$，推导新的回答条件，说明该模型在哪些情况下不足以表达部分回答。
 
-\begin{workbookanswers}
+\begin{solution}
 回答风险为$pC_c+(1-p)C_w$，拒答风险为$C_r$。若$C_w>C_c$，回答条件为 $p>\frac{C_w-C_r}{C_w-C_c}$，等号按预定平局规则；阈值超出$[0,1]$时可能总拒或总答。若$C_w=C_c$，只比较常数；若大小逆转，不等号方向需重推。部分回答包含多个论断及不同错误成本，单一二元p和一个拒答成本不能表达覆盖与风险结构。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 设计文档更新、权限撤销和新文档加入三种缓存失效路径，证明只检查已引用文档的版本为何不足以处理负缓存。
+\begin{exercise} 设计文档更新、权限撤销和新文档加入三种缓存失效路径，证明只检查已引用文档的版本为何不足以处理负缓存。
 
-\begin{workbookanswers}
+\begin{solution}
 更新文档提升revision并失效引用该版本的证据/答案；撤权先使授权过滤生效，再失效权限域相关缓存；新文档加入提升语料快照或索引水位，使旧无结果缓存重新检索。负缓存没有已引用文档列表，故仅依赖列表校验无法感知新证据。缓存键至少绑定查询、模型/表示、语料与权限身份，失效传播未完成时通过权威版本再校验保护可见性。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 针对重复和乱序摄取事件设计幂等键与版本比较规则；源系统没有全局版本号时，说明能保证和不能保证的一致性。
+\begin{exercise} 针对重复和乱序摄取事件设计幂等键与版本比较规则；源系统没有全局版本号时，说明能保证和不能保证的一致性。
 
-\begin{workbookanswers}
+\begin{solution}
 以$(source,object,revision,event\_type)$作为事件幂等身份，同对象只允许更高版本覆盖，墓碑参与排序。没有全局版本时可用每对象单调修订或来源游标；这能保证对象内旧写不覆盖新写，却不能保证跨对象同一时点快照。仅有不可靠时间戳时需回源核对或记录冲突，不能用到达先后冒充源事实顺序。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 给出三层条件成功率，并计算完整支持路径的成功率。再构造一个缺证据但凭参数记忆答对的情形，解释两个指标的差别。
+\begin{exercise} 给出三层条件成功率，并计算完整支持路径的成功率。再构造一个缺证据但凭参数记忆答对的情形，解释两个指标的差别。
 
-\begin{workbookanswers}
+\begin{solution}
 取$P(R)=0.9,P(S\mid R)=0.8,P(A\mid R,S)=0.85$，完整支持路径概率为$0.612$，无需假定三事件独立。另有0.1样本未召回证据，其中一半凭参数记忆答对，可使答案正确率至少再增0.05，但这些答案不具备该证据路径的可追溯支持。质量报告应分别给事实正确和来源支持，不能把两者相等当公理。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 设计包含可回答、不可回答、权限受限与上游异常的评估集，分别定义正确回答率、过度拒答率和故障率的分母。
+\begin{exercise} 设计包含可回答、不可回答、权限受限与上游异常的评估集，分别定义正确回答率、过度拒答率和故障率的分母。
 
-\begin{workbookanswers}
+\begin{solution}
 按可回答且授权、不可回答、无权、上游异常四类保留独立标签。正确回答率可用可回答且授权题数为分母，过度拒答率用同一分母；不可回答正确拒答率以真正缺证据题数为分母，权限违规率以无权题数为分母。故障率以全部被评估请求为分母，另列各类故障，不将超时混入正常拒答。端到端总体成功另按预定四类正确行为聚合。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 选择一种重排优化，设计包含充分证据替换、证据删除与版本冲突的反事实评估，说明如何控制生成随机性及预算。
+\begin{exercise} 选择一种重排优化，设计包含充分证据替换、证据删除与版本冲突的反事实评估，说明如何控制生成随机性及预算。
 
-\begin{workbookanswers}
+\begin{solution}
 比较旧/新重排器，固定初召集合、证据预算、生成器、提示和问题。分别将证据替换为人工充分包、删除关键证据、加入同实体冲突版本；同时保留正常条件。若充分包消除差异，瓶颈主要在检索/选择；若删证据仍高分，应审查泄漏和参数记忆。按同题配对控制种子或重复采样，以题为独立单位；不能给新重排器额外上下文后归因于排序算法。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\end{exerciselist}
+\end{exercises}

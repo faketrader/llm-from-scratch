@@ -1,76 +1,88 @@
 \workbookchapter{强化学习基础}
 
-\begin{exerciselist}
-\exerciseitem 为一个“搜索—读取—回答”的工具任务定义状态、观测与动作，说明哪些环境信息不可见。
+\begin{exercises}
+\begin{exercise} 为一个“搜索—读取—回答”的工具任务定义状态、观测与动作，说明哪些环境信息不可见。
 
-\begin{workbookanswers}
+\begin{solution}
 环境状态可包含搜索索引版本、网页实际内容、访问权限及已执行工具副作用；观测是返回片段、状态码和已读文本；动作是搜索查询、读取目标或最终回答。未返回网页、更新时刻和后端负载对策略不可见，因此历史h或信念状态承载条件信息，不能把局部搜索摘要当成全局真实状态。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 将两步算例改为 $\gamma=0.9$，重新计算 $V(s_0)$ 和两个参数梯度，明确外部折扣因子。
+\begin{exercise} 将两步算例改为 $\gamma=0.9$，重新计算 $V(s_0)$ 和两个参数梯度，明确外部折扣因子。
 
-\begin{workbookanswers}
+\begin{solution}
 第一步奖励0，第二步奖励如原例，故 $J=\gamma[4pq+2(1-p)]=2.25$。$V(s_L)=3,V(s_R)=2$仍按各状态自身时钟计；$\partial_\theta J=0.9\times0.25=0.225$，$\partial_\psi J=0.9\times0.375=0.3375$。初始分布目标的策略梯度在t=1项必须带外部 $\gamma^1$，不能只在局部回报中折扣后遗漏它。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 从回报递推推导 Bellman 方程，并说明 $\gamma=1$ 时压缩映射证明失效的原因。
+\begin{exercise}\optional 从回报递推推导 Bellman 方程，并说明 $\gamma=1$ 时压缩映射证明失效的原因。
 
-\begin{workbookanswers}
+\begin{solution}
 由 $G_t=r_t+\gamma G_{t+1}$ 条件取期望，得 $V^\pi(s)=\sum_a\pi(a|s)\sum_{s'}P(s'|s,a)[r(s,a,s')+\gamma V^\pi(s')]$。两价值函数经同一Bellman算子后的无穷范数差至多 $\gamma\|V-W\|_\infty$。$\gamma=1$时仅非扩张，不是严格压缩；有界有限回合仍可倒推，但无限过程需另有终止或收敛条件。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 用三条轨迹枚举证明两步算例中 $\psi$ 的得分函数梯度与直接求导一致。
+\begin{exercise} 用三条轨迹枚举证明两步算例中 $\psi$ 的得分函数梯度与直接求导一致。
 
-\begin{workbookanswers}
+\begin{solution}
 三条轨迹LS、LF、R的概率为$\frac{3}{8}$、$\frac{1}{8}$、$\frac{1}{2}$。对psi得分分别$\frac{1}{4}$、$\frac{-3}{4}$、0；乘回报4、0、2再取期望为 $\frac{\frac{3}{8}\times4\times1}{4}=\frac{3}{8}$，与 $4pq(1-q)$一致。未访问sL的轨迹无psi动作项，不能赋予它虚构的第二步得分。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 证明动作无关基线不改变梯度期望，并构造一个动作相关基线使该结论失效。
+\begin{exercise} 证明动作无关基线不改变梯度期望，并构造一个动作相关基线使该结论失效。
 
-\begin{workbookanswers}
+\begin{solution}
 固定状态时 $\sum_a\pi(a|s)b(s)\nabla\log\pi(a|s)=b(s)\nabla\sum_a\pi(a|s)=0$，需阻断基线梯度。反例：二动作奖励1/0，取动作基线等于奖励，则估计处处为0，而原目标 $J=p$ 的logit梯度为 $p(1-p)>0$。动作相关项不自动消失。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 推导包含自身样本的均值基线所产生的 $(1-\frac{1}{K})$ 因子，并说明 $K=1$ 的情况。
+\begin{exercise} 推导包含自身样本的均值基线所产生的 $(1-\frac{1}{K})$ 因子，并说明 $K=1$ 的情况。
 
-\begin{workbookanswers}
+\begin{solution}
 令得分$g_i$均值为零，组内独立同分布。$\mathbb E[(r_i-\bar r)g_i]=\mathbb E[r_ig_i]-K^{-1}\mathbb E[r_ig_i]$，其余交叉项由独立性和得分零均值为零，故比例 $1-\frac{1}{K}$。K=1时优势恒0，完全无奖励梯度；留一基线在K$\ge$2且独立时可避免这项偏差。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 将 GAE 数例的 $\lambda$ 分别改为0和1，计算两步优势并解释差异。
+\begin{exercise} 将 GAE 数例的 $\lambda$ 分别改为0和1，计算两步优势并解释差异。
 
-\begin{workbookanswers}
+\begin{solution}
 原例残差为0.4、1.2，$\gamma=1$。lambda=0时 $(\widehat A_0,\widehat A_1)=(0.4,1.2)$；lambda=1时为 $(1.6,1.2)$。前者仅用一步TD、依赖价值估计，后者此终止轨迹等于完整回报减价值。二者不是精确平均优势，仍含轨迹采样波动。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 一条任务仅因批次切片结束而未终止，说明价值自举与优势递推应怎样处理边界。
+\begin{exercise} 一条任务仅因批次切片结束而未终止，说明价值自举与优势递推应怎样处理边界。
 
-\begin{workbookanswers}
+\begin{solution}
 若环境未终止，应在最后残差保留 $\gamma V(s_{t+1})$ 自举；但优势递推不得越过缓冲边界连接到另一条轨迹，应在该片末设后续未知优势为0或使用明确定义的延续估计。真实终止价值为0，切片终点价值一般不为0。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 连续十步概率比均为1.1，计算轨迹权重并讨论更长序列的方差风险。
+\begin{exercise} 连续十步概率比均为1.1，计算轨迹权重并讨论更长序列的方差风险。
 
-\begin{workbookanswers}
+\begin{solution}
 权重 $1.1^{10}\approx2.593742$。更长序列的乘积可能迅速变大或变小，少数轨迹主导估计；有限均值并不保证低方差。可监控有效样本量和权重尾部，限制样本陈旧性；截断权重降低方差但引入偏差，应明确为近似目标。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 给出正、负优势各两个概率比，判断 PPO 哪一项生效；解释为什么裁剪不等于硬概率约束。
+\begin{exercise} 给出正、负优势各两个概率比，判断 PPO 哪一项生效；解释为什么裁剪不等于硬概率约束。
 
-\begin{workbookanswers}
+\begin{solution}
 取epsilon=0.2。正优势+1时r=1.3用常数1.2、r=0.7仍用0.7；负优势-1时r=0.7用-0.8、r=1.3仍用-1.3。裁剪只抑制某些有利方向的奖励增长，既不把参数投影到概率比区间，也不阻止共享参数或其他损失使比值继续越界。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 对相同奖励、不同回答长度，比较原始序列回报、$\frac{R}{T}$、折扣回报与每步成本四种目标。
+\begin{exercise} 对相同奖励、不同回答长度，比较原始序列回报、$\frac{R}{T}$、折扣回报与每步成本四种目标。
 
-\begin{workbookanswers}
+\begin{solution}
 固定终点R>0，原始序列期望按每回答一次R计，长度本身不改奖励；R/T偏好更短；终点折扣为 $\gamma^{T-1}R$（以动作0起计），gamma<1也偏短；每步成本c则回报 $R-cT$，可在收益值得时保留更长过程。若R<0，除以T可能反而让长序列负值更接近零，方向不能照搬正奖励。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 说明为什么参考策略概率不能替代采样行为概率，以及硬词表截断如何影响支持条件。
+\begin{exercise} 说明为什么参考策略概率不能替代采样行为概率，以及硬词表截断如何影响支持条件。
 
-\begin{workbookanswers}
+\begin{solution}
 重要性分母必须是实际生成该样本的行为分布mu，才能满足 $\mathbb E_\mu[(\frac{\pi}{\mu})f]=\mathbb E_\pi f$；参考模型只是正则锚点，通常不等于mu。硬截断令某些mu为0时无法用这些样本覆盖pi的正质量，支持条件失败；应匹配实际采样分布或明确采用有偏代理。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\end{exerciselist}
+\end{exercises}

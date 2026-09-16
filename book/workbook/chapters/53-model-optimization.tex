@@ -1,178 +1,207 @@
 \workbookchapter{模型优化}
 
-\begin{exerciselist}
-\exerciseitem 对目标范围 $[-0.7,1.8]$ 与无符号三比特码计算初始尺度、取整零点及实际恢复端点，说明端点为何发生偏移。
+\begin{exercises}
+\begin{exercise} 对目标范围 $[-0.7,1.8]$ 与无符号三比特码计算初始尺度、取整零点及实际恢复端点，说明端点为何发生偏移。
 
-\begin{workbookanswers}
+\begin{solution}
 三比特码0至7，$s=\frac{1.8+0.7}{7}=\frac{5}{14}$，初始零点 $\frac{0.7}{s}=1.96$，最近整数z=2。实际端点为 $-2s=-\frac{5}{7}\approx-.714286$ 与 $5s=\frac{25}{14}\approx1.785714$。整数零点量化使端点整体偏移；希望上界1.8必覆盖时需重新选择范围/尺度，不能称两端都精确命中。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 推导均匀误差模型的 $\frac{s^2}{12}$，并构造一个全部输入恰在格点上的反例，说明其为何不是恒等式。
+\begin{exercise} 推导均匀误差模型的 $\frac{s^2}{12}$，并构造一个全部输入恰在格点上的反例，说明其为何不是恒等式。
 
-\begin{workbookanswers}
+\begin{solution}
 若误差e在 $[-\frac{s}{2},\frac{s}{2}]$ 均匀，$\mathbb Ee^2=s^{-1}\int_{-\frac{s}{2}}^{\frac{s}{2}}e^2\,de=\frac{s^2}{12}$。若所有输入都在格点且无饱和，误差恒0而不是该值；该式是输入残差分布近似，不是量化器恒等式。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 比较取偶数最近舍入与向零截断在正负半格点附近的误差。为一个可复现制品写出完整舍入约定。
+\begin{exercise} 比较取偶数最近舍入与向零截断在正负半格点附近的误差。为一个可复现制品写出完整舍入约定。
 
-\begin{workbookanswers}
+\begin{solution}
 最近取偶数时1.5$\to$2、2.5$\to$2、-1.5$\to$-2、-2.5$\to$-2；向零则1.5$\to$1、2.5$\to$2、-1.5$\to$-1、-2.5$\to$-2。向零有朝零的定向误差，最近舍入非平局时误差绝对值$\le$s/2。制品要固定舍入发生在加零点前还是后、平局规则、码域、饱和顺序和特殊值处理；浮点近半格点也需一致实现。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 对本章异尺度矩阵计算逐张量和逐行的整体均方误差，再解释为何误差改善不能直接推出任务改善。
+\begin{exercise} 对本章异尺度矩阵计算逐张量和逐行的整体均方误差，再解释为何误差改善不能直接推出任务改善。
 
-\begin{workbookanswers}
+\begin{solution}
 采用本章取偶数、码域[-3,3]。第二行恢复 $(\frac{40}{3},20,-\frac{40}{3})$，行MSE为$\frac{200}{27}$；第一行逐张量为.02，逐行为$\frac{1}{1350}$。两行等元素数，整体逐张量为 $\frac12(.02+\frac{200}{27})=\frac{10027}{2700}\approx3.713704$，逐行为 $\frac12(\frac{1}{1350}+\frac{200}{27})=\frac{10001}{2700}\approx3.704074$。改善来自小行，但大行误差主导；下游输入协方差和非线性另决定任务误差。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 给定 $4096\times4096$ 权重、四比特码、每行每 $128$ 个元素一组、每组四字节元数据，计算忽略对齐的存储与相对十六位基线压缩率。
+\begin{exercise} 给定 $4096\times4096$ 权重、四比特码、每行每 $128$ 个元素一组、每组四字节元数据，计算忽略对齐的存储与相对十六位基线压缩率。
 
-\begin{workbookanswers}
+\begin{solution}
 P=16777216，四比特码8388608字节；每行32组，共131072组，元数据524288字节。合计8912896字节=8.5 MiB，十六位基线32 MiB，压缩 $\frac{32}{8.5}=\frac{64}{17}\approx3.7647$ 倍。逐行已整除，本题忽略对齐及未量化参数。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 从约束二次目标推导式\tbobject{eq:ch26-gptqcomp}，说明阻尼改变了什么，以及输入完全不相关时为何不发生跨坐标补偿。
+\begin{exercise}\optional 从约束二次目标推导式\tbobject{eq:ch26-gptqcomp}，说明阻尼改变了什么，以及输入完全不相关时为何不发生跨坐标补偿。
 
-\begin{workbookanswers}
+\begin{solution}
 最小化 $\frac12\delta^\mathsf TH\delta$ 且 $e_i^\mathsf T\delta=d$。拉格朗日式导数 $H\delta+\lambda e_i=0$，得到 $\delta=\frac{dH^{-1}e_i}{(H^{-1})_{ii}}$，最小代价 $\frac{d^2}{[2(H^{-1})_{ii}]}$。阻尼把H换H+lambda I，改变目标及不可观测方向的代价；若H对角，各非i坐标补偿为0。实际X不相关要对应零交叉二阶矩而非口头“不同特征”。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 若 GPTQ 先处理另一坐标，离散结果是否必然相同？用两维例子或明确论证说明处理顺序的作用。
+\begin{exercise}\optional 若 GPTQ 先处理另一坐标，离散结果是否必然相同？用两维例子或明确论证说明处理顺序的作用。
 
-\begin{workbookanswers}
+\begin{solution}
 取 $H=\begin{pmatrix}2&1\\1&2\end{pmatrix}$、$w=(.6,.7)$，单位整数格点。先量化第一坐标到1，误差+.4令第二坐标减.2至.5；按取偶数再到0，最终(1,0)。先量化第二到1，误差+.3令第一减.15至.45，再到0，最终(0,1)。固定坐标后不再变，故顺序可改变离散结果；本例已声明半格点规则。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 用式\tbobject{eq:ch26-scaling}说明 AWQ 与 SmoothQuant 的共同基础，再分别写出二者关注的误差对象。
+\begin{exercise} 用式\tbobject{eq:ch26-scaling}说明 AWQ 与 SmoothQuant 的共同基础，再分别写出二者关注的误差对象。
 
-\begin{workbookanswers}
+\begin{solution}
 对正对角D，$WX=(WD)(D^{-1}X)$，保持实数函数。AWQ主要通过激活重要性选择通道缩放来降低仅权重量化后的输出重建误差；SmoothQuant平衡激活与权重动态范围，支持二者低精度。恒等式相同不代表校准目标、搜索或执行格式相同，移动变换需保持全部共享分支一致。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 给定激活通道范围 $(64,4)$ 与权重列范围 $(1,4)$，计算 $\alpha=\frac{1}{2}$ 的 SmoothQuant 尺度及两侧新范围。
+\begin{exercise} 给定激活通道范围 $(64,4)$ 与权重列范围 $(1,4)$，计算 $\alpha=\frac{1}{2}$ 的 SmoothQuant 尺度及两侧新范围。
 
-\begin{workbookanswers}
+\begin{solution}
 $s_j=\frac{a_j^{\alpha}}{b_j^{1-\alpha}}$，alpha=.5给s=(8,1)。激活新范围a/s=(8,4)，权重新范围bs=(8,4)。两侧极值被平衡，乘积不变；这并未计算实际量化误差或证明该alpha最优，仍需代表性校准。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 证明均匀量化函数的真实导数不能直接提供一般的有效梯度，并说明 STE 的近似性质与部署匹配要求。
+\begin{exercise} 证明均匀量化函数的真实导数不能直接提供一般的有效梯度，并说明 STE 的近似性质与部署匹配要求。
 
-\begin{workbookanswers}
+\begin{solution}
 固定尺度和零点的阶梯函数在每个格区内导数0，在跳点不可导，直接梯度几乎处处消失。STE在反向指定近似导数如范围内1、范围外0，使优化能进行；它不是原离散函数的真实导数。训练的舍入、饱和、粒度和部署整数路径应匹配，否则学到的误差补偿可能失效。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 比较 E4M3 与 E5M2 的指数和尾数预算，说明为何最大值、下溢和累加行为必须按具体格式与内核声明。
+\begin{exercise}\optional 比较 E4M3 与 E5M2 的指数和尾数预算，说明为何最大值、下溢和累加行为必须按具体格式与内核声明。
 
-\begin{workbookanswers}
+\begin{solution}
 E4M3为4指数3尾数，E5M2为5指数2尾数（均另有符号位）；更多指数通常换更大动态范围，更多尾数通常换局部精度。具体NaN/无穷编码、指数偏置和次正规数决定最大值/下溢，乘法输入、累加和更新精度又是不同选择。不能只看FP8名称推定范围、溢出行为或优化器状态。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 从式\tbobject{eq:ch26-dot}推导对称权重量化可省略的修正项，并讨论分组尺度为何改变累加组织。
+\begin{exercise} 从式\tbobject{eq:ch26-dot}推导对称权重量化可省略的修正项，并讨论分组尺度为何改变累加组织。
 
-\begin{workbookanswers}
+\begin{solution}
 $\sum_j s_x(q_{xj}-z_x)s_w(q_{wj}-z_w)=s_xs_w[\sum_jq_{xj}q_{wj}-z_w\sum_jq_{xj}-z_x\sum_jq_{wj}+nz_xz_w]$。对称权重$z_w=0$可去第二项和常数项，但激活非对称时仍保留 $-z_x\sum_jq_{wj}$。分组$s_w$不同，要组内累加后各乘尺度再合并，不能把一个总尺度提出全部求和。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 构造一个模型权重减少四倍但请求时延改善很小的负载，按带宽、计算、缓存和其他时间解释原因。
+\begin{exercise} 构造一个模型权重减少四倍但请求时延改善很小的负载，按带宽、计算、缓存和其他时间解释原因。
 
-\begin{workbookanswers}
+\begin{solution}
 构造权重搬运仅占总时延10\%、其他计算/KV/排队占90\%的长上下文负载。即使前者理想加速4倍，总加速仅 $\frac{1}{.9+\frac{.1}{4}}\approx1.081$；反量化开销可再抵消收益。需分测权重和KV字节、算子与排队时间，不能由文件缩小四倍推导延迟四倍。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 对键值量化的一阶误差式说明：为何只测值缓存的逐元素均方误差不能覆盖注意力分配变化？
+\begin{exercise} 对键值量化的一阶误差式说明：为何只测值缓存的逐元素均方误差不能覆盖注意力分配变化？
 
-\begin{workbookanswers}
+\begin{solution}
 $o=\mathrm{softmax}(qK^\mathsf T)V$，一阶有 $\delta o\approx J_{\mathrm{softmax}}(s)\,\delta s\,V+p\,\delta V$，其中 $\delta s$含键误差与查询的内积。只测值MSE覆盖第二项，漏掉键导致的注意力重分配及两误差相关性；不同查询/上下文还可放大相同逐元素误差。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 证明在保留数值不变、仅固定非零数量的条件下，幅值剪枝最小化权重平方误差；给出不最小化任务损失的反例。
+\begin{exercise}\optional 证明在保留数值不变、仅固定非零数量的条件下，幅值剪枝最小化权重平方误差；给出不最小化任务损失的反例。
 
-\begin{workbookanswers}
+\begin{solution}
 保留集合S不改原数值时，平方误差为 $\sum_{i\notin S}w_i^2$，固定集合大小k，交换论证表明应保留绝对值最大的k项。反例：w=(10,1)，输入总为x=(0,1)，只保留一项时幅值法删第二项造成输出误差1，而保留第二项输出误差0。权重范数目标不等于数据加权任务目标。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 使用式\tbobject{eq:compress-sensitivity}分析非驻点时一阶项的作用。为什么接近训练结束也不能未经测量就认定所有 $g_q=0$？
+\begin{exercise} 使用式\tbobject{eq:compress-sensitivity}分析非驻点时一阶项的作用。为什么接近训练结束也不能未经测量就认定所有 $g_q=0$？
 
-\begin{workbookanswers}
+\begin{solution}
 删除$w_q$产生 $\delta_q=-w_q$，Taylor项为 $-g_qw_q+\frac12H_{qq}w_q^2$（固定其他参数）。一阶项可正可负，并可能压过二阶项。训练接近结束不代表每坐标梯度为0，随机批次、正则、早停及非平稳分布均可使其非零；应在明确校准目标下测量。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 对 $H=\begin{bmatrix}3&1\\1&2\end{bmatrix}$、$w=(1,1)^\mathsf T$，计算分别删除两个权重时的二阶补偿与代价。
+\begin{exercise}\optional 对 $H=\begin{bmatrix}3&1\\1&2\end{bmatrix}$、$w=(1,1)^\mathsf T$，计算分别删除两个权重时的二阶补偿与代价。
 
-\begin{workbookanswers}
+\begin{solution}
 $H^{-1}=\frac15\begin{pmatrix}2&-1\\-1&3\end{pmatrix}$。删第一坐标d=-1，补偿 $(-1,.5)$，新权重(0,1.5)，代价 $\frac{1}{[2(\frac{2}{5})]}=1.25$。删第二坐标补偿 $(\frac{1}{3},-1)$，新权重($\frac{4}{3}$,0)，代价 $\frac{1}{[2(\frac{3}{5})]}=\frac{5}{6}$。该驻点二次目标下删第二项更便宜；非零一阶梯度需重新解。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 写出门控前馈层删除中间通道的三个矩阵索引关系，并说明偏置和优化器状态应如何同步。
+\begin{exercise} 写出门控前馈层删除中间通道的三个矩阵索引关系，并说明偏置和优化器状态应如何同步。
 
-\begin{workbookanswers}
+\begin{solution}
 列向量约定下 $U,G\in\mathbb R^{d_f\times d}$、$D\in\mathbb R^{d\times d_f}$。保留中间集合S时取 $U[S,:],G[S,:],D[:,S]$；上投影/门控偏置取S，输出偏置维度不变。梯度、Adam矩、主权重和分片索引同步裁剪，残差输出d不改；若使用行向量实现应转置对应索引。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 两字节数值配两字节索引时，忽略行指针求稀疏存储低于稠密存储的非零比例阈值。为什么满足它仍不保证加速？
+\begin{exercise} 两字节数值配两字节索引时，忽略行指针求稀疏存储低于稠密存储的非零比例阈值。为什么满足它仍不保证加速？
 
-\begin{workbookanswers}
+\begin{solution}
 稠密2P字节，非零比例rho的数值+索引为4rho P，节省要求rho<$\frac{1}{2}$。行指针、对齐和稀疏元数据会收紧阈值；不规则访问、缺少匹配内核和低矩阵单元利用率仍可使稀疏计算更慢。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 对奇异值 $(10,4,3,1)$，计算秩1、2、3近似的绝对与相对 Frobenius 误差，讨论给定参数预算能否实现某个误差目标。
+\begin{exercise} 对奇异值 $(10,4,3,1)$，计算秩1、2、3近似的绝对与相对 Frobenius 误差，讨论给定参数预算能否实现某个误差目标。
 
-\begin{workbookanswers}
+\begin{solution}
 总平方范数126。秩1误差 $\sqrt{26}$、相对 $\sqrt{\frac{26}{126}}\approx.4543$；秩2为 $\sqrt{10}$、相对约.2817；秩3为1、相对 $\frac{1}{\sqrt{126}}\approx.08909$。若矩阵m$\times$n，因子预算需 $r(m+n)$，可先找达到误差阈值的最小r，再检查预算；未给m/n和预算时无法断言哪一秩可行。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 从列空间投影出发复现截断 SVD 的最优性证明，指出截断奇异值重合时唯一性为何可能失效。
+\begin{exercise}\optional 从列空间投影出发复现截断 SVD 的最优性证明，指出截断奇异值重合时唯一性为何可能失效。
 
-\begin{workbookanswers}
+\begin{solution}
 任意秩$\le$r近似A的列空间投影P满足 $\|W-A\|_F^2\ge\|(I-P)W\|_F^2$。设 $WW^\mathsf T$特征值为 $\sigma_i^2$，秩r正交投影最多捕获前r个特征值之和，故误差至少谱尾和；取前r奇异向量即达界。若截断处 $\sigma_r=\sigma_{r+1}$，等特征子空间中可选择不同基/子空间而同样最优，矩阵近似可能不唯一。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 对 $m=4096,n=11008$，求减少因子参数所需的秩阈值。分别计算 $r=512$ 与 $r=2048$ 的参数比例。
+\begin{exercise} 对 $m=4096,n=11008$，求减少因子参数所需的秩阈值。分别计算 $r=512$ 与 $r=2048$ 的参数比例。
 
-\begin{workbookanswers}
+\begin{solution}
 原参数 $4096\times11008=45088768$，和为15104。需 $r<\frac{45088768}{15104}\approx2985.2203$，整数r$\le$2985。r=512比例 $\frac{7733248}{45088768}=\frac{59}{344}\approx17.1512\%$；r=2048比例 $\frac{30932992}{45088768}=\frac{59}{86}\approx68.6047\%$。这是参数节省条件，不是两次小GEMM一定更快。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 对 $W=\operatorname{diag}(4,1)$、$C_x=\operatorname{diag}(1,25)$，比较普通秩1 SVD 与输入加权近似的输出误差。
+\begin{exercise}\optional 对 $W=\operatorname{diag}(4,1)$、$C_x=\operatorname{diag}(1,25)$，比较普通秩1 SVD 与输入加权近似的输出误差。
 
-\begin{workbookanswers}
+\begin{solution}
 普通秩1保留4、删除1，输出误差期望为 $1^2\times25=25$。加权问题看 $WC_x^{\frac{1}{2}}=\operatorname{diag}(4,5)$，最优保留第二方向，映回近似为diag(0,1)，误差为 $4^2\times1=16$。输入高方差方向可以推翻仅按权重奇异值的选择。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 推导温度平方缩放后的学生 logit 梯度，并说明高温近似需要中心化 logits 的原因。
+\begin{exercise} 推导温度平方缩放后的学生 logit 梯度，并说明高温近似需要中心化 logits 的原因。
 
-\begin{workbookanswers}
+\begin{solution}
 $q=\mathrm{softmax}(\frac{z_S}{\tau})$，$p$为冻结教师，$\frac{\partial[\tau^2\mathrm{KL}(p\|q)]}{\partial z_S}=\tau(q-p)$。高温下 $q_i\approx\frac{1}{K}+\frac{z_i-\bar z}{K\tau}$，故梯度近似师生中心化logit差/K。共同平移logits不改变概率，未经中心化的欧氏logit差会惩罚一个不可辨识方向。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 在蒸馏数例中将 $\lambda$ 改为0.8，求损失与学生梯度；若硬标签改为第二类，两项监督如何竞争？
+\begin{exercise} 在蒸馏数例中将 $\lambda$ 改为0.8，求损失与学生梯度；若硬标签改为第二类，两项监督如何竞争？
 
-\begin{workbookanswers}
+\begin{solution}
 本章定义lambda乘软项，故$\lambda=.8$时损失 $.2\log2+.8(4D)\approx.755412$，梯度 $.2(-.5,.5)+.8(-.6,.6)=(-.58,.58)$。硬标签改第二类时硬梯度(.5,-.5)，软梯度不变，总为(-.38,.38)：两项竞争而此设定软项占优；硬损失仍log2，因为学生均匀。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 教师与学生使用不同分词器，列出逐词元 KL 不成立的两个原因，并解释序列蒸馏保留和丢失了哪些信息。
+\begin{exercise} 教师与学生使用不同分词器，列出逐词元 KL 不成立的两个原因，并解释序列蒸馏保留和丢失了哪些信息。
 
-\begin{workbookanswers}
+\begin{solution}
 第一，词表事件不同，不能直接把同索引概率当同一类别；第二，文本被分成不同位置数，条件前缀也不同。需要显式词表/跨度映射或改用序列级教师文本。序列蒸馏保留采样出的可读答案与任务结构，但丢失未采样候选的完整概率和不确定性，受教师采样偏差影响。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 对因子变换 $A'=10A,B'=\frac{B}{10}$，说明乘积不变而量化误差可能变化的原因。
+\begin{exercise}\optional 对因子变换 $A'=10A,B'=\frac{B}{10}$，说明乘积不变而量化误差可能变化的原因。
 
-\begin{workbookanswers}
+\begin{solution}
 实数乘积 $(10A)(\frac{B}{10})=AB$。独立量化后含 $10A E_{B'}+\frac{E_{A'}B}{10}+E_{A'}E_{B'}$，格点、动态范围和尺度元数据未必按反向比例等变，误差可能改变。若理想量化器和尺度恰能完全同比缩放，也可能保持同误差；题目强调可能性而非必然。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 某方案报告权重文件缩小四倍、单层 FLOPs减少两倍。设计能够确认端到端实际收益的最小证据集合，并明确不能从已有两个数字推出什么。
+\begin{exercise} 某方案报告权重文件缩小四倍、单层 FLOPs减少两倍。设计能够确认端到端实际收益的最小证据集合，并明确不能从已有两个数字推出什么。
 
-\begin{workbookanswers}
+\begin{solution}
 固定数据/版本、质量门槛、硬件、长度/并发与采样；核对模型文件、权重/KV/工作区峰值和实际内核路径；预热同步后测首词元、逐词元、吞吐及尾延迟，并与未压缩基线比较。恢复重载和任务/安全回归也须通过。两个局部数字不能证明时延、总显存或质量达标，需报告误差范围和不支持时的回退路径。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 剪枝、低秩分解和量化分别作用于原始模型时均达到质量要求。说明这些结果能否证明顺序组合后的模型也达标，并设计同时覆盖累计误差、处理顺序与实际部署收益的验收方案。
+\begin{exercise} 剪枝、低秩分解和量化分别作用于原始模型时均达到质量要求。说明这些结果能否证明顺序组合后的模型也达标，并设计同时覆盖累计误差、处理顺序与实际部署收益的验收方案。
 
-\begin{workbookanswers}
+\begin{solution}
 单项验收不能推出组合达标。各步骤会改变后续步骤的输入分布和权重结构，误差还会跨层传播，因此不能将独立测得的退化简单相加。固定原始模型为共同参考，记录每一步制品，按实际处理顺序重新校准并评估最终组合；中间制品间的比较用于定位新增误差，同时保留相对原模型的累计质量差异。对有依据的候选顺序进行受控比较，使用独立任务与失败切片评估，并核对目标设备的算子支持、峰值内存和端到端时延。只有最终制品在既定质量与资源约束下通过验证，才支持部署。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\end{exerciselist}
+\end{exercises}

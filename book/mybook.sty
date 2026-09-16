@@ -5,7 +5,8 @@
 \RequirePackage{iftex}
 \RequireTUTeX
 % Fonts and Chinese family commands use the ctex platform defaults.
-\RequirePackage[a4paper,inner=30mm,outer=24mm,top=26mm,bottom=26mm,headheight=16pt]{geometry}
+% 正度16开成品尺寸：185 mm × 260 mm。
+\RequirePackage[paperwidth=185mm,paperheight=260mm,inner=30mm,outer=24mm,top=26mm,bottom=26mm,headheight=16pt]{geometry}
 % 内侧 30 mm 已包含装订余量；边注只占外侧，不侵入装订沟。
 \setlength{\marginparwidth}{17mm}
 \setlength{\marginparsep}{3mm}
@@ -17,12 +18,21 @@
 \RequirePackage{tikz}
 \usetikzlibrary{calc,positioning,fadings,shapes.geometric,arrows.meta,shadows,decorations.pathreplacing}
 
+\RequirePackage{amsthm}
+\newtheoremstyle{lfsstatement}{8pt}{8pt}{\normalfont}{} {\bfseries}{．}{.5em}{}
+\theoremstyle{lfsstatement}
+\newtheorem{theorem}{定理}[chapter]
+\newtheorem{lemma}[theorem]{引理}
+\newtheorem{proposition}[theorem]{命题}
+\newtheorem{corollary}[theorem]{推论}
+\newtheorem{definition}[theorem]{定义}
+\newtheorem{example}[theorem]{例}
+\newtheorem{remark}[theorem]{注}
+\renewcommand{\proofname}{证明}
+
 \RequirePackage{newunicodechar}
 % 中文科技排版
 \newunicodechar{。}{．}
-% 数学符号风格
-\newunicodechar{≤}{\ensuremath{\leqslant}}
-\newunicodechar{≥}{\ensuremath{\geqslant}}
 
 % 项目全局视觉主题色彩定义
 \definecolor{LFSNavy}{HTML}{0F172A}      % Slate 900 典雅藏青
@@ -35,6 +45,19 @@
 \definecolor{LFSBorder}{HTML}{CBD5E1}    % Slate 300 分割细线
 \RequirePackage[most]{tcolorbox}
 \RequirePackage{marginnote}
+\RequirePackage{algpseudocode}
+\RequirePackage{minted}
+\setminted{fontsize=\small,breaklines,breakanywhere,autogobble,tabsize=4,style=friendly}
+\algrenewcommand{\algorithmicrequire}{\textbf{输入：}}
+\algrenewcommand{\algorithmicensure}{\textbf{输出：}}
+\algrenewcommand{\algorithmicif}{\textbf{若}}
+\algrenewcommand{\algorithmicthen}{\textbf{则}}
+\algrenewcommand{\algorithmicelse}{\textbf{否则}}
+\algrenewcommand{\algorithmicfor}{\textbf{对}}
+\algrenewcommand{\algorithmicdo}{\textbf{执行}}
+\algrenewcommand{\algorithmicwhile}{\textbf{当}}
+\algrenewcommand{\algorithmicend}{\textbf{结束}}
+\algrenewcommand{\algorithmicreturn}{\textbf{返回}}
 % 颜色辅助识别，标题仍明确类别，保证灰度打印可读。
 \tcbset{
   lfsbox/.style={
@@ -44,13 +67,14 @@
     top=1.5mm,bottom=1.5mm,before skip=8pt,after skip=8pt
   }
 }
-\newtcolorbox{bookinsight}[1][关键结论]{lfsbox,title={#1},borderline west={1pt}{0pt}{LFSPrimary}}
-\newtcolorbox{bookassumptions}[1][假设与适用范围]{lfsbox,title={#1},borderline west={1pt}{0pt}{LFSTeal}}
-\newcounter{bookalgorithm}[chapter]
-\renewcommand{\thebookalgorithm}{\thechapter.\arabic{bookalgorithm}}
-\newenvironment{bookalgorithm}[1][计算过程]{%
-  \refstepcounter{bookalgorithm}
-  \begin{tcolorbox}[lfsbox,title={算法\thebookalgorithm\quad #1}]%
+\newtcolorbox{note}[1][说明]{lfsbox,title={说明：#1},borderline west={1pt}{0pt}{LFSPrimary}}
+\newtcolorbox{warning}[1][适用限制]{lfsbox,title={注意：#1},borderline west={1.5pt}{0pt}{LFSAmber}}
+\newtcolorbox{assumption}[1][假设与适用范围]{lfsbox,title={假设：#1},borderline west={1pt}{0pt}{LFSTeal}}
+\newcounter{algorithm}[chapter]
+\renewcommand{\thealgorithm}{\thechapter.\arabic{algorithm}}
+\newenvironment{algorithm}[1][计算过程]{%
+  \refstepcounter{algorithm}
+  \begin{tcolorbox}[lfsbox,title={算法\thealgorithm\quad #1}]%
   }{
   \end{tcolorbox}
 }

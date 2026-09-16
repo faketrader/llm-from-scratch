@@ -915,3 +915,13 @@ main h1 {
   background: #f5f6f0;
   font-weight: 650;
 }
+
+/* Roles remain explicit in titles; colors only assist recognition. */
+blockquote.warning { border-left-color: #b7791f; background: #fff7e8; }
+blockquote.assumption { border-left-color: #0d9488; }
+pre code { padding: 0; background: transparent; font-size: inherit; }
+.sourceCode .kw, .sourceCode .cf { color: #005a9c; font-weight: 600; }
+.sourceCode .st, .sourceCode .ch { color: #1b6b3a; }
+.sourceCode .co { color: #52615a; }
+.sourceCode .dv, .sourceCode .fl { color: #8b4513; }
+.sourceCode .fu, .sourceCode .bu { color: #6c3483; }

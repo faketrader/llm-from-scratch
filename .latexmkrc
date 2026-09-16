@@ -1,6 +1,6 @@
 $pdf_mode = 5;
-$lualatex = 'lualatex -synctex=1 -no-shell-escape -interaction=nonstopmode -halt-on-error -file-line-error %O %S';
-$xelatex = 'xelatex -synctex=1 -no-shell-escape -interaction=nonstopmode -halt-on-error -file-line-error %O %S';
+$lualatex = 'lualatex -synctex=1 -shell-restricted -interaction=nonstopmode -halt-on-error -file-line-error %O %S';
+$xelatex = 'xelatex -synctex=1 -shell-restricted -interaction=nonstopmode -halt-on-error -file-line-error %O %S';
 $max_repeat = 5;
 # 每个页码保留独立的术语锚点，不合并为自动页码区间。
 use File::Basename qw(dirname);

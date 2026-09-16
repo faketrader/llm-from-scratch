@@ -1,82 +1,95 @@
 \workbookchapter{批处理调度}
 
-\begin{exerciselist}
-\exerciseitem 某请求在0秒到达，0.1秒开始执行，0.3秒收到首词元，0.9秒收到第31个词元。计算 TTFT、TPOT 和首执行等待，并指出哪些量可以相加。
+\begin{exercises}
+\begin{exercise} 某请求在0秒到达，0.1秒开始执行，0.3秒收到首词元，0.9秒收到第31个词元。计算 TTFT、TPOT 和首执行等待，并指出哪些量可以相加。
 
-\begin{workbookanswers}
+\begin{solution}
 TTFT 从到达到首词元，为 $0.3$ 秒；首执行等待为 $0.1$ 秒。31个输出间有30个间隔，$\mathrm{TPOT}=\frac{0.9-0.3}{30}=0.02$ 秒。总完成时间为 $0.3+30(0.02)=0.9$ 秒。等待已包含在TTFT内，不能再加一次；只有先扣除等待，才能把TTFT分成互不重叠阶段。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 将图\tbobject{fig:schedule-continuous}的轮时改为单序列6毫秒、双序列10毫秒，重新计算两种策略的完成时间。解释固定轮时假设的影响。
+\begin{exercise} 将图\tbobject{fig:schedule-continuous}的轮时改为单序列6毫秒、双序列10毫秒，重新计算两种策略的完成时间。解释固定轮时假设的影响。
 
-\begin{workbookanswers}
+\begin{solution}
 补充约定：已完成成员不继续参与计算，静态策略只禁止补入新成员。静态第一轮双序列耗10毫秒，B完成；随后A独占三轮共18毫秒，A在28毫秒完成；C再耗6毫秒，在34毫秒完成，均值 $\frac{10+28+34}{3}=24$ 毫秒。连续策略第一轮B完成，第二轮A与C耗10毫秒，C在20毫秒完成；A再独占两轮，在32毫秒完成，均值 $\frac{62}{3}\approx20.67$ 毫秒。连续策略改善均值但A稍晚；若静态内核仍计算填充槽，其轮时模型不同，须重新计数，不能沿用上述结果。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 对长度为64、64、256的三个提示，计算线性填充与完整平方注意力的长度利用率。为何不能将结果直接用于变长内核？
+\begin{exercise} 对长度为64、64、256的三个提示，计算线性填充与完整平方注意力的长度利用率。为何不能将结果直接用于变长内核？
 
-\begin{workbookanswers}
+\begin{solution}
 最大长度256。线性利用率为 $\frac{64+64+256}{3\times256}=\frac{1}{2}$；平方注意力利用率为 $\frac{64^2+64^2+256^2}{3\times256^2}=\frac{3}{8}$。两式假定每条序列真实执行到同一填充长度。变长内核可跳过部分无效位置，且块对齐、掩码和工作区还有其他成本，因此这两个比例不是其实际加速比。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 从逐查询可见键数推导式\tbobject{eq:schedule-pairs}，并解释分块后注意力数学总量与历史重读次数的区别。
+\begin{exercise} 从逐查询可见键数推导式\tbobject{eq:schedule-pairs}，并解释分块后注意力数学总量与历史重读次数的区别。
 
-\begin{workbookanswers}
+\begin{solution}
 第$r$个新查询看见$s+r$个键，故 $\sum_{r=1}^q(s+r)=qs+\frac{q(q+1)}{2}$。将长度$q$拆成$q_1,q_2$时，第二块历史变为$s+q_1$，两块配对数之和仍等于原式。数学配对总数保持，而第二块需要重新读取历史键值，并多一次启动；配对守恒不能推出搬运或墙钟时间不变。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 在缓存算例中，已有257、255长度的序列各再生成两个词元，需要多少页？说明页内碎片为何会影响边际接纳成本。
+\begin{exercise} 在缓存算例中，已有257、255长度的序列各再生成两个词元，需要多少页？说明页内碎片为何会影响边际接纳成本。
 
-\begin{workbookanswers}
+\begin{solution}
 每页16位置，增长后长度为259、257，页数为 $\lceil\frac{259}{16}\rceil+\lceil\frac{257}{16}\rceil=17+17=34$，较初始33页增加1页。第一条仍位于既有第17页，第二条跨过256边界。每词元64 KiB只描述有效数据增长，实际边际分配按整页发生，此处增加1 MiB而非按四词元只预留256 KiB。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 给出一个系统人数的阶梯函数，直接计算驻留面积以验证式\tbobject{eq:schedule-area}。解释有限观察窗两端截断如何处理。
+\begin{exercise} 给出一个系统人数的阶梯函数，直接计算驻留面积以验证式\tbobject{eq:schedule-area}。解释有限观察窗两端截断如何处理。
 
-\begin{workbookanswers}
+\begin{solution}
 取两请求驻留区间$[0,2)$和$[1,3)$，观察窗$[0,3]$。人数在三段依次为1、2、1，面积为 $1+2+1=4$，也等于两请求各2的驻留时间之和。窗内平均人数$\frac{4}{3}$、完成率$\frac{2}{3}$、平均驻留2，三者满足Little关系。存在窗外开始或结束请求时，有限窗恒等式使用区间交集长度；不能把完整驻留时间与截断人数面积混配。长期式需要边界残余除以窗长趋零。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 推导 M/M/1 的空闲概率、平均队列长度和式\tbobject{eq:schedule-mm1-tail}。指出连续批处理违反其中哪些假设。
+\begin{exercise}\optional 推导 M/M/1 的空闲概率、平均队列长度和式\tbobject{eq:schedule-mm1-tail}。指出连续批处理违反其中哪些假设。
 
-\begin{workbookanswers}
+\begin{solution}
 记$\rho=\frac{\lambda}{\mu}<1$。出生死亡平衡给 $\pi_{n+1}=\rho\pi_n$，归一化得 $\pi_0=1-\rho$、$\pi_n=(1-\rho)\rho^n$。由几何级数求导，$L=\frac{\rho}{1-\rho}$，服务中概率为$\rho$，故$L_q=\frac{\rho^2}{1-\rho}$。泊松到达看见稳态人数，条件于$n$个在系统者，总驻留为$n+1$个参数$\mu$指数变量之和；其拉普拉斯变换为 $\sum_n\pi_n[\frac{\mu}{\mu+s}]^{n+1}=\frac{\mu-\lambda}{\mu-\lambda+s}$，所以 $P(W>t)=e^{-(\mu-\lambda)t}$。连续批处理的多请求协同服务、依长度变化的轮时和调度优先级违反单服务台独立指数、FCFS等前提。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 当两个随机阶段的 p99 分别为100与200毫秒时，能否断言总时延 p99为300毫秒？使用并集界给出一个成立的陈述。
+\begin{exercise} 当两个随机阶段的 p99 分别为100与200毫秒时，能否断言总时延 p99为300毫秒？使用并集界给出一个成立的陈述。
 
-\begin{workbookanswers}
+\begin{solution}
 不能。非负阶段$X,Y$满足 $\{X+Y>300\}\subseteq\{X>100\}\cup\{Y>200\}$，因而已知两个尾概率各不超过0.01时，$P(X+Y>300)\le0.02$；300毫秒是一个98\%覆盖上界。要保证99\%，可分别选择p99.5阈值再相加，或直接测量同请求的阶段和。独立性也不能使两个分位点直接相加成为精确分位数。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 构造每请求公平与每词元公平结果相反的两租户负载，并说明长上下文为何进一步影响成本公平。
+\begin{exercise}\optional 构造每请求公平与每词元公平结果相反的两租户负载，并说明长上下文为何进一步影响成本公平。
 
-\begin{workbookanswers}
+\begin{solution}
 设租户A每请求10词元，B每请求1000词元，均持续积压。每轮各完成一请求给予B约100倍输出份额；每轮各给1000词元则A完成100请求、B完成1请求。两者对应不同公平对象。再令B具有更长历史，则同一输出词元还读取更多KV，词元公平未必计算时间公平；可用经校准设备时间记账并配合最低服务份额，但成本估计误差必须监测。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 输出产生速率为每秒12 KiB，客户端消费每秒4 KiB，空缓冲容量为64 KiB。求填满时间，并设计到达上限后的状态转换。
+\begin{exercise} 输出产生速率为每秒12 KiB，客户端消费每秒4 KiB，空缓冲容量为64 KiB。求填满时间，并设计到达上限后的状态转换。
 
-\begin{workbookanswers}
+\begin{solution}
 净流入 $12-4=8$ KiB/s，填满时间 $\frac{64}{8}=8$ 秒。上限到达后进入暂停生产或慢消费者状态，停止为其新增生成，继续排空并设置期限；若不能暂停或期限耗尽，则取消并释放其资源。不得无界累积，也不得丢词元后仍声称完整流；终态与最后已确认事件号一并记录。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 设计一个记录取消、页释放和重新入队的事件序列，证明调度器不会让已终止请求复活，也不会重复释放共享页。
+\begin{exercise} 设计一个记录取消、页释放和重新入队的事件序列，证明调度器不会让已终止请求复活，也不会重复释放共享页。
 
-\begin{workbookanswers}
+\begin{solution}
 事件可为：请求r持有共享页p的一次引用；取消CAS将r置为终止；释放记录以$(r,p)$唯一键提交并将引用计数减一；迟到的抢占完成事件试图重新入队时因r已终止被拒绝；重复取消只读既有释放记录。p只有全体引用归零且设备在途读写已通过完成事件或fence确认结束后回收，使用页代次防止旧事件释放复用后的新页。终态单调、释放唯一键和页代次共同构成不变量，单靠队列中删除一次不够。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 比较开放环和闭合环压测，列出一个能识别过载、重算放大和慢消费者的证据方案，并明确所有统计分母。
+\begin{exercise} 比较开放环和闭合环压测，列出一个能识别过载、重算放大和慢消费者的证据方案，并明确所有统计分母。
 
-\begin{workbookanswers}
+\begin{solution}
 开放环按外部时钟发请求，能暴露积压增长；闭合环受前一响应限制，过载时到达率可能自动降低。固定时长报告提交、接纳、成功、达标成功、拒绝、取消和未知数，分别以时间或对应请求集合为分母；记录全体已完成时延及未完成的删失/截止状态。用新生成词元与总执行词元比识别重算，关联缓存换出事件；用输出缓冲占用、消费速率与慢客户端数识别背压。不能只测成功请求平均速度而丢弃超时者。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 服务显存尚有余量，但尾延迟持续恶化。设计一次诊断，区分持续超载、长提示阻塞解码与慢客户端造成的输出积压；说明不同证据下应调整准入、调度还是扩容，并给出扩容生效前的处置原则。
+\begin{exercise} 服务显存尚有余量，但尾延迟持续恶化。设计一次诊断，区分持续超载、长提示阻塞解码与慢客户端造成的输出积压；说明不同证据下应调整准入、调度还是扩容，并给出扩容生效前的处置原则。
 
-\begin{workbookanswers}
+\begin{solution}
 在相同到达负载下关联队列年龄、预填充块时长、解码间隔及输出缓冲，使用开放环负载观察队列是否持续增长。若排队增长且设备有效容量饱和，应限制准入并增加对应阶段容量；若长提示使解码间隔突增，应检查预填充分块和阶段预算，同时保留必要预填充份额；若生成完成但输出缓冲积压，应检查慢客户端、背压和取消传播。显存余量只表示部分容量余量，不能证明计算或输出路径仍可满足期限。扩容需要启动与预热时间，其间应按队列预算和期限执行排队或拒绝策略，并验证积压能够消退。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\end{exerciselist}
+\end{exercises}

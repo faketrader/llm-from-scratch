@@ -1,64 +1,74 @@
 \workbookchapter{开源模型体系}
 
-\begin{exerciselist}
-\exerciseitem\optional 推导式\tbobject{eq:open-latent}在行向量约定下的形式，并核对查询吸收与值求和后的上投影形状。
+\begin{exercises}
+\begin{exercise}\optional 推导式\tbobject{eq:open-latent}在行向量约定下的形式，并核对查询吸收与值求和后的上投影形状。
 
-\begin{workbookanswers}
+\begin{solution}
 把列向量记号转置，$c=hD^{\mathsf T}\in\Real^{1\times r}$、$k_i=cU_i^{\mathsf T}\in\Real^{1\times d_k}$、$v_i=cV_i^{\mathsf T}\in\Real^{1\times d_v}$。分数 $q_i k_i^{\mathsf T}=(q_iU_i)c^{\mathsf T}$，吸收查询 $q_iU_i$ 为 $1\times r$。输出 $\sum_ja_jc_jV_i^{\mathsf T}=(\sum_ja_jc_j)V_i^{\mathsf T}$，先汇总r维潜变量再投影到值宽度。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 对给定矩阵 $U$ 和两个位置旋转 $R_1,R_2$，说明为什么一般不能为所有历史位置复用一个 $U^{\mathsf T}R_j^{\mathsf T}R_tq$。给出可以交换的特殊条件。
+\begin{exercise}\optional 对给定矩阵 $U$ 和两个位置旋转 $R_1,R_2$，说明为什么一般不能为所有历史位置复用一个 $U^{\mathsf T}R_j^{\mathsf T}R_tq$。给出可以交换的特殊条件。
 
-\begin{workbookanswers}
+\begin{solution}
 $U^{\mathsf T}R_j^{\mathsf T}R_tq$ 随j变化，一般需逐历史位置计算，不能当作同一个当前查询。若U为同一二维子空间的标量单位矩阵，则与旋转可交换，但旋转角度仍依赖j；“可交换”本身不等于“可消除位置”。不使用旋转、所有相对旋转恰为同一矩阵，或相关向量位于旋转恒等子空间时，才可在该限定范围复用。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 将本章缓存例题的键值头数由四改成一，比较 MQA 与潜在缓存，说明压缩方法之间不存在脱离维度的固定优劣。
+\begin{exercise} 将本章缓存例题的键值头数由四改成一，比较 MQA 与潜在缓存，说明压缩方法之间不存在脱离维度的固定优劣。
 
-\begin{workbookanswers}
+\begin{solution}
 MQA每层每词元存 $2\times1\times64=128$ 个元素，潜在形式仍为 $128+32=160$ 个元素。因此该构造下潜在形式为MQA的1.25倍，反而更大。它仍可能带来其他结构质量或算子取舍，但不能由方法名称保证缓存占优；比较需固定键值宽度、潜在维数和位置分支。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 一个 MoE 有总参数 $40$ 十亿、每词元激活 $4$ 十亿，采用每参数两字节。若不分片或卸载，为什么不能把权重驻留估成 $8$ 十亿字节？
+\begin{exercise} 一个 MoE 有总参数 $40$ 十亿、每词元激活 $4$ 十亿，采用每参数两字节。若不分片或卸载，为什么不能把权重驻留估成 $8$ 十亿字节？
 
-\begin{workbookanswers}
+\begin{solution}
 驻留权重为 $40\times10^9\times2=80\times10^9$ 字节。$4\times10^9$ 只描述某词元选择的计算参数，不表示其他专家已经从显存消失。8GB只能近似所选参数的两字节体积；若需要降低驻留量，必须另有分片、卸载或量化策略，并计入相应通信和质量成本。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 同一权重使用两种不同对话模板，输出质量不同。如何区分模型能力差异与输入协议差异？
+\begin{exercise} 同一权重使用两种不同对话模板，输出质量不同。如何区分模型能力差异与输入协议差异？
 
-\begin{workbookanswers}
+\begin{solution}
 冻结权重、输入事实、任务和解码预算，逐层比较模板序列化后的角色、特殊词元、编号及停止协议，再比较首步logits和完整输出。以官方适配模板作为一个有来源的对照，而非假定其对任何任务最优。若两模板表达不同条件，质量差异首先属于协议实验；只有控制该变量后才能归因模型本体。工具解析与媒体占位也需同步检查。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 对混合状态缓存公式分别令 $L_a=0$ 和 $L_s=0$，解释两个极端。再说明固定状态大小为何不保证无限长依赖恢复能力。
+\begin{exercise} 对混合状态缓存公式分别令 $L_a=0$ 和 $L_s=0$，解释两个极端。再说明固定状态大小为何不保证无限长依赖恢复能力。
 
-\begin{workbookanswers}
+\begin{solution}
 $L_a=0$ 时 $M=b_cL_sd_kd_v$，在给定有限状态模型中与T无关；$L_s=0$ 时 $M=2b_cL_aTh_{kv}d_h$，退化为线性增长的KV。固定状态把大量历史压缩到有限维度，可能发生信息干扰与不可区分历史，不能保证任意长依赖精确恢复。还须考虑数值精度和状态更新误差。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 一个模型卡声明词表大小为 $V$，嵌入有 $V+16$ 行。列出需要补充的证据，不直接作正确或错误判断。
+\begin{exercise} 一个模型卡声明词表大小为 $V$，嵌入有 $V+16$ 行。列出需要补充的证据，不直接作正确或错误判断。
 
-\begin{workbookanswers}
+\begin{solution}
 检查分词器有效ID最大值、added tokens、模板控制符号、是否为硬件对齐预留行、输入输出权重是否共享及头部形状。核对权重和配置提交、适配器目标版本及转换历史。若最大有效ID小于行数且多余行有明确策略，可为合法填充；若新ID未配训练参数或配置错配，则需修复。仅凭V与V+16不作唯一结论。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 设计一个比较推理模式与直接回答模式的任务表，明确正确率、总生成长度、工具轮数、时延和重试预算。
+\begin{exercise} 设计一个比较推理模式与直接回答模式的任务表，明确正确率、总生成长度、工具轮数、时延和重试预算。
 
-\begin{workbookanswers}
+\begin{solution}
 每条任务同时记录模式、正确/有效完成、内部与可见总生成词元、工具调用轮数、端到端时延、重试次数及停止原因。固定任务集、模型提交、模板、工具环境，并预登记两模式相同总预算或各自预算下的比较问题。分别报告质量与成本分布及超时失败，不能只在成功回答中计算平均时延。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 选择一个未在本章展开的开放权重检查点，按结构、训练、协议、模态、许可和制品六维建立来源清单；将公开声明与自己尚未验证的项目分开。
+\begin{exercise}\optional 选择一个未在本章展开的开放权重检查点，按结构、训练、协议、模态、许可和制品六维建立来源清单；将公开声明与自己尚未验证的项目分开。
 
-\begin{workbookanswers}
+\begin{solution}
 开放题没有唯一模型选择。可选择一个具有官方仓库的开放权重检查点，例如Falcon或Pythia系列中的具体版本，清单包含：精确repo与commit；逐层结构和权重头；Base/Instruct及训练目标的报告依据；tokenizer、模板、EOS和工具协议；模态及processor；许可原文版本；分片摘要、转换和适配关系。把“模型卡声称支持某长度”标为声明，把实际配置字段标为静态观察，把任务正确率/后端吞吐标为待测。未实际读取时不能填造参数与许可证；完整性标准是六维均有来源或明确未知。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 某模型同时使用多头潜在注意力（MLA）和混合专家（MoE）。分别指出二者改变的计算模块，并为长上下文解码与专家分布式执行列出需要单独核算的状态、计算和通信。说明为何每词元激活参数量不能代表全部部署显存。
+\begin{exercise} 某模型同时使用多头潜在注意力（MLA）和混合专家（MoE）。分别指出二者改变的计算模块，并为长上下文解码与专家分布式执行列出需要单独核算的状态、计算和通信。说明为何每词元激活参数量不能代表全部部署显存。
 
-\begin{workbookanswers}
+\begin{solution}
 MLA 改变注意力历史状态的表示及相关投影路径，应按实际实现计算潜在缓存、附加位置状态、投影计算及缓存读取成本。MoE 改变前馈层的专家选择与执行，应分别统计全部专家权重、每词元激活专家、路由缓冲及跨设备派发和归并通信。长上下文更突出缓存随长度增长的成本；专家并行还受到路由负载不均衡和网络开销制约。每词元激活参数量描述单次执行涉及的参数，全部专家仍需按放置或卸载方案存储，运行时还需要缓存与工作空间，因此不能仅以激活参数估算部署显存。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\end{exerciselist}
+\end{exercises}

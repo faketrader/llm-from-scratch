@@ -1,8 +1,14 @@
 \NeedsTeXFormat{LaTeX2e}
-\ProvidesPackage{mymath}[2026/09/07 My mathematical notation]
+\ProvidesPackage{mymath}[2026/09/16 My mathematical notation]
 \RequirePackage{amsmath,amssymb,mathtools}
 % ! 所有行内公式改为展示档次，符号会变大可能导致不协调
 \everymath{\displaystyle}
+
+% 统一增加分数线两端的留白。
+\let\lfs@standardfrac\frac
+\renewcommand*{\frac}[2]{%
+  \lfs@standardfrac{\mkern2mu#1\mkern2mu}{\mkern2mu#2\mkern2mu}%
+}
 
 % 使用 \dif x 表示直立微分符号。
 \newcommand*{\dif}{\mathop{}\!\mathrm{d}}
@@ -10,10 +16,14 @@
 \DeclareMathOperator{\softmax}{softmax}
 \DeclareMathOperator*{\argmin}{arg\,min}
 % 比较符号统一使用斜线下划线形式 ⩽ ⩾。正文写作 \le/\leq 与 \ge/\geq，
-% 由这里的语义映射决定字形，作者不需改用 \leqslant。
-% 字面 Unicode 字符 ≤ ≥ 的映射见 mybook.sty；两者渲染同一字形。
+% 由这里的语义映射决定字形，写作不需改用 \leqslant。
 \let\leq\leqslant
 \let\le\leqslant
 \let\geq\geqslant
 \let\ge\geqslant
+% 字面 Unicode 字符 ≤ ≥ 的映射
+\RequirePackage{newunicodechar}
+\newunicodechar{≤}{\ensuremath{\leqslant}}
+\newunicodechar{≥}{\ensuremath{\geqslant}}
+
 \endinput

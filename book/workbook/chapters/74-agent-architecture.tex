@@ -1,87 +1,100 @@
 \workbookchapter{智能体架构}
 
-\begin{exerciselist}
-\exerciseitem 从贝叶斯公式推导式\tbobject{eq:agent-belief}，解释分母和动作对状态转移的影响。自然语言摘要在什么条件下会丢失决策必需的信息？
+\begin{exercises}
+\begin{exercise} 从贝叶斯公式推导式\tbobject{eq:agent-belief}，解释分母和动作对状态转移的影响。自然语言摘要在什么条件下会丢失决策必需的信息？
 
-\begin{workbookanswers}
+\begin{solution}
 先预测$\bar b_{t+1}(s')=\sum_sP(s'\mid s,a_t)b_t(s)$，再以似然更新
 \[
  b_{t+1}(s')=\frac{P(o_{t+1}\mid s',a_t)\bar b_{t+1}(s')}{\sum_uP(o_{t+1}\mid u,a_t)\bar b_{t+1}(u)}.
 \]
 分母为观测的边缘概率，保证归一化；零概率观测需模型外处理。若摘要删除了版本、来源或两个可能状态的区别，而这些会改变最优动作，它不是充分状态；语言流畅不能证明保留决策信息。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 对同一文档查询任务分别设计固定工作流和受限 ReAct；指出需要动态决策的观测，而不只增加模型调用次数。
+\begin{exercise} 对同一文档查询任务分别设计固定工作流和受限 ReAct；指出需要动态决策的观测，而不只增加模型调用次数。
 
-\begin{workbookanswers}
+\begin{solution}
 固定流程为解析文档ID、授权检索、检查版本、组装证据、生成或拒答。受限ReAct允许看到版本冲突后查询历史版本，或首次检索不足后补检例外条款，并保留步数、费用、期限和工具白名单。只有这些新观测可能改变查询对象或终止决策时动态控制才有意义；盲目重复调用相同工具不是适应。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 为具有三个依赖子任务的计划写出前置条件、完成判据和版本变化后的重规划规则。
+\begin{exercise} 为具有三个依赖子任务的计划写出前置条件、完成判据和版本变化后的重规划规则。
 
-\begin{workbookanswers}
+\begin{solution}
 例如A确定适用合同版本，B读取该版本价格，C按价格计算总额，依赖A到B到C。A完成须有有效时间与来源，B须匹配A修订，C须金额/币种/数量验算。若执行前发现合同版本变更，标记B、C依赖失效并重算；若任务问历史事实则继续固定历史快照。不能只清空所有状态而重复已提交的业务动作。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 证明只有步骤上限不能限制墙钟时间，只有工具次数上限不能限制无工具决策循环，并给出同时满足两类约束的终止设计。
+\begin{exercise} 证明只有步骤上限不能限制墙钟时间，只有工具次数上限不能限制无工具决策循环，并给出同时满足两类约束的终止设计。
 
-\begin{workbookanswers}
+\begin{solution}
 单步工具可永不返回，所以有限步骤不限制时间；模型可无限无工具反思，所以有限工具次数不限制决策轮数。控制器同时维护最大决策轮数、工具调用数、费用预留和绝对截止时间，并为每活动设置不超过剩余期限的超时。等待审批释放执行资源，过期进入明确暂停/终止状态；循环不得通过子任务重置预算。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 将数例中的查询成本改为 $0.8$，计算信息价值；再说明查询后状态变化为何需要引入额外转移假设。
+\begin{exercise}\optional 将数例中的查询成本改为 $0.8$，计算信息价值；再说明查询后状态变化为何需要引入额外转移假设。
 
-\begin{workbookanswers}
+\begin{solution}
 查询前最优值0，查询后不扣成本的最优期望为0.76；成本0.8时净信息价值为$0.76-0.8=-0.04$，应不查询。若查询期间资源变化，应把$P(s'\mid s,\text{query})$纳入预测再决策，不能继续使用静态状态下的$\frac{27}{29}$后验直接提交。授权和资源版本仍要执行点校验。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 为一条配置记忆设计来源、有效时间、版本与冲突字段；解释观察时间晚于另一条记录为何不必然意味着它更权威。
+\begin{exercise} 为一条配置记忆设计来源、有效时间、版本与冲突字段；解释观察时间晚于另一条记录为何不必然意味着它更权威。
 
-\begin{workbookanswers}
+\begin{solution}
 保存命题、对象ID、原始来源、来源修订、观察时间、适用时间区间、权限与核验状态。晚收到的邮件可能转述旧配置，较早收到的正式发布可能已生效，因此观察时间不能代替有效时间或修订优先级。冲突时按来源治理规则选择、回源核对或保留争议，不用向量相似度决定哪个事实有效。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 推导恒定失效风险率下的新鲜度衰减，并举出两个不适合使用该模型的记忆类型。
+\begin{exercise}\optional 推导恒定失效风险率下的新鲜度衰减，并举出两个不适合使用该模型的记忆类型。
 
-\begin{workbookanswers}
+\begin{solution}
 恒定风险率给$P(T>t+h\mid T>t)=1-\lambda h+o(h)$，故$S'(t)=-\lambda S(t),S(0)=1$，解$S(t)=e^{-\lambda t}$。历史发生事实不因时间流逝而失效；按版本发布的配置通常跳变而非恒定随机失效。库存风险也可随业务周期变化，需非恒定风险或事件驱动更新。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 在共同历史重读模型中，令 $n=4,m=100,R=3$，计算输入词元总量；设计差量消息机制并说明其遗漏上下文风险。
+\begin{exercise}\optional 在共同历史重读模型中，令 $n=4,m=100,R=3$，计算输入词元总量；设计差量消息机制并说明其遗漏上下文风险。
 
-\begin{workbookanswers}
+\begin{solution}
 指定共同历史模型为$n^2m\sum_{r=1}^Rr$，代入得$16\times100\times6=9600$词元。全互联三轮消息数为$3\times4\times3=36$，与读入词元不是同一量。差量消息保留事件ID、版本和已确认游标，只发送新增信息，必要时获取检查点；漏游标或摘要丢失前提会导致错误决策，须能回放原证据。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 三个协作者拥有相同错误来源时，多数表决为何不提供独立判断的收益？设计一个区分角色多样性与证据多样性的评估。
+\begin{exercise}\optional 三个协作者拥有相同错误来源时，多数表决为何不提供独立判断的收益？设计一个区分角色多样性与证据多样性的评估。
 
-\begin{workbookanswers}
+\begin{solution}
 若三者都复制同一错误数据库条目，其错误事件可以完全相同，多数表决不降低概率。采用角色多样/相同与来源独立/共享的二乘二设计，固定任务、模型和总预算；报告条件错误相关、端到端成功及引用来源。只有换角色而不换证据不能证明独立验证，独立来源也需排除共同转载祖先。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 两个协作者同时更新版本12的任务状态，写出采用 CAS 的成功及冲突路径。哪些数据可以追加合并，哪些必须原子校验？
+\begin{exercise}\optional 两个协作者同时更新版本12的任务状态，写出采用 CAS 的成功及冲突路径。哪些数据可以追加合并，哪些必须原子校验？
 
-\begin{workbookanswers}
+\begin{solution}
 两者读版本12；A提交条件version=12成功并写13，B同条件失败，必须读13并重算或作冲突处理，不允许覆盖。不同事件ID的只增日志可以集合合并，但余额、任务终态、批准摘要和同一字段替换需事务性约束。对外执行还须隔离旧租约，CAS只保护本地状态而非远端副作用。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 为“远端预留成功、本地回执丢失”写出恢复状态转移，区分确认未提交、结果未知、幂等重试和补偿。
+\begin{exercise} 为“远端预留成功、本地回执丢失”写出恢复状态转移，区分确认未提交、结果未知、幂等重试和补偿。
 
-\begin{workbookanswers}
+\begin{solution}
 发送后超时记未知，保留原动作键和摘要；查询业务端原键：已成功则补记回执，明确未提交且授权/期限仍有效则同键重试，查询不确定则继续等待或人工对账。无法查询或不支持幂等时不可换新键盲重发。补偿是另一个被授权动作，记录原预留与释放结果，并不抹去曾经预留的历史。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 设计预算固定的单智能体与监督者架构比较，给出任务完成、副作用、通信、迟到结果和终止原因的评价口径。
+\begin{exercise}\optional 设计预算固定的单智能体与监督者架构比较，给出任务完成、副作用、通信、迟到结果和终止原因的评价口径。
 
-\begin{workbookanswers}
+\begin{solution}
 固定题集、模型、工具权限、总词元/费用/期限，比较单体与监督者配置；子体的成本计入总预算。成功由外部目标状态判定，另报重复副作用、未知状态、迟到消息被采纳率、输入通信量和终止原因。按题配对、按任务依赖/冲突切片；不能把更多预算的多体胜出归因于拓扑，监督者漏汇总也应作为系统失败计入。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 同一模型在两个 Harness 中成功率不同。前者有两倍工具调用预算且允许访问额外数据，能否将差异解释为 Harness 的控制逻辑更优？请设计可归因的比较。
+\begin{exercise} 同一模型在两个 Harness 中成功率不同。前者有两倍工具调用预算且允许访问额外数据，能否将差异解释为 Harness 的控制逻辑更优？请设计可归因的比较。
 
-\begin{workbookanswers}
+\begin{solution}
 
 不能。观测信息、可达动作与预算同时变化，无法单独识别控制逻辑的作用。应固定任务集合、模型版本、数据权限、工具版本、总预算和成功判据，仅改变所研究的控制机制，并采用同任务配对比较与重复运行。若研究整体系统，则可保留不同配置，但须报告成本、权限、失败分母和人工介入；结论应限定为该配置下的端到端表现。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\end{exerciselist}
+\end{exercises}

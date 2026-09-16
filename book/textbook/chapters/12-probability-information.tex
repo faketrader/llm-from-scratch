@@ -2,11 +2,11 @@
 \begin{document}
 \bookchapter{数学基础}{ch:rev-probability}
 
-本章快速复习后续内容反复使用的数学对象。向量承载特征，矩阵实现批量线性变换，梯度描述标量目标对参数的局部变化；概率则规定语言模型输出的含义。读者只需重新建立符号、形状和概念之间的联系，不需要在此完成一门独立的数学课程。随后将这些对象用于推导\term{最大似然估计}{Maximum Likelihood Estimation}{MLE}、\term{熵}{Entropy}{}、\term{交叉熵}{Cross-Entropy}{CE}和\term{库尔贝克—莱布勒散度}{Kullback--Leibler Divergence}{KL}。
+向量承载特征，矩阵实现批量线性变换，梯度描述目标函数对参数的局部变化，概率规定语言模型输出的含义。这些数学对象共同构成语言建模的基础，并用于推导\term{最大似然估计}{Maximum Likelihood Estimation}{MLE}、\term{熵}{Entropy}{}、\term{交叉熵}{Cross-Entropy}{CE}和\term{库尔贝克—莱布勒散度}{Kullback--Leibler Divergence}{KL}。
 
-\begin{bookassumptions}
-词表取有限集合；除明确讨论连续情形外，概率均为离散质量。涉及条件概率的条件事件具有正概率；需要有限对数损失时，预测分布在目标支持集上严格为正。样本独立同分布只在相应估计推导中使用，不作为所有文本片段天然满足的事实。
-\end{bookassumptions}
+\begin{assumption}
+词表取有限集合；除明确讨论连续情形外，概率均为离散质量。涉及条件概率的条件事件具有正概率；需要有限对数损失时，预测分布在目标支持集上严格为正。涉及统计估计的推导分别给出采样假设。
+\end{assumption}
 
 \section{向量、矩阵及线性变换}
 
@@ -108,7 +108,7 @@ $D_{\mathrm{KL}}(p\|q)$ & 从目标分布 $p$ 到分布 $q$ 的 KL 散度。\\
  p(y\mid x)=\frac{p(x,y)}{p_X(x)},\qquad
  p_X(x)=\sum_y p(x,y).
 \end{equation}
-条件化把样本空间限制到已知条件，并重新归一化。它不是删除条件变量，也不是默认条件与结果具有因果关系。网页内容与某个答案同时出现，可以形成统计相关；这并不证明网页内容导致答案所述事件发生。
+条件化把样本空间限制到已知条件，并重新归一化。它不是删除条件变量，也不是默认条件与结果具有因果关系。网页内容与某个答案同时出现，描述统计相关；因果关系还需机制与干预等依据。
 
 将式\eqref{eq:rev-conditional}两边乘以 $p_X(x)$，得到乘法规则
 \begin{equation}
@@ -120,7 +120,8 @@ $D_{\mathrm{KL}}(p\|q)$ & 从目标分布 $p$ 到分布 $q$ 的 KL 散度。\\
 \end{equation}
 要求分母 $p_Y(y)>0$。分子衡量取值 $x$ 与观测 $y$ 的共同可能性，分母汇总全部候选解释，使结果归一化。
 
-\phantomsection\label{q:ch2:example:01}
+\begin{example}[验证器通过后的正确率]
+\label{q:ch2:example:01}
 设一个验证器判断生成答案是否正确。候选答案的先验正确率为 $0.2$；正确答案有 $0.9$ 的概率通过，错误答案有 $0.1$ 的概率误通过。记正确事件为 $C$，通过事件为 $A$。联合概率为
 \begin{align}
  P(C\cap A)&=0.2\times0.9=0.18,\\
@@ -133,7 +134,8 @@ $D_{\mathrm{KL}}(p\|q)$ & 从目标分布 $p$ 到分布 $q$ 的 KL 散度。\\
 \end{equation}
 通过后的正确率高于原来的 $0.2$，却并非 $0.9$。$P(A\mid C)$ 表示正确答案被接受的概率，$P(C\mid A)$ 表示接受结果中正确答案的比例，条件方向不同。基础正确率较低时，错误答案数量较多，即使误通过率较低也会形成不可忽略的污染。
 
-这里的数值是用于说明条件概率的设定值，不是验证器性能实测。实际系统必须从合适样本中估计这些概率，并进一步考虑验证器与候选生成器的相关性和分布变化。
+实际系统可从样本中估计这些条件概率；验证器与候选生成器的相关性以及分布变化会影响估计结果。
+\end{example}
 
 \subsection{序列联合分布的分解}
 对三个随机变量，连续应用乘法规则有
@@ -148,13 +150,18 @@ $D_{\mathrm{KL}}(p\|q)$ & 从目标分布 $p$ 到分布 $q$ 的 KL 散度。\\
 \end{equation}
 这个分解没有假定各位置独立。相反，右端保留了完整前缀条件。只有进一步假定 $p(x_t\mid x_{<t})=p(x_t)$，才会退化为独立取值乘积。以固定窗口替代完整前缀同样是一项额外限制。
 
-若每个条件分布均归一化，固定长度联合分布也归一化。证明从最后一个位置开始求和：
+\begin{proposition}[序列分布的归一化]
+对于固定长度 $T$ 的离散序列，若每个前缀条件下的词元分布均归一化，则式\eqref{eq:rev-prob-chain}定义的联合分布也归一化。
+\end{proposition}
+\begin{proof}
+从最后一个位置开始求和：
 \begin{align}
  \sum_{x_{1:T}}\prod_{t=1}^T p(x_t\mid x_{<t})
  &=\sum_{x_{1:T-1}}\left[\prod_{t=1}^{T-1}p(x_t\mid x_{<t})\right]
  \underbrace{\sum_{x_T}p(x_T\mid x_{<T})}_{1}\\
  &=\cdots=\sum_{x_1}p(x_1)=1.
 \end{align}
+\end{proof}
 这解释了为何逐位置的词表分布能够定义完整序列概率。零概率前缀上的条件分布可以任意补成归一化分布，而不改变联合概率；除法定义只需用于具有正概率的前缀。
 
 \section{期望、方差及经验分布}
@@ -195,7 +202,7 @@ $\mathbb E[aU+bV]=a\mathbb E[U]+b\mathbb E[V]$，无须假定 $U,V$ 独立。
  \mathbb E_{\widehat p_n}[g(X)]=\sum_x\widehat p_n(x)g(x)
  =\frac1n\sum_{i=1}^n g(X_i).
 \end{equation}
-经验平均可以严格写成经验分布下的期望。但经验分布并不等于真实分布：未观察到某个取值，不能证明它在总体中的概率为零。后续的训练目标正是由这个可计算的经验平均构成。
+经验平均可以严格写成经验分布下的期望。经验分布由有限样本形成，未观察到的取值在总体中仍可能有正概率。后续的训练目标正是由这个可计算的经验平均构成。
 
 \section{最大似然及负对数损失}
 
@@ -214,6 +221,7 @@ $\mathbb E[aU+bV]=a\mathbb E[U]+b\mathbb E[V]$，无须假定 $U,V$ 独立。
 对数将连乘转为求和，既便于分析，也避免大量小概率连乘导致的数值下溢。除以固定的 $n$ 不改变最优解，但改变梯度尺度；优化时仍需与学习率等设置共同考虑。
 
 \subsection{伯努利参数估计}
+\begin{example}
 \label{q:ch2:example:02}
 设 $X\in\{0,1\}$，$p_\theta(X=1)=\theta$，$0<\theta<1$。在 $n$ 次独立观测中出现 $k$ 次一，负对数似然为
 \begin{equation}
@@ -227,6 +235,7 @@ $\mathbb E[aU+bV]=a\mathbb E[U]+b\mathbb E[V]$，无须假定 $U,V$ 独立。
 且 $J''(\theta)=\frac{k}{\theta^2}+\frac{n-k}{(1-\theta)^2}>0$，所以该驻点是唯一最小值。例如十次中六次为一，估计值为 $0.6$。当 $k=0$ 或 $k=n$ 时，若参数域包含端点，最优解分别位于 $0$ 或 $1$；不能在这些情形机械套用内部驻点条件。
 
 端点解也说明经验估计的局限。训练样本没有某个结果时，最大似然可能将其概率设为零。引入先验、平滑或更强的共享结构可以改变这一行为，但这些操作也改变了估计问题，需明确说明。
+\end{example}
 
 \subsection{条件监督、回归及多标签}
 在分类任务中，通常给定输入 $x_i$，拟合 $p_\theta(y_i\mid x_i)$。二分类令 $p=\sigma(z)=(1+e^{-z})^{-1}$，则伯努利负对数似然为
@@ -275,16 +284,24 @@ $\mathbb E[aU+bV]=a\mathbb E[U]+b\mathbb E[V]$，无须假定 $U,V$ 独立。
 \end{align}
 第一项不随模型 $q$ 改变，第二项衡量预测分布偏离目标分布所带来的额外平均对数损失。因此，对固定目标分布最小化交叉熵，等价于最小化这个方向的 KL 散度。
 
-KL 散度的非负性可以由基本不等式 $-\log u\ge1-u$ 推出。假设在 $p$ 的支持上 $q$ 为正，则
+\begin{proposition}[KL 散度非负性]
+对同一有限集合上的概率分布 $p$ 和 $q$，$D_{\mathrm{KL}}(p\|q)\ge0$，且等号成立当且仅当 $p=q$。当 $p(x)>0$ 而 $q(x)=0$ 时，散度取正无穷。
+\end{proposition}
+\begin{proof}
+非负性可以由基本不等式 $-\log u\ge1-u$ 推出。假设在 $p$ 的支持上 $q$ 为正，则
 \begin{align}
  D_{\mathrm{KL}}(p\|q)
  &=-\sum_{x:p(x)>0}p(x)\log\frac{q(x)}{p(x)}\\
  &\ge\sum_{x:p(x)>0}[p(x)-q(x)]\\
  &=1-\sum_{x:p(x)>0}q(x)\ge0.
 \end{align}
-等号成立要求支持上的比值均为一，且 $q$ 没有把额外概率放到支持之外，即 $p=q$。若 $q$ 在 $p$ 的某个正概率位置为零，散度为正无穷，非负性仍成立。由此可以进一步证明，在 $C$ 个取值上，$H(p)\le\log C$：令 $u(x)=\frac{1}{C}$，则 $D_{\mathrm{KL}}(p\|u)=\log C-H(p)\ge0$。最大熵由均匀分布取得。
+等号成立要求支持上的比值均为一，且 $q$ 没有把额外概率放到支持之外，即 $p=q$。若 $q$ 在 $p$ 的某个正概率位置为零，散度为正无穷，非负性仍成立。\end{proof}
+\begin{corollary}[有限集合上的最大熵]
+在 $C$ 个取值上，$H(p)\le\log C$：令 $u(x)=\frac{1}{C}$，则 $D_{\mathrm{KL}}(p\|u)=\log C-H(p)\ge0$。最大熵由均匀分布取得。
+\end{corollary}
 
 \subsection{KL 散度方向性}
+\begin{example}
 \label{q:ch2:example:03}
 令 $p=(0.75,0.25)$，$q=(0.5,0.5)$，逐项计算得到
 \begin{align}
@@ -297,12 +314,13 @@ KL 散度的非负性可以由基本不等式 $-\log u\ge1-u$ 推出。假设在
  D_{\mathrm{KL}}(q\|p)=0.5\log\frac{0.5}{0.75}+0.5\log\frac{0.5}{0.25}
  \approx0.1438.
 \end{equation}
-二者不同，说明 KL 散度一般不对称。它也不满足距离所需的三角不等式，因此本书不将其称为通常意义的距离。训练和蒸馏中的 KL 项必须说明哪个分布提供采样权重；改变方向便改变了目标。
+二者不同，说明 KL 散度一般不对称。它也不满足三角不等式，因而不是通常意义的距离。训练和蒸馏中的 KL 项必须说明哪个分布提供采样权重；改变方向便改变了目标。
 
 \begin{center}
 \includegraphics[width=.92\linewidth]{\subfix{../../figures/theory/revision-likelihood-objective.pdf}}
 \captionof{figure}{观测数据与模型通过负对数概率形成经验交叉熵。真实分布提供总体目标，有限样本只提供其估计；二者之间的差异不能由训练损失自动消除。}
 \end{center}
+\end{example}
 
 \section{序列损失}
 

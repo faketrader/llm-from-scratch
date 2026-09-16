@@ -2,9 +2,9 @@
 \begin{document}
 \bookchapter{注意力机制}{ch:attention}
 
-\bookxref{ch:rev-tokenization}先把文本记录变为词元编号和有效性掩码，再在\bookxref{ch:rev-tokenization}[中的“从离散身份到连续表示”一节]把离散符号变为形状明确的连续向量。至此，每个批次已经形成 $X\in\Real^{B\times T\times d}$，但仅有逐位置的映射仍不能完成上下文交互，也不会单独提供顺序坐标。对于句子中同一个词元，其含义可能取决于前面的修饰语、远处的主语或另一段输入中的证据。\term{注意力机制}{Attention}{}通过输入相关的权重，在一组可访问位置之间汇总信息，使每个查询位置能够得到面向当前上下文的表示。顺序信息如何进入这一计算将在\bookxref{ch:position-representation}讨论。
+文本经分词与嵌入后形成连续张量 $X\in\Real^{B\times T\times d}$，每个位置对应一个词元向量。词元的含义还取决于上下文，例如前面的修饰语、远处的主语或另一段输入中的证据。\term{注意力机制}{Attention}{}以输入相关的权重汇总可见位置的信息，形成上下文表示。顺序信息的表达见\bookxref{ch:position-representation}。
 
-注意力并不是“选出最重要的词”的同义词。它首先是一个可微的向量到向量运算：计算匹配分数、在允许位置上归一化、对内容向量加权求和。只有把这三个步骤及其梯度写清楚，才能正确理解多头、因果掩码和键值共享，也才能区分数学结构与执行内核的优化。本章以原始 Transformer 的缩放点积形式为基础\cite{vaswani2017attention}，逐项建立这一计算过程。
+注意力计算包含三个步骤：计算匹配分数，在可见位置上归一化，再对值向量加权求和。原始 Transformer 采用缩放点积形式\cite{vaswani2017attention}，多头、因果掩码和键值共享都可在这一形式上定义。
 
 \section{查询键值机制}
 
@@ -22,9 +22,9 @@
 \begin{equation}
  Q=X_qW_Q,\qquad K=X_mW_K,\qquad V=X_mW_V,\label{eq:attn-projections}
 \end{equation}
-其中 $W_Q\in\Real^{d_q\times d_k}$，$W_K\in\Real^{d_m\times d_k}$，$W_V\in\Real^{d_m\times d_v}$。查询和键必须投影到相同的 $d_k$ 维空间才能计算点积；值的宽度 $d_v$ 可以与 $d_k$ 不同。为集中讨论主线，本章公式暂省略偏置；加入偏置时按位置广播，反向梯度对位置求和。
+其中 $W_Q\in\Real^{d_q\times d_k}$，$W_K\in\Real^{d_m\times d_k}$，$W_V\in\Real^{d_m\times d_v}$。查询和键必须投影到相同的 $d_k$ 维空间才能计算点积；值的宽度 $d_v$ 可以与 $d_k$ 不同。以下投影省略偏置；含偏置时，它沿位置轴广播，其梯度沿该轴求和。
 
-先给出本章随后逐项建立的完整单头运算。未使用掩码时，\term{缩放点积注意力}{Scaled Dot-Product Attention}{}定义为
+未使用掩码时，\term{缩放点积注意力}{Scaled Dot-Product Attention}{}定义为
 \begin{equation}
  \operatorname{Attention}(Q,K,V)
  =\softmax\!\left(\frac{QK^{\mathsf T}}{\sqrt{d_k}}\right)V.
@@ -48,7 +48,7 @@ $H_q,H_{kv}$ & 查询头数、键值头数 & 正整数\\
 \end{center}
 符号 $V$ 在本章始终表示值矩阵；需要词表大小时另记为 $V_{\mathrm{vocab}}$。恢复批量轴后，各样本独立执行上述运算，输入通常写为 $[B,T,d_q]$ 和 $[B,S,d_m]$。
 
-\term{自注意力}{Self-Attention}{}令两侧输入来自同一序列，即 $X_q=X_m=X$，因而 $T=S$；这不意味着投影后的 $Q=K=V$。只要 $W_Q,W_K,W_V$ 不同，三组向量就不同。\term{交叉注意力}{Cross-Attention}{}则允许输入来源不同，例如查询取自目标序列，键和值取自源序列的编码结果。算法名称描述信息来源，单头的计算公式保持相同。
+\term{自注意力}{Self-Attention}{}令两侧输入来自同一序列，即 $X_q=X_m=X$，因而 $T=S$。不同的投影矩阵通常产生不同的查询、键和值。\term{交叉注意力}{Cross-Attention}{}则允许输入来源不同，例如查询取自目标序列，键和值取自源序列的编码结果。算法名称描述信息来源，单头的计算公式保持相同。
 
 \section{缩放点积及归一化}
 
@@ -60,9 +60,9 @@ $H_q,H_{kv}$ & 查询头数、键值头数 & 正整数\\
 因此点积不只是角度相似度，向量范数也影响分数。将两者分别归一化后计算余弦相似度，是另一种分数定义，不能不加说明地替换。学习到的投影可以调整匹配方向和尺度，并不要求向量各维预先具备可命名的语义。
 
 \subsection{点积分数缩放}
-\begin{bookassumptions}[平方根缩放的矩条件]
-查询和键的分量均值为零、二阶矩有限；两向量独立，各自坐标方差分别为 $\sigma_q^2,\sigma_k^2$，不同坐标的乘积互不相关。该假设用于解释初始尺度，不视为训练后始终成立的不变量。
-\end{bookassumptions}
+\begin{assumption}[平方根缩放的矩条件]
+查询和键的分量均值为零、二阶矩有限；两向量独立，各自坐标方差分别为 $\sigma_q^2,\sigma_k^2$，不同坐标的乘积互不相关。这些条件用于分析初始化时的分数尺度。
+\end{assumption}
 在这些条件下，对 $s=\sum_{r=1}^{d_k}q_rk_r$，有
 \begin{align}
  \mathbb E[s]&=\sum_r\mathbb E[q_r]\mathbb E[k_r]=0,\\
@@ -77,7 +77,7 @@ $H_q,H_{kv}$ & 查询头数、键值头数 & 正整数\\
 \end{equation}
 特别地，两种分量方差均为一时，未经缩放的分数标准差为 $\sqrt{d_k}$，缩放后为一。该设计抑制维数增长带来的尺度变化，并未把每个实际分数都限制在 $[-1,1]$ 内。
 
-独立性是推导的条件，而非自注意力训练后的不变量。同一输入经过不同投影，可能产生相关的查询与键。即使 $q,k$ 是独立零均值向量，若坐标之间相关、协方差为 $C_q,C_k$，更一般的结果也是
+同一输入经过不同投影，可能产生相关的查询与键。即使 $q,k$ 是独立零均值向量，若坐标之间相关、协方差为 $C_q,C_k$，更一般的结果也是
 \begin{equation}
  \operatorname{Var}(qk^\mathsf T)
  =\mathbb E_q[qC_kq^\mathsf T]
@@ -97,13 +97,17 @@ Softmax 对同一行的常数平移不变：对任意 $c_i$，以 $U_{ij}-c_i$ �
 如果某个分数比其他分数大很多，权重便接近独热。Softmax 的\term{雅可比矩阵}{Jacobian Matrix}{}汇总其全部一阶偏导数，其对角项为 $a_j(1-a_j)$、非对角项为 $-a_ja_r$，在这种极度集中的情形下，多数分数梯度会变小。缩放有助于避免初始化附近无意造成的过早集中，但不能保证所有头都维持分散的权重，也不能把所有小梯度问题归因于 Softmax。
 
 \subsection{凸组合的范围及例外}
-在未使用\term{随机失活}{Dropout}{}的单头权重运算中，$o_i$ 位于 $\{v_j\}$ 的凸包内。任意线性投影 $P$ 满足
+\begin{proposition}[注意力输出的凸组合性质]
+在允许键集合非空、分数有限且未使用\term{随机失活}{Dropout}{}的单头权重运算中，$o_i$ 位于 $\{v_j\}$ 的凸包内。\end{proposition}
+\begin{proof}
+Softmax 权重非负且和为一，因此值向量的加权和属于其凸包。任意线性投影 $P$ 满足
 \begin{equation}
  P(o_i)=\sum_j a_{ij}P(v_j),
 \end{equation}
+\end{proof}
 所以二维投影可以保留加权组合关系，适合展示汇总机制；二维投影不能保留的距离和方向，则不能用于证明原空间中的语义关系。
 
-若在权重上施加保留概率为 $q$ 的 Dropout，实际使用 $\widetilde A_{ij}=\frac{m_{ij}A_{ij}}{q}$，其行和在一次随机采样中一般不再等于一，甚至可能为零。期望满足 $\mathbb E_m\widetilde A=A$，但每次输出不再必然处于同一个凸包。检查“概率行和为一”应针对 Dropout 之前的归一化权重；不能把这一性质要求施加到所有训练模式输出上。
+若在权重上施加保留概率为 $q$ 的 Dropout，实际使用 $\widetilde A_{ij}=\frac{m_{ij}A_{ij}}{q}$，其行和在一次随机采样中一般不再等于一，甚至可能为零。期望满足 $\mathbb E_m\widetilde A=A$，但每次输出不再必然处于同一个凸包。行和为一的性质适用于 Dropout 之前的归一化权重。
 
 \section{掩码规定可见性}
 
@@ -118,7 +122,7 @@ Softmax 对同一行的常数平移不变：对任意 $c_i$，以 $U_{ij}-c_i$ �
 \end{equation}
 用加性掩码表示时，$M_{ij}=0$ 对应允许，$M_{ij}=-\infty$ 对应禁止，可以简写为 $A=\softmax(U+M)$。数学上 $e^{-\infty}=0$，但具体浮点程序仍须避免全屏蔽行或非有限输入导致的不定运算。
 
-布尔掩码中的真值没有跨所有接口统一的含义：有的接口使用真表示允许，有的使用真表示禁止。正文用集合和加性形式消除这种歧义；实现时应在接口边界将外部约定转换为单一内部约定。不能依靠张量类型或名称猜测方向。\footnote{硬掩码改变允许集合；位置偏置等有限加性项只是改变分数。二者都可写成加法，但有限负偏置通常不等价于严格禁止读取。}
+布尔掩码中的真值没有跨所有接口统一的含义：有的接口使用真表示允许，有的使用真表示禁止。实现时可在接口边界将外部约定转换为统一的允许集合或加性掩码。\footnote{硬掩码改变允许集合；位置偏置等有限加性项只是改变分数。二者都可写成加法，但有限负偏置通常不等价于严格禁止读取。}
 
 \subsection{填充掩码、因果掩码及文档边界}
 填充掩码屏蔽没有真实内容的键值位置。批量中的有效长度不同时，键掩码可由 $[B,S]$ 扩展到所有头和查询行。屏蔽填充键并不保证填充查询的输出为零：填充查询仍可能读取有效键。若这些查询应被忽略，需在损失或后续输出处理上明确实现；把嵌入的某一行固定为零不能替代注意力掩码。
@@ -152,26 +156,39 @@ Softmax 对同一行的常数平移不变：对任意 $c_i$，以 $U_{ij}-c_i$ �
 左填充的因果批量尤其容易产生早期无效查询行：它们不能访问未来真实词元，而自身及过去位置又全是填充。设置不同的 BOS 与 PAD 身份可以避免把真实起始位置误判为填充，但仍必须检查所有无效行。不能先产生 NaN，再指望与零相乘恢复为有限结果。
 
 
-\begin{bookalgorithm}[具有严格可见性的单头注意力]
+\begin{algorithm}[具有严格可见性的单头注意力]
 \label{alg:attn-masked}
 \textbf{输入：}$Q\in\Real^{T\times d_k}$、$K\in\Real^{S\times d_k}$、$V\in\Real^{S\times d_v}$，每行允许集合 $\mathcal J_i$，查询有效标记 $b_i$。\textbf{输出：}$O\in\Real^{T\times d_v}$；需要诊断或显式反向时同时保留权重 $A$。本算法关闭权重 Dropout。
-\begin{enumerate}
- \item 检查匹配宽度及键值位置数一致，所有数值输入有限；创建全零的 $O$，需要保留权重时创建全零的 $A$。
- \item 对查询 $i=1,\ldots,T$：若 $b_i=0$，保持该行输出为零并进入下一行；若 $b_i=1$ 但 $\mathcal J_i$ 为空，报告非法可见性并停止。
- \item 对每个 $j\in\mathcal J_i$ 计算 $u_j=\frac{q_i k_j^\mathsf T}{\sqrt{d_k}}$。若点积出现非有限值，报告数值异常；否则取 $c=\max_{j\in\mathcal J_i}u_j$。
- \item 计算 $e_j=\exp(u_j-c)$ 及 $z=\sum_{j\in\mathcal J_i}e_j$。此时至少一项指数为一，分母严格为正。
- \item 对允许位置令 $a_j=\frac{e_j}{z}$，累加 $o_i\leftarrow o_i+a_jv_j$；禁止位置不参加归一化，也不参加汇总。需要权重时写入 $A_{ij}=a_j$。
- \item 全部查询完成后返回结果。有效行的权重非负、行和为一；无效行保持零，禁止位置的权重保持零。
-\end{enumerate}
+\begin{algorithmic}[1]
+\State 检查形状、键值位置数和输入有限性；$O\gets0$，需要权重时 $A\gets0$
+\For{查询 $i=1,\ldots,T$}
+  \If{$b_i=0$}
+    \State 保持该行输出为零，进入下一查询
+  \Else
+    \If{$\mathcal J_i=\varnothing$}
+      \State 报告非法可见性并终止
+    \EndIf
+    \For{$j\in\mathcal J_i$}
+      \State $u_j\gets\frac{q_i k_j^\mathsf T}{\sqrt{d_k}}$；非有限结果触发数值异常并终止
+    \EndFor
+    \State $c\gets\max_{j\in\mathcal J_i}u_j$，$e_j\gets\exp(u_j-c)$，$z\gets\sum_{j\in\mathcal J_i}e_j$
+    \For{$j\in\mathcal J_i$}
+      \State $a_j\gets\frac{e_j}{z}$，$o_i\gets o_i+a_jv_j$；需要权重时 $A_{ij}\gets a_j$
+    \EndFor
+  \EndIf
+\EndFor
+\State \Return $O$ 及按需保留的 $A$
+\end{algorithmic}
+有效行权重非负且和为一；无效行保持零，禁止位置不参与归一化和汇总。
 显式逐行形式用于陈述完整定义，批量矩阵或融合实现可以更改执行次序，但必须保持允许集合、无效行约定与相同输入下的计算语义。
-\end{bookalgorithm}
+\end{algorithm}
 
 \subsection{矩形因果注意力及前缀偏移}
 增量读取时，查询可能只包含最新的一个或几个位置，而键值包含全部已缓存前缀，此时 $T\ne S$。因果关系应由绝对位置给出
 \begin{equation}
  j_{\mathrm{abs}}\leq i_{\mathrm{abs}},
 \end{equation}
-而不是盲目在 $T\times S$ 矩阵上从左上角画下三角。例如键绝对位置为 $0,1,2,3$，唯一查询的位置为 $3$，它应能读取四个键；若把该查询当作行号零，只允许键零，就改变了函数。缓存的存储与调度在推理篇展开，本章保留的是偏移不能丢失这一数学条件。
+而不是盲目在 $T\times S$ 矩阵上从左上角画下三角。例如键绝对位置为 $0,1,2,3$，唯一查询的位置为 $3$，它应能读取四个键；若把该查询当作行号零，只允许键零，就改变了函数。增量计算因此需要保留查询与键的绝对位置，缓存结构见推理相关章节。
 
 \section{因果单头注意力}
 
@@ -188,7 +205,7 @@ Softmax 对同一行的常数平移不变：对任意 $c_i$，以 $U_{ij}-c_i$ �
  V=\begin{bmatrix}1&0\\0&2\\1&2\end{bmatrix},\qquad
  U=\frac1{\sqrt2}\begin{bmatrix}1&0&1\\0&1&1\\1&1&2\end{bmatrix}.
 \end{equation}
-这里特意选择简单矩阵使每步可手算；真实投影一般不是单位矩阵。加入因果掩码，记 $c=\frac{1}{\sqrt2}\approx0.707107$，得到
+加入因果掩码，记 $c=\frac{1}{\sqrt2}\approx0.707107$，得到
 \begin{equation}
  U+M=\begin{bmatrix}
  c&-\infty&-\infty\\
@@ -288,7 +305,7 @@ $C\in\Real^{T\times Hd_v}$，$W_O\in\Real^{Hd_v\times d_{\mathrm{out}}}$，所�
 \end{equation}
 在 $d_k=d_v=\frac{d}{H}$ 的标准 MHA 中，整体投影矩阵宽度为 $3d$。这只是矩阵布局的合并，三个参数区间仍相互独立，不会减少参数量，也不产生 $Q=K=V$。若框架线性层把权重存为“输出宽度乘输入宽度”，对应打包轴与正文约定相反，迁移时应先核对矩阵乘法方向。
 
-对交叉注意力，$Q$ 与 $K,V$ 来自不同输入，不能使用一次 $XW_{QKV}$ 代替全部投影。键和值可以在记忆侧打包，查询则在查询侧单独计算。参数文件可以打包存储，并不意味着执行时必须共用一个输入。
+对交叉注意力，$Q$ 与 $K,V$ 来自不同输入，不能使用一次 $XW_{QKV}$ 代替全部投影。键和值可以在记忆侧打包，查询则在查询侧单独计算。参数存储布局与输入来源分别定义。
 
 \section{交叉注意力及结构关系}
 
@@ -378,6 +395,7 @@ $C\in\Real^{T\times Hd_v}$，$W_O\in\Real^{Hd_v\times d_{\mathrm{out}}}$，所�
 多头输出 $Y=CW_O$ 还需先计算 $\overline W_O=C^\mathsf T\overline Y$ 与 $\overline C=\overline YW_O^\mathsf T$，再按特征轴拆成各头上游梯度。如果启用了权重 Dropout，则在经过 Softmax 反向前，还要乘以同一次前向使用的 $\frac{m}{q}$；不能重新随机采样掩码。
 
 \subsection{注意力局部梯度}
+\begin{example}
 \label{q:ch6:example:02}
 仍取因果例题第二个查询，令损失 $\mathcal L=o_{2,1}$，只取该行输出第一坐标。在其两个可见位置上，$a=(\alpha,1-\alpha)$，其中 $\alpha=\frac{1}{1+e^c}\approx0.330238$。上游 $G_2=(1,0)$，故 $R_2=(1,0)$。分数梯度为
 \begin{equation}
@@ -390,6 +408,7 @@ $C\in\Real^{T\times Hd_v}$，$W_O\in\Real^{Hd_v\times d_{\mathrm{out}}}$，所�
  \approx(0.156399,-0.156399).
 \end{equation}
 例如沿 $q_{2,1}$ 增大，会提高第一个键的分数，增加第一内容坐标；其导数应为正。导数符号、行和为零与有限差分数值共同形成比“程序能够反向运行”更强的局部证据。
+\end{example}
 
 \section{计算规模及键值共享}
 
@@ -438,9 +457,9 @@ MHA 到 GQA 的改变也不是把张量重排一下：不同键值投影被约�
 \subsection{排列等变性}
 没有位置表示、掩码也同步变换时，自注意力具有排列等变性。令 $P$ 为位置置换矩阵，每行每列恰有一个一，并满足 $P^{\mathsf T}P=I$。考虑自注意力输入 $X$ 变为 $PX$ 的情形。
 
-\begin{bookassumptions}[排列等变性证明的前提]
+\begin{assumption}[排列等变性证明的前提]
 各位置共享投影参数；不含显式位置输入；Softmax 逐行沿键轴计算；无随机算子。若存在掩码，可见性关系必须与内容同步置换，且每个查询至少有一个允许位置。
-\end{bookassumptions}
+\end{assumption}
 
 首先，线性投影与行置换可交换：
 \begin{equation}
@@ -476,18 +495,12 @@ MHA 到 GQA 的改变也不是把张量重排一下：不同键值投影被约�
 \subsection{局部性质及整体行为}
 一组有意义的结构验证应同时覆盖投影形状、允许集合、归一化行和、输出矩阵乘法及梯度。因果结构还应核对未来扰动不改变早期输出；共享键值结构需核对各查询头映射到正确的组。对框架实现做数值比较，应统一参数、偏置、缩放、位置表示、掩码语义和 Dropout 状态，随机初始化的两个模块没有逐值相等的理由。
 
-浮点运算顺序不同可能使结果出现舍入差异，合理的相对与绝对误差容限应随精度、规模和数值范围确定。局部公式一致只能证明对应算子的正确性，不能证明模型已学会翻译、检索或推理。训练目标、数据与完整网络将进一步决定这些能力。
+浮点运算顺序不同可能使结果出现舍入差异，合理的相对与绝对误差容限应随精度、规模和数值范围确定。算子比较检查数值计算的一致性，任务能力则由训练目标、数据与完整网络共同决定。
 
 
-\begin{bookinsight}[注意力计算的三个独立约束]
-投影决定匹配与内容的表示空间，掩码决定合法的信息来源，归一化决定允许位置之间的读取比例。输出和梯度必须同时遵守这三项约束。算法\ref{alg:attn-masked}落实单头定义；图\ref{fig:attn-multihead}增加并行表示空间；共享键值则改变投影的共享关系。三者均不能由一张权重热力图完整证明。
-\end{bookinsight}
-
-
-\paragraph{习题参考结果}
-第1题依次为 $5\times7$、$5\times7$、$5\times3$。第2题方差为 $16d_k$ 与 $16$。第5题在把 $Q,K,V$ 当作独立输入求偏导时，$\overline K_1=(0,\frac{\alpha(1-\alpha)}{\sqrt2})$，$\overline K_2$ 为其相反数。第7题共 $\num{3145728}$ 字节，即 $3\ \text{MiB}$，为 MHA 的四分之一。第9题方差为 $(1-q)\sum_j \frac{A_{ij}^2}{q}$；该结论要求固定归一化权重并对独立掩码取期望。
-
-
+\begin{note}[注意力计算的三个独立约束]
+投影决定匹配与内容的表示空间，掩码决定合法的信息来源，归一化决定允许位置之间的读取比例。输出和梯度必须同时遵守这三项约束。算法\ref{alg:attn-masked}落实单头定义；图\ref{fig:attn-multihead}增加并行表示空间；共享键值则改变投影的共享关系。
+\end{note}
 
 
 \chapterreferences

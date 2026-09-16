@@ -1,82 +1,95 @@
 \workbookchapter{推理计算优化}
 
-\begin{exerciselist}
-\exerciseitem 推导在线统计量合并的三块表达，并说明精确算术下合并顺序无关的原因。
+\begin{exercises}
+\begin{exercise} 推导在线统计量合并的三块表达，并说明精确算术下合并顺序无关的原因。
 
-\begin{workbookanswers}
+\begin{solution}
 设 $m=\max(m_1,m_2,m_3)$，$\ell=\sum_ie^{m_i-m}\ell_i,u=\sum_ie^{m_i-m}u_i$。代回各块定义后，分别等于全体有效位置的 $\sum e^{s_j-m}$ 与 $\sum e^{s_j-m}v_j$；这些有限和在精确算术中结合律成立，输出u/ell与合并次序无关。浮点舍入仍可能造成微小次序差。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 为两个输出不同且指数质量不等的键块构造数例，比较正确合并与局部等权平均。
+\begin{exercise} 为两个输出不同且指数质量不等的键块构造数例，比较正确合并与局部等权平均。
 
-\begin{workbookanswers}
+\begin{solution}
 块A只有指数质量1、值0，块B只有指数质量3、值4。正确输出 $\frac{1\times0+3\times4}{4}=3$；局部输出0和4等权平均为2。块权重必须正比全局指数质量，不能由块数或局部输出决定。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 说明全掩码块与全掩码行的区别，并设计不产生无穷相减的初始化规则。
+\begin{exercise} 说明全掩码块与全掩码行的区别，并设计不产生无穷相减的初始化规则。
 
-\begin{workbookanswers}
+\begin{solution}
 全掩码块仅表示本块对查询无贡献，可跳过；全掩码行表示所有块都无有效键，常规Softmax无定义。用显式empty状态，首个非空块直接赋值，之后合并，避免 $-\infty-(-\infty)$。全部空时按接口返回零/报错等明定规则，不能伪造概率归一化。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 从 Softmax Jacobian 推导本章反向公式的行内减均值项。
+\begin{exercise}\optional 从 Softmax Jacobian 推导本章反向公式的行内减均值项。
 
-\begin{workbookanswers}
+\begin{solution}
 对一行 $p=\mathrm{softmax}(s)$，雅可比为 $\mathrm{diag}(p)-pp^\mathsf T$。设概率上游 $g_p$，得 $g_s=p\odot(g_p-\langle p,g_p\rangle\mathbf1)$。注意力中 $g_{p,j}=g_o^\mathsf Tv_j$，均值为 $g_o^\mathsf To$；该减均值保证分数共同平移方向的梯度为零。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 某算子占总延迟20\%，加速10倍，求端到端理论加速上限。
+\begin{exercise} 某算子占总延迟20\%，加速10倍，求端到端理论加速上限。
 
-\begin{workbookanswers}
+\begin{solution}
 其余80\%不变，总时间比例 $0.8+\frac{0.2}{10}=0.82$，加速 $\frac{1}{0.82}\approx1.2195$。即使该算子无限快也不超过1.25倍；需确认优化没有改变其他时间项或引入额外开销。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 三个形状桶的编译成本分别为2、10、1秒，预计调用次数分别为1000、100、20次，单次节省分别为3、50、10毫秒。忽略缓存维护等额外成本，判断哪些桶值得预编译。
+\begin{exercise} 三个形状桶的编译成本分别为2、10、1秒，预计调用次数分别为1000、100、20次，单次节省分别为3、50、10毫秒。忽略缓存维护等额外成本，判断哪些桶值得预编译。
 
-\begin{workbookanswers}
+\begin{solution}
 补充构造数据：三个桶编译成本分别2秒、10秒、1秒，调用次数1000、100、20，单次节省3毫秒、50毫秒、10毫秒。总节省3秒、5秒、0.2秒，扣编译后净收益1秒、-5秒、-0.8秒，故仅第一个值得在这些调用量下编译。缓存命中、内存和首请求期限也需纳入，调用量变化应重新求 $n\Delta t>C$。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 用 $p=(0.1,0.6,0.3)$、$q=(0.5,0.2,0.3)$ 计算接受率、残差及最终输出质量。
+\begin{exercise} 用 $p=(0.1,0.6,0.3)$、$q=(0.5,0.2,0.3)$ 计算接受率、残差及最终输出质量。
 
-\begin{workbookanswers}
+\begin{solution}
 p=(.1,.6,.3)，q=(.5,.2,.3)，条件接受率为(.2,1,1)，接受质量(.1,.2,.3)，总接受.6。正残差(0,.4,0)，拒绝后只出第二词元；加回拒绝质量后为(.1,.6,.3)，恰为p。只有抽到q正支持的词元才计算p/q。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 证明接受率等于1减去总变差距离，并讨论草稿与目标支持集不相同的情况。
+\begin{exercise}\optional 证明接受率等于1减去总变差距离，并讨论草稿与目标支持集不相同的情况。
 
-\begin{workbookanswers}
+\begin{solution}
 $\sum_v\min(p_v,q_v)=\frac12\sum_v(p_v+q_v-|p_v-q_v|)=1-\frac12\|p-q\|_1$。q为0而p正的词元不会从草稿抽中，但可经正残差产生；p为0而q正的草稿必拒绝。只要两者为同空间规范分布，精确残差法不要求相同支持。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 构造温度不同的草稿和目标，说明精确采样为何不要求温度相同，却要求使用实际概率。
+\begin{exercise} 构造温度不同的草稿和目标，说明精确采样为何不要求温度相同，却要求使用实际概率。
 
-\begin{workbookanswers}
+\begin{solution}
 同原始二元logits取 $(\log4,0)$，目标温度1给p=(.8,.2)，草稿温度2给q=($\frac{2}{3}$,$\frac{1}{3}$)。接受率为(1,.6)，接受质量($\frac{2}{3}$,.2)，拒绝质量$\frac{2}{15}$补到第一词元，得到p。若误把草稿概率记成温度1分布，接受与残差就不再对应实际采样。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 候选条件接受率依次为0.9、0.7、0.5，求每轮期望提交词元数。
+\begin{exercise} 候选条件接受率依次为0.9、0.7、0.5，求每轮期望提交词元数。
 
-\begin{workbookanswers}
+\begin{solution}
 非终止且允许奖励词元时，$\mathbb EK=1+0.9+0.9\times0.7+0.9\times0.7\times0.5=2.845$。其中各接受率是给定前面已接受的条件概率；有EOS或剩余长度上限时截断相应项，不能仍用此无限续写表达。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 描述第二个候选拒绝后目标KV、草稿KV、已输出长度和未物化后缀应如何更新。
+\begin{exercise} 描述第二个候选拒绝后目标KV、草稿KV、已输出长度和未物化后缀应如何更新。
 
-\begin{workbookanswers}
+\begin{solution}
 第二候选拒绝意味着仅第一候选被确认，再从第二位置残差采样替代词元。丢弃目标/草稿中第二候选及后续候选的投机状态，保留已确认前缀和第一候选。替代词元先输出，但其KV若未物化需在下一轮先处理，或立即对齐两个模型缓存；逻辑输出长度与物化边界分别记录，不能保留被拒词元造成的隐藏后缀。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 推导窗口截断的输出误差上界，解释它为何不直接提供下游任务质量保证。
+\begin{exercise}\optional 推导窗口截断的输出误差上界，解释它为何不直接提供下游任务质量保证。
 
-\begin{workbookanswers}
+\begin{solution}
 设被删质量delta，保留归一均值a、删除归一均值b，则 $o=(1-\delta)a+\delta b$，截断输出 $o'=a$。值范数$\le$M给 $\|o-o'\|=\delta\|b-a\|\le2\delta M$（delta<1）。多层传播、位置状态和采样可放大扰动，单行输出界不提供任务正确率保证。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 同一负载下，方案 A 每轮草稿生成、目标验证及同步共耗时 \qty{12}{ms}，平均提交3个词元；方案 B 的接受率更高，但每轮耗时 \qty{20}{ms}，平均提交4个词元。按长期平均成本判断应选哪一方案，并说明迁移到高并发服务时还应检查哪些条件。
+\begin{exercise} 同一负载下，方案 A 每轮草稿生成、目标验证及同步共耗时 \qty{12}{ms}，平均提交3个词元；方案 B 的接受率更高，但每轮耗时 \qty{20}{ms}，平均提交4个词元。按长期平均成本判断应选哪一方案，并说明迁移到高并发服务时还应检查哪些条件。
 
-\begin{workbookanswers}
+\begin{solution}
 以总时间除以总提交词元数衡量长期成本，方案 A 为 $\frac{12}{3}=4$ 毫秒每词元，方案 B 为 $\frac{20}{4}=5$ 毫秒每词元，故题设下应选 A。接受率提高带来的提交量增长不足以抵消每轮成本增长。统计时应以累计时间与累计提交数的比值估计，避免对不同提交数的单轮比值直接等权平均。高并发下还需保持相同质量与采样协议，测量批量组成、长度分布、队列等待、设备利用率和尾延迟；草稿与验证争用资源后，单请求结论可能变化。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\end{exerciselist}
+\end{exercises}

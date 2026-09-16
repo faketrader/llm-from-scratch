@@ -1,82 +1,95 @@
 \workbookchapter{预训练原理}
 
-\begin{exerciselist}
-\exerciseitem 对三个有效目标概率 $\frac{1}{2},\frac{1}{4},\frac{1}{8}$，计算平均负对数似然与困惑度，并说明几何平均的含义。
+\begin{exercises}
+\begin{exercise} 对三个有效目标概率 $\frac{1}{2},\frac{1}{4},\frac{1}{8}$，计算平均负对数似然与困惑度，并说明几何平均的含义。
 
-\begin{workbookanswers}
+\begin{solution}
 平均NLL为 $\frac{\log2+\log4+\log8}{3}=\log4$，困惑度4。正确目标概率的几何平均为 $(\frac{1}{64})^{\frac{1}{3}}=\frac{1}{4}$，PPL是其倒数；不是概率算术平均的倒数。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 两个微批次分别有3和9个有效目标，写出其梯度在一次更新中的权重。若误用等权平均，短批次的词元相对被放大多少倍？
+\begin{exercise} 两个微批次分别有3和9个有效目标，写出其梯度在一次更新中的权重。若误用等权平均，短批次的词元相对被放大多少倍？
 
-\begin{workbookanswers}
+\begin{solution}
 令两微批平均梯度为 $g_1,g_2$，正确更新方向为 $\frac{g_1}{4}+\frac{3g_2}{4}$。等权错误方案给短批权重$\frac{1}{2}$而非$\frac{1}{4}$，故其单词元贡献放大2倍，长批缩为正确值的$\frac{2}{3}$。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 为两篇独立文档各含 BOS、三个正文词元与 EOS 的装箱块，列出全部有效预测配对，并给出注意力隔离规则。
+\begin{exercise} 为两篇独立文档各含 BOS、三个正文词元与 EOS 的装箱块，列出全部有效预测配对，并给出注意力隔离规则。
 
-\begin{workbookanswers}
+\begin{solution}
 将各文档记为 $(B,a,b,c,E)$ 与 $(B,d,e,f,E)$。有效配对分别为 $B\to a,a\to b,b\to c,c\to E$ 和 $B\to d,d\to e,e\to f,f\to E$，共8项；不预测跨文档的 $E\to B$。注意力为按文档分块的下三角，位置编码重置与否须跟训练协议一致；EOS本身不能自动实现隔离。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 两个来源按文档等概率抽样，平均有效目标数分别为256和1024。求实际词元比例，并求词元等权所需文档抽样概率。
+\begin{exercise} 两个来源按文档等概率抽样，平均有效目标数分别为256和1024。求实际词元比例，并求词元等权所需文档抽样概率。
 
-\begin{workbookanswers}
+\begin{solution}
 等概率抽文档时贡献为 $0.5\times256:0.5\times1024=1:4$，词元比例20\%与80\%。要词元等权，解 $256p=1024(1-p)$ 得 $p=0.8$；该式以平均有效目标长度稳定为前提。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 根据式\tbobject{eq:pt-unique}推导 $m=2n$ 时不同对象覆盖率的大样本近似，解释为什么它不等于两遍无重复遍历。
+\begin{exercise}\optional 根据式\tbobject{eq:pt-unique}推导 $m=2n$ 时不同对象覆盖率的大样本近似，解释为什么它不等于两遍无重复遍历。
 
-\begin{workbookanswers}
+\begin{solution}
 对象未出现概率为 $(1-\frac{1}{n})^{2n}\to e^{-2}$，故期望不同对象比例为 $1-e^{-2}\approx86.47\%$。两次无放回完整遍历覆盖100\%，有放回的2n次消费仍会重复和遗漏；消费次数不是信息覆盖量。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 对 $\alpha=\frac{1}{3},\beta=\frac{1}{2}$，求 $N_*$、$D_*$ 和最优损失余量随计算预算变化的指数。
+\begin{exercise} 对 $\alpha=\frac{1}{3},\beta=\frac{1}{2}$，求 $N_*$、$D_*$ 和最优损失余量随计算预算变化的指数。
 
-\begin{workbookanswers}
+\begin{solution}
 $N_*\propto C^{\frac{\beta}{\alpha+\beta}}=C^{\frac{3}{5}}$，$D_*\propto C^{\frac{2}{5}}$；损失余量指数为 $-\frac{\alpha\beta}{\alpha+\beta}=-\frac{1}{5}$。这些是固定幂律、系数和 $C=\kappa ND$ 前提下的连续最优关系，不用于数据重复或训练效率随规模改变而未重新拟合的情形。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 从拉格朗日条件解释：为什么最优点一般不满足两个损失余量相等？
+\begin{exercise} 从拉格朗日条件解释：为什么最优点一般不满足两个损失余量相等？
 
-\begin{workbookanswers}
+\begin{solution}
 拉格朗日条件给 $\alpha A N^{-\alpha}=\beta B D^{-\beta}$。平衡的是每对数预算变化的边际贡献，故两余量之比为 $\frac{\beta}{\alpha}$；只有指数相等时才相等，不能从“最优”直接推出两损失项相同。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 将数值例中的计算预算扩大九倍，求连续最优参数、词元量和损失；再加入参数不超过两十亿的约束。
+\begin{exercise} 将数值例中的计算预算扩大九倍，求连续最优参数、词元量和损失；再加入参数不超过两十亿的约束。
 
-\begin{workbookanswers}
+\begin{solution}
 预算给 $nd=144$，边际条件仍为 $d=16n$，故无约束最优 $n=3,d=48,L=2+\frac{2}{\sqrt3}\approx3.1547$。若 $N\le2\times10^9$，则 $n\le2$，最优在边界 $n=2,d=72$，$L=2+\frac{1}{\sqrt2}+\frac{4}{\sqrt{72}}\approx3.1785$；假定数据可用且允许此训练长度。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 给出一个掩码恢复任务和一个自回归任务，说明为什么两者的平均交叉熵不能直接用于判断预训练方案优劣。
+\begin{exercise} 给出一个掩码恢复任务和一个自回归任务，说明为什么两者的平均交叉熵不能直接用于判断预训练方案优劣。
 
-\begin{workbookanswers}
+\begin{solution}
 例如只恢复15\%被遮蔽位置的双向模型与预测所有后继位置的因果模型，条件信息、计分位置和目标难度均不同。前者可看右文，且处理量与监督量不同。应固定下游任务、数据预算和计算口径比较，而不是把较低的条件NLL当作更强模型。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 设计一组能分别识别参数受限与数据受限趋势的实验点，说明同一运行的多个检查点为什么不能替代独立规模实验。
+\begin{exercise} 设计一组能分别识别参数受限与数据受限趋势的实验点，说明同一运行的多个检查点为什么不能替代独立规模实验。
 
-\begin{workbookanswers}
+\begin{solution}
 可选 $N\in\{0.5,1,2\}$ 与 $D\in\{4,16,64\}$ 的笛卡尔网格并独立训练，保留相同分布和适合各规模的优化条件，观察固定D时N效应与固定N时D效应。一个运行的检查点共享参数规模、数据前缀和优化历史，提供学习曲线却不能识别另一个参数维度；需记录拟合残差和外推区间。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 若长期部署有严格参数上限，讨论训练计算最优配置与生命周期最优配置可能出现的差异。
+\begin{exercise}\optional 若长期部署有严格参数上限，讨论训练计算最优配置与生命周期最优配置可能出现的差异。
 
-\begin{workbookanswers}
+\begin{solution}
 参数上限限制驻留和每次推理成本，可以选择较小模型并延长训练，即使偏离训练计算最优。令总成本为训练成本加预期请求量乘推理成本，在质量约束下求可行最小值；请求量、缓存和延迟假设必须给出，不存在不依赖部署负载的统一最优规模。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 说明数据游标、混合日程和监督计数缺失时，权重加载成功为何仍不足以证明正确恢复。
+\begin{exercise} 说明数据游标、混合日程和监督计数缺失时，权重加载成功为何仍不足以证明正确恢复。
 
-\begin{workbookanswers}
+\begin{solution}
 同一权重若重启数据游标，会重复或遗漏样本；混合时钟重置会改变后续分布；监督计数丢失会改变累积归约与预算。恢复应同时绑定权重、优化器/调度器、游标/随机状态、混合日程及已成功更新计数，并在更新边界提交；仅加载权重只证明资产可读。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 领域语料规模固定，但训练预算可以增加。设计一组受控比较，考察增加重复轮数、混合通用数据、扩大模型和提前停止的效果。明确应记录的独立数据量与总训练词元量，并给出支持继续训练或停止的证据。
+\begin{exercise} 领域语料规模固定，但训练预算可以增加。设计一组受控比较，考察增加重复轮数、混合通用数据、扩大模型和提前停止的效果。明确应记录的独立数据量与总训练词元量，并给出支持继续训练或停止的证据。
 
-\begin{workbookanswers}
+\begin{solution}
 先固定独立领域验证集与通用能力评估，按数据源统计去重后规模、累计训练词元和重复次数。以可比计算预算安排重复训练、不同混合比例与模型规模的对照，另保留较早检查点作为停止方案；报告计算量和实际时间，避免把重复词元视作新增独立信息。比较领域收益、通用能力退化及各数据切片的不确定性。额外轮数仍带来稳定独立验证收益且满足通用能力约束时，可继续；验证收益停滞或退化时，应优先检验数据覆盖与目标匹配，而不能只按训练损失下降追加预算。多轮训练可能有效，但其边际收益需要测量。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\end{exerciselist}
+\end{exercises}

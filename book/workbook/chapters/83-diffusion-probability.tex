@@ -1,80 +1,92 @@
 \workbookchapter{扩散模型的概率原理}
 
-\begin{exerciselist}
-\exerciseitem 用归纳法和望远镜求和分别证明前向条件方差为 $1-\bar\alpha_t$。
+\begin{exercises}
+\begin{exercise} 用归纳法和望远镜求和分别证明前向条件方差为 $1-\bar\alpha_t$。
 
-\begin{workbookanswers}
+\begin{solution}
 递推条件方差$v_t=\alpha_tv_{t-1}+\beta_t$，$v_0=0$。若$v_{t-1}=1-\bar\alpha_{t-1}$，则$v_t=\alpha_t-\bar\alpha_t+1-\alpha_t=1-\bar\alpha_t$。展开独立噪声之和另得 $\sum_{s=1}^t\beta_s\prod_{j=s+1}^t\alpha_j$；每项等于$\prod_{j=s+1}^t\alpha_j-\prod_{j=s}^t\alpha_j$，望远镜相消为$1-\bar\alpha_t$。独立与单位协方差是方差直接相加的前提。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 推导原数据均值不为零、协方差不为单位阵时 $x_t$ 的无条件均值与协方差。
+\begin{exercise} 推导原数据均值不为零、协方差不为单位阵时 $x_t$ 的无条件均值与协方差。
 
-\begin{workbookanswers}
+\begin{solution}
 设$E[x_0]=m,\operatorname{Cov}(x_0)=\Sigma$且噪声独立，$x_t=a_tx_0+b_t\epsilon$，其中$a_t=\sqrt{\bar\alpha_t},b_t=\sqrt{1-\bar\alpha_t}$。于是均值$a_tm$、协方差$a_t^2\Sigma+b_t^2I$。只有m为0且$\Sigma=I$时二阶矩保持标准形式；即便满足二阶矩，原分布非高斯时也不能据此断言任意t都是标准高斯。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 固定同一总噪声画出各时间状态，与独立单步噪声构成的路径有何联合分布差异？解释为何二者每个时刻的边缘仍可一致。
+\begin{exercise} 固定同一总噪声画出各时间状态，与独立单步噪声构成的路径有何联合分布差异？解释为何二者每个时刻的边缘仍可一致。
 
-\begin{workbookanswers}
+\begin{solution}
 共享总噪声构造$x_t=a_tx_0+b_t\epsilon$给条件跨时协方差$b_sb_tI$。马尔可夫链在$s<t$时条件协方差为 $\sqrt{\frac{\bar\alpha_t}{\bar\alpha_s}}(1-\bar\alpha_s)I$，通常不同。每个时刻二者仍都是均值$a_tx_0$、方差$b_t^2I$的高斯；同边缘不确定联合分布。画噪声趋势可用共享耦合，但不能把它当作独立单步噪声轨迹。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 完整展开高斯指数并配方，推导后验均值和方差；说明 $t=1$ 的退化为何不能直接进入高斯 KL。
+\begin{exercise} 完整展开高斯指数并配方，推导后验均值和方差；说明 $t=1$ 的退化为何不能直接进入高斯 KL。
 
-\begin{workbookanswers}
+\begin{solution}
 设$u=x_{t-1}$。负对数中的二次项为 $\frac{\|x_t-\sqrt{\alpha_t}u\|^2}{2\beta_t}+\frac{\|u-\sqrt{\bar\alpha_{t-1}}x_0\|^2}{[2(1-\bar\alpha_{t-1})]}$。精度 $A=\frac{\alpha_t}{\beta_t}+\frac{1}{1-\bar\alpha_{t-1}}=\frac{1-\bar\alpha_t}{[\beta_t(1-\bar\alpha_{t-1})]}$，线性项 $h=\frac{\sqrt{\alpha_t}x_t}{\beta_t}+\frac{\sqrt{\bar\alpha_{t-1}}x_0}{1-\bar\alpha_{t-1}}$。配方为$\frac{A\|u-\frac{h}{A}\|^2}{2}$加常数，故方差$A^{-1}$、均值$\frac{h}{A}$。t为1时前一状态就是给定$x_0$，为退化点质量；此处应使用重建项而非正方差高斯KL公式。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 推导式\tbobject{eq:diff-terminalkl}，分析数据尺度与维数对终端先验误差的影响。
+\begin{exercise}\optional 推导式\tbobject{eq:diff-terminalkl}，分析数据尺度与维数对终端先验误差的影响。
 
-\begin{workbookanswers}
+\begin{solution}
 对d维$q(x_T\mid x_0)=\mathcal N(\sqrt{\bar\alpha_T}x_0,(1-\bar\alpha_T)I)$与标准高斯，KL为 $\tfrac12[\bar\alpha_T\|x_0\|^2-d\bar\alpha_T-d\log(1-\bar\alpha_T)]$。由一般高斯KL的均值平方、迹和对数行列式项代入即可。再对数据平均时$\|x_0\|^2$换成其期望。高维或大尺度会放大残余均值项，日程末端$\bar\alpha_T$不够小时不能默认终端与标准先验已接近。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 从 Jensen 不等式推导负对数似然上界，再将前向链反向分解，得到三个变分项。
+\begin{exercise} 从 Jensen 不等式推导负对数似然上界，再将前向链反向分解，得到三个变分项。
 
-\begin{workbookanswers}
+\begin{solution}
 写 $p_\theta(x_0)=E_{q(x_{1:T}\mid x_0)}[\frac{p_\theta(x_{0:T})}{q(x_{1:T}\mid x_0)}]$，由负对数凸性得负对数似然不超过该比值负对数的期望。把q反向分解为$q(x_T\mid x_0)\prod_{t=2}^Tq(x_{t-1}\mid x_t,x_0)$，p分解为$p(x_T)\prod_{t=1}^Tp_\theta(x_{t-1}\mid x_t)$。逐项合并得到终端KL、$t=2\ldots T$后验与反向核KL的期望，以及$-E\log p_\theta(x_0\mid x_1)$重建项。重要性比需有支持包含条件。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 对固定 $\sigma_t^2=\beta_t$ 推导噪声损失权重；再说明预测方差时哪些 KL 项不能忽略。
+\begin{exercise} 对固定 $\sigma_t^2=\beta_t$ 推导噪声损失权重；再说明预测方差时哪些 KL 项不能忽略。
 
-\begin{workbookanswers}
+\begin{solution}
 固定反向方差时均值误差项为$\frac{\|\mu_\theta-\tilde\mu_t\|^2}{2\sigma_t^2}$，噪声参数化给误差系数
 \[
  \frac{\beta_t}{\sqrt{\alpha_t}\sqrt{1-\bar\alpha_t}}.
 \]
 取$\sigma_t^2=\beta_t$后权重为 $\frac{\beta_t}{[2\alpha_t(1-\bar\alpha_t)]}$。若预测方差，KL中的$\operatorname{tr}(\Sigma_\theta^{-1}\tilde\Sigma)$、$\log\det\Sigma_\theta$及均值的逆方差权重均依赖参数，不得丢弃而仍声称等价似然训练。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 设计非均匀时间抽样分布，写出内部变分项的无偏估计；区别时间加权与每元素归一化。
+\begin{exercise}\optional 设计非均匀时间抽样分布，写出内部变分项的无偏估计；区别时间加权与每元素归一化。
 
-\begin{workbookanswers}
+\begin{solution}
 要估计内部项总和$\sum_{t=2}^TE[\ell_t]$，任选正概率$\pi_t$且总和1，采t后用$\frac{\ell_t}{\pi_t}$，期望即原和。例如$\pi_t\propto w_t$可能减少权重差异，但最优方差还依赖损失二阶矩。若目标为时间平均，另除$T-1$；每元素归一则另除d。两种归一改变常数尺度或跨形状权重，不能漏掉后仍称同一目标。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 证明平方损失最优噪声预测是条件期望；为什么这不意味着准确恢复每次加入的独立噪声？
+\begin{exercise} 证明平方损失最优噪声预测是条件期望；为什么这不意味着准确恢复每次加入的独立噪声？
 
-\begin{workbookanswers}
+\begin{solution}
 对固定$x_t,t$令$m=E[\epsilon\mid x_t,t]$，展开 $E[\|\epsilon-f\|^2\mid x_t,t]=E[\|\epsilon-m\|^2\mid x_t,t]+\|f-m\|^2$，交叉项因条件均值为零消失，故最优f为m。多个$x_0,\epsilon$可能产生同一$x_t$，条件方差不可消除；预测期望不等于识别本次真实噪声。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 验证 $x_0$、噪声与速度参数化之间的正交变换，并推导各自等权损失隐含的时间权重。
+\begin{exercise} 验证 $x_0$、噪声与速度参数化之间的正交变换，并推导各自等权损失隐含的时间权重。
 
-\begin{workbookanswers}
+\begin{solution}
 $a^2+b^2=1$，$x_t=ax_0+b\epsilon,v=a\epsilon-bx_0$构成正交矩阵$\left[\begin{smallmatrix}a&b\\-b&a\end{smallmatrix}\right]$，逆为$x_0=ax_t-bv,\epsilon=bx_t+av$。固定$x_t$时，$\delta x_0=-(\frac{b}{a})\delta\epsilon$（a非零），$\delta\epsilon=a\delta v$、$\delta x_0=-b\delta v$。所以等权噪声损失等于SNR乘$x_0$误差平方，也等于$a^2$乘v误差平方；等权v损失等于噪声误差平方/$a^2$。端点零系数处必须用不奇异参数化，而非直接相除。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 由式\tbobject{eq:diff-ddim}计算 $\eta=0$ 和 $\eta=1$ 的跨步条件方差，解释确定性路径仍可生成分布。
+\begin{exercise} 由式\tbobject{eq:diff-ddim}计算 $\eta=0$ 和 $\eta=1$ 的跨步条件方差，解释确定性路径仍可生成分布。
 
-\begin{workbookanswers}
+\begin{solution}
 跨步$t\to s<t$的噪声方差为 $\sigma_{t\to s}^2=\frac{\eta^2(1-\bar\alpha_s)(1-\frac{\bar\alpha_t}{\bar\alpha_s})}{1-\bar\alpha_t}$。故$\eta=0$为零，$\eta=1$为右侧去掉$\eta^2$的值；相邻步退化为后验方差。确定性更新仍以随机$x_T$为输入，其推前分布可以非退化，不能因每一步无新噪声就说只生成一个固定样本。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 修改一维算例的噪声预测误差为 $0.2$，比较高斯 KL 的变化；说明为什么只用两步的构造不能证明样本生成质量。
+\begin{exercise} 修改一维算例的噪声预测误差为 $0.2$，比较高斯 KL 的变化；说明为什么只用两步的构造不能证明样本生成质量。
 
-\begin{workbookanswers}
+\begin{solution}
 原噪声误差0.1时KL为$1.25(0.1)^2=0.0125$。误差幅度0.2时均值误差幅度$\frac{0.2\times0.2}{\sqrt{0.8}\sqrt{0.28}}\approx0.08452$，KL为$1.25(0.2)^2=0.05$，变四倍；符号改变不影响此同方差KL。两步日程末端$\bar\alpha_2=0.72$仍保留大量信号，计算只验证给定后验误差，不证明能由标准高斯生成真实数据。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\end{exerciselist}
+\end{exercises}

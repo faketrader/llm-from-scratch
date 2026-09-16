@@ -1,106 +1,123 @@
 \workbookchapter{模型评估}
 
-\begin{exerciselist}
-\exerciseitem 由二分类混淆计数推导 F1 的计数形式，并构造准确率高但正类召回率很低的例子。
+\begin{exercises}
+\begin{exercise} 由二分类混淆计数推导 F1 的计数形式，并构造准确率高但正类召回率很低的例子。
 
-\begin{workbookanswers}
+\begin{solution}
 $P=\frac{TP}{TP+FP},R=\frac{TP}{TP+FN}$代入调和均值得$F_1=\frac{2TP}{2TP+FP+FN}$，分母为零时另定口径。1000例中正类10，模型全判负，准确率99\%，正类召回0，F1可按约定为0。高准确率主要来自负类占比，不能证明识别稀少正类。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 证明完整类别集合下单标签分类的 Micro-F1 等于准确率，并给出该等式在多标签任务中失效的例子。
+\begin{exercise} 证明完整类别集合下单标签分类的 Micro-F1 等于准确率，并给出该等式在多标签任务中失效的例子。
 
-\begin{workbookanswers}
+\begin{solution}
 每个错误单标签预测给真实类贡献一个FN、预测类贡献一个FP，正确预测贡献一个TP。故总TP为正确数c，总FP与FN均为$n-c$，Micro-F1为$\frac{2c}{[2c+2(n-c)]}=\frac{c}{n}$。多标签例中两个样本真值均$\{A,B\}$、预测均$\{A\}$，Micro-F1为$\frac{4}{4+2}=\frac{2}{3}$，严格样本准确率却为0。需固定准确率具体指子集准确还是逐标签准确。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 若正确决策也有成本，推导替代式\tbobject{eq:ch41-threshold}的阈值，并说明何时应增加弃权行动。
+\begin{exercise} 若正确决策也有成本，推导替代式\tbobject{eq:ch41-threshold}的阈值，并说明何时应增加弃权行动。
 
-\begin{workbookanswers}
+\begin{solution}
 记$C_{ay}$为采取a、真值y时成本，p为真阳概率。行动1风险$(1-p)C_{10}+pC_{11}$，行动0风险$(1-p)C_{00}+pC_{01}$。若$D=C_{10}-C_{00}+C_{01}-C_{11}>0$，选1要求 $p>\frac{C_{10}-C_{00}}{D}$；D非正时须直接比较或反向不等式。增加弃权行动a=r时，只要其条件风险低于两者即可弃权，风险成本与后续人工能力必须定义。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 构造四个按预测分数排序的标签，使精确率在提高阈值时先升后降；解释召回率为何没有相同现象。
+\begin{exercise} 构造四个按预测分数排序的标签，使精确率在提高阈值时先升后降；解释召回率为何没有相同现象。
 
-\begin{workbookanswers}
+\begin{solution}
 按分数由高到低取标签$(0,1,1,0)$。从包含全四项开始提高阈值，精确率依次$\frac{2}{4},\frac{2}{3},\frac{1}{2},\frac{0}{1}$，先升后降。召回率为已纳入正例数除固定总正例数，去掉低分项只可能减少或保持分子，故随提高阈值不增。阈值变化若同时改变数据总体或任务判定，该单调证明不再适用。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 用不同分词方式表示同一段文字，说明跨分词器 PPL 的计量问题。若只计回答词元，应如何定义掩码和分母？
+\begin{exercise} 用不同分词方式表示同一段文字，说明跨分词器 PPL 的计量问题。若只计回答词元，应如何定义掩码和分母？
 
-\begin{workbookanswers}
+\begin{solution}
 设同一串文本的总概率为p，一种切成2词元，另一种切成4词元，即便对该字符串赋相同总概率，PPL分别$p^{-\frac{1}{2}}$与$p^{-\frac{1}{4}}$，单位不同不能按小者判断更强。只计回答时定义目标位置掩码$m_t$并计算$\exp[-\frac{\sum m_t\log p(y_t\mid\text{合法前缀})}{\sum m_t}]$，EOS是否计入预先固定，提示可作上下文而不作目标。空回答不能以零分母计算。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 为本章词面算例添加一个重复词，重算 Token F1 与一元截断精确率，并分析未经截断会产生什么偏好。
+\begin{exercise} 为本章词面算例添加一个重复词，重算 Token F1 与一元截断精确率，并分析未经截断会产生什么偏好。
 
-\begin{workbookanswers}
+\begin{solution}
 明确把候选“甲 乙 戊”追加一个“甲”，参考仍“甲 乙 丙 丁”。多重集合截断后重合仍2，候选长4、参考长4，Token F1为$\frac{4}{8}=0.5$；一元截断精确率$\frac{2}{4}=0.5$。若只按候选词是否出现于参考而不截断，两次甲都被计为匹配，错误得到$\frac{3}{4}$，鼓励重复常见词。若重复的具体词不同，须按实际计数重算，不能只加长度。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 从子集计数推导式\tbobject{eq:ch41-passk}，说明相关采样与完美候选选择假设分别影响哪一层结论。
+\begin{exercise} 从子集计数推导式\tbobject{eq:ch41-passk}，说明相关采样与完美候选选择假设分别影响哪一层结论。
 
-\begin{workbookanswers}
+\begin{solution}
 n候选均匀无放回选k，共$\binom nk$个子集，全失败子集$\binom{n-c}k$，所以至少一通过的子集比例为$1-\frac{\binom{n-c}k}{\binom nk}$，约定$k>n-c$时失败项为0。作为固定候选集的组合恒等式不要求候选独立；将其解释为未来k次同分布尝试覆盖率的无偏估计则需相应抽样假设。即使覆盖成功，产品还要从候选中选择正确者，完美验证选择不是组合公式自动保证的。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 设计裁判顺序、长度和家族偏好的正交对照，说明总体人工一致率为什么不能识别全部偏差。
+\begin{exercise} 设计裁判顺序、长度和家族偏好的正交对照，说明总体人工一致率为什么不能识别全部偏差。
 
-\begin{workbookanswers}
+\begin{solution}
 对同一答案对交换A/B呈现顺序，另用保真短版/长版交叉展示，再比较裁判与候选是否同家族；随机分配并盲去模型标识，形成正交或平衡设计。按真值、长度和家族分别估计偏差并检查交互，固定裁判协议。总体一致率可被容易样本主导，掩盖少数高风险或同家族偏好，需分层人工锚与配对差。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 由二次不等式重新推导 Wilson 区间，计算全失败情况下的上界，并与零失败的单侧精确界比较。
+\begin{exercise} 由二次不等式重新推导 Wilson 区间，计算全失败情况下的上界，并与零失败的单侧精确界比较。
 
-\begin{workbookanswers}
+\begin{solution}
 从$(\hat p-p)^2\le \frac{z^2p(1-p)}{n}$移项，得 $(n+z^2)p^2-(2n\hat p+z^2)p+n\hat p^2\le0$，两根即Wilson端点。全失败$\hat p=0$时通过率上界$\frac{z^2}{n+z^2}$；如n=20、z=1.96，为0.1611。零失败的失败率单侧95\%精确上界为$1-0.05^{\frac{1}{n}}$，n=20时约0.1391。两者置信方向与构造不同，不能比较数字后声称哪个必然更准确。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 对用户平均和请求平均各设计一组大小不等的簇算例，使两种总体指标明显不同。
+\begin{exercise}\optional 对用户平均和请求平均各设计一组大小不等的簇算例，使两种总体指标明显不同。
 
-\begin{workbookanswers}
+\begin{solution}
 用户A发1请求且成功，B发9请求全失败。请求平均$\frac{1}{10}=0.1$，用户平均$\frac{1+0}{2}=0.5$；若交换各用户的成功情况，请求平均0.9而用户平均仍0.5。前者估计随机请求体验，后者估计随机用户平均体验。按用户重采样后仍需使用与目标对应的聚合权重，抽样单位与计分权重是两件事。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 对“同一100题、五个种子”的结果，分别说明固定案例集运行稳定性与新案例泛化需要哪些随机性假设。
+\begin{exercise} 对“同一100题、五个种子”的结果，分别说明固定案例集运行稳定性与新案例泛化需要哪些随机性假设。
 
-\begin{workbookanswers}
+\begin{solution}
 固定100题运行稳定性关注在这些题上改变随机种子的变化，需种子/运行可重复、系统配置固定并说明共享状态。推断新题总体需题目代表目标分布，按题或来源簇重采样；同题五次相关，不能当500独立题。若想同时推断题和运行变化，可用交叉/分层设计并保留两层结果；仅对五个总分计算区间不覆盖题集代表性误差。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 某实验每天检查一次显著性，在首次通过时停止。解释为什么固定样本检验的标称水平不能直接沿用，并提出预先可执行的替代协议。
+\begin{exercise}\optional 某实验每天检查一次显著性，在首次通过时停止。解释为什么固定样本检验的标称水平不能直接沿用，并提出预先可执行的替代协议。
 
-\begin{workbookanswers}
+\begin{solution}
 每天窥视并首次显著即停等于多次选择，固定样本p值的单次错误率不控制整条路径。可预先固定终止样本量与一次主检验；若必须分阶段决策，预定观察时点与alpha分配，或使用有明确假设的序贯检验/置信序列。固定主要指标及排除规则，不能看到结果后临时改变停止和显著性标准。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 为一个检索问答系统定义质量、错误损失、延迟和成本的可行域，构造三个互不支配配置，并说明业务权重应在哪一步介入。
+\begin{exercise}\optional 为一个检索问答系统定义质量、错误损失、延迟和成本的可行域，构造三个互不支配配置，并说明业务权重应在哪一步介入。
 
-\begin{workbookanswers}
+\begin{solution}
 可行域如质量$Q\ge0.8$、高损失错误率$e\le0.01$、p95延迟$T\le5$秒、成本$c\le0.05$元/请求。令A为$(Q,T,c)=(0.82,1,0.01)$，B为$(0.88,2,0.02)$，C为$(0.93,4,0.04)$，且均满足风险约束，三者无一在全部目标上不差且至少一项更好。先过硬约束，再按预先商定业务效用选择前沿点；权重不能依据最终测试结果事后调至偏爱某候选。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 一个候选总体得分提高，但高风险切片样本数很少。写出可支持与不可支持的结论，以及下一轮最有信息量的抽样方案。
+\begin{exercise} 一个候选总体得分提高，但高风险切片样本数很少。写出可支持与不可支持的结论，以及下一轮最有信息量的抽样方案。
 
-\begin{workbookanswers}
+\begin{solution}
 可支持给定测试混合上总体点估计提高，不能据少量高风险样本声称其错误率足够低或已安全。报告该切片样本量和区间，增加按危险机制分层的独立样本及真实失败附近的受控变体，同时保留正常样本测误拒。富集采样用于风险机制检验，若估总体率须按真实基率加权，不能把富集数据比例当生产基率。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 比较表\tbobject{tab:evaluation-release-scores}的两行OSWorld部分得分。列出无法据此直接宣布哪一个模型更强的具体协议差异；再设计可比较的受控实验。
+\begin{exercise} 比较表\tbobject{tab:evaluation-release-scores}的两行OSWorld部分得分。列出无法据此直接宣布哪一个模型更强的具体协议差异；再设计可比较的受控实验。
 
-\begin{workbookanswers}
+\begin{solution}
 Astra行为为v2026.08.08离线子集部分得分；Fable为作者8月任务版及后续任务/脚本修复，108任务、1080p、500步、max effort、五次运行，需模型评分任务用Opus 4.8，且安全干预计零。Astra采用其发布配置，不能假定相同集合、框架、裁判、预算或安全回退，故72.6与77.9不能直接证明模型能力差。受控实验应冻结同一合法任务快照、环境、验收器、工具、预算和安全配置，两系统按同题重复运行并保存逐例结果，以任务为配对单位，同时报告partial与strict、成本及未知失败。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 一条提示含五项约束，满足其中四项。分别说明IFEval提示级与指令级计分的差别，并解释为什么格式通过不能代替事实正确。
+\begin{exercise} 一条提示含五项约束，满足其中四项。分别说明IFEval提示级与指令级计分的差别，并解释为什么格式通过不能代替事实正确。
 
-\begin{workbookanswers}
+\begin{solution}
 只有一提示且五约束四通过时，指令级为$\frac{4}{5}$，提示级因非全通过为0。严格与宽松评分另按IFEval规定的有限输出转换判定，不能任意把失败约束忽略。格式、长度等规则不检测全部事实，故还须对业务论断、引用和授权作独立验收，不能把80\%规则通过率称为80\%事实准确率。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 为中文企业知识问答选择一组基础、检索及端到端评测。写明每项基准无法覆盖的业务要求，以及新增保留集的来源。
+\begin{exercise} 为中文企业知识问答选择一组基础、检索及端到端评测。写明每项基准无法覆盖的业务要求，以及新增保留集的来源。
 
-\begin{workbookanswers}
+\begin{solution}
 基础层可用C-Eval/CMMLU检查中文知识与回归，但不涵盖企业私有事实、权限和时效。检索层用企业保留查询的Recall、nDCG与无证据误返回，仍不证明生成忠实；端到端按正确、引用支持、恰当拒答、权限违规、时延成本计分。保留集来自经授权脱敏的真实请求、专家构造的版本冲突和不可回答案例，并按文档/客户及时间隔离；禁止把已用于调提示的样本重新称测试集。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\end{exerciselist}
+\end{exercises}

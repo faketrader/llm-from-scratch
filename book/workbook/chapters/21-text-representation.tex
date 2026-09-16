@@ -1,51 +1,58 @@
 \workbookchapter{文本表示}
 
-\begin{exerciselist}
-\exerciseitem 对训练片段 \texttt{aaaa}（权重为二）与 \texttt{aab}（权重为一），计算第一轮全部相邻对计数，按从左向右的非重叠替换规则执行最高频合并。比较频数与实际词元减少量，并解释差异。
+\begin{exercises}
+\begin{exercise} 对训练片段 \texttt{aaaa}（权重为二）与 \texttt{aab}（权重为一），计算第一轮全部相邻对计数，按从左向右的非重叠替换规则执行最高频合并。比较频数与实际词元减少量，并解释差异。
 
-\begin{workbookanswers}
+\begin{solution}
 \texttt{aaaa}中aa相邻出现3次，权重二贡献6；\texttt{aab}再贡献1次aa和1次ab，故aa计7、ab计1。令aa合并为A，左到右非重叠替换得到 \texttt{AA}（权重二）和 \texttt{Ab}。总词元数从11降到6，减少5而非7，因为同一轮重叠的aa不能同时替换。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 使用本章三轮 BPE 规则编码 \texttt{abacabab}。写出各轮边界；再人为交换前两条规则，判断此输入是否一定改变。说明“某个例子相同”为什么不足以证明规则顺序无关。
+\begin{exercise} 使用本章三轮 BPE 规则编码 \texttt{abacabab}。写出各轮边界；再人为交换前两条规则，判断此输入是否一定改变。说明“某个例子相同”为什么不足以证明规则顺序无关。
 
-\begin{workbookanswers}
+\begin{solution}
 按ab、ac、abab三条规则，边界依次为 $(a,b,a,c,a,b,a,b)$、$(ab,a,c,ab,ab)$、$(ab,ac,ab,ab)$、$(ab,ac,abab)$。交换前两条时先得到 $(a,b,ac,a,b,a,b)$，再得到同一 $(ab,ac,ab,ab)$，最终不变。这两种基础对在该输入不重叠；一般反例为 \texttt{abc} 上ab与bc两规则，先后分别得到 $(ab,c)$ 和 $(a,bc)$。单个输入相同不足以证明任意规则可交换。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 构造一个 WordPiece 词表，使最长前缀选择后无法完整覆盖输入，但回溯搜索可以找到完整切分。写出两条路径，并说明为何不能将回溯结果归因于原始贪心编码器。
+\begin{exercise}\optional 构造一个 WordPiece 词表，使最长前缀选择后无法完整覆盖输入，但回溯搜索可以找到完整切分。写出两条路径，并说明为何不能将回溯结果归因于原始贪心编码器。
 
-\begin{workbookanswers}
+\begin{solution}
 选词表含 \texttt{ab,a,\#\#bc}，不含 \texttt{\#\#c}，输入为 \texttt{abc}。贪心先取最长词首ab，剩c无续接项而失败；若回溯改取a，则可接\texttt{\#\#bc}。标准贪心不会自动执行该回溯；加入回溯改变了编码算法。具体UNK返回粒度还需按所用实现约定。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 用 Unigram 例题的第一组参数，枚举 \texttt{abab} 的全部分段，分别计算总权重和最优路径权重，再用前向动态规划复核。说明两者相等需要什么条件。
+\begin{exercise}\optional 用 Unigram 例题的第一组参数，枚举 \texttt{abab} 的全部分段，分别计算总权重和最优路径权重，再用前向动态规划复核。说明两者相等需要什么条件。
 
-\begin{workbookanswers}
+\begin{solution}
 对 \texttt{abab}，路径为 $(a,b,a,b)$、$(ab,a,b)$、$(a,b,ab)$、$(a,ba,b)$、$(ab,ab)$，权重依次为 $.0016,.016,.016,.008,.16$，总权重 $.2016$，最大权重 $.16$。前向值为 $\alpha_0=1,\alpha_1=.2,\alpha_2=.44,\alpha_3=.128,\alpha_4=.2016$，最后一步 $.128\times.2+.44\times.4=.2016$。总和等于最大值要求其余路径权重全为零，或仅有一条正权重路径。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 对字符串 \texttt{aba}，根据本章 EM 更新后的参数重新计算三条后验概率。判断仅用这一条训练样例是否足以形成适用于其他语言的词表，并解释原因。
+\begin{exercise}\optional 对字符串 \texttt{aba}，根据本章 EM 更新后的参数重新计算三条后验概率。判断仅用这一条训练样例是否足以形成适用于其他语言的词表，并解释原因。
 
-\begin{workbookanswers}
+\begin{solution}
 更新参数为 $q(a),q(b),q(ab),q(ba)=\frac{17,1,10,5}{33}$。三路径权重在共同分母 $33^3$ 下为5610、2805、289，总和8704；后验因此为 $\frac{5610}{8704}$、$\frac{2805}{8704}$、$\frac{289}{8704}$，约为 $.64453,.32227,.03320$。一条样本只约束该字符串的覆盖，无法识别其他语言的字符、边界与频率，必须使用具有来源覆盖和独立验证的语料。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 证明：若规范化函数不是单射，且不附带额外恢复信息，则不存在能对所有原文无损恢复的解码器。给出代码或数学文本中不宜随意合并的两种字符形式。
+\begin{exercise} 证明：若规范化函数不是单射，且不附带额外恢复信息，则不存在能对所有原文无损恢复的解码器。给出代码或数学文本中不宜随意合并的两种字符形式。
 
-\begin{workbookanswers}
+\begin{solution}
 若 $N(x)=N(y)$ 且 $x\ne y$，任何只接收 $N(x)$ 的确定解码器D都只能给同一结果，因而不可能同时满足 $D(N(x))=x$ 和 $D(N(y))=y$。代码中的大小写标识 \texttt{A/a}、数学中普通负号与特定运算符或大小写变量可能具有不同含义。即使某种合并适用于检索，也不能在需原文恢复的流程中无记录地应用。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 词表翻倍且序列平均长度下降 $20\%$ 时，分别计算密集注意力与全词表输出投影的相对规模。列出仍然影响总时延的至少三个因素。
+\begin{exercise} 词表翻倍且序列平均长度下降 $20\%$ 时，分别计算密集注意力与全词表输出投影的相对规模。列出仍然影响总时延的至少三个因素。
 
-\begin{workbookanswers}
+\begin{solution}
 固定宽度和批量，密集注意力主要项按 $T^2$ 变化，为原来的 $.8^2=.64$；全词表投影按 $TV$ 变化，为 $.8\times2=1.6$。总时延还受FFN/注意力投影、缓存读写、矩阵内核效率、词表并行通信、批量与序列调度影响；参数显存也因词表扩大而增长。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 为“提示两个词元、回答两个词元、真实 EOS、填充两个位置”的样本写出显式右移后的输入、目标、输入有效性与仅回答损失掩码。令 PAD 与 EOS 共享编号，指出哪些位置仍应计算损失。
+\begin{exercise} 为“提示两个词元、回答两个词元、真实 EOS、填充两个位置”的样本写出显式右移后的输入、目标、输入有效性与仅回答损失掩码。令 PAD 与 EOS 共享编号，指出哪些位置仍应计算损失。
 
-\begin{workbookanswers}
+\begin{solution}
 取显式移位后的七位置输入 $x$、目标 $y$，以及输入有效性掩码 $m_{\mathrm{in}}$ 和仅回答损失掩码 $m_{\mathrm{loss}}$：
 \[
 \begin{aligned}
@@ -56,17 +63,19 @@ m_{\mathrm{loss}}&=(0,0,1,1,1,0,0).
 \end{aligned}
 \]
 第5个目标是真实EOS，应计损失；最后两个是填充，应忽略。即使编号相同也必须根据来源位置区分，不能按编号批量删除EOS监督。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 两套分词器对测试文本均能无损解码，但输出编号不同。解释直接替换分词器可能破坏哪些模型参数与服务资产，并设计能够定位差异层次的比较顺序。
+\begin{exercise} 两套分词器对测试文本均能无损解码，但输出编号不同。解释直接替换分词器可能破坏哪些模型参数与服务资产，并设计能够定位差异层次的比较顺序。
 
-\begin{workbookanswers}
+\begin{solution}
 先比较原文规范化与预分词，再比合并规则、词表字节串到ID映射、特殊词元和模板，最后比padding、offset和标签策略。ID变化会错选嵌入行、输出头类别和适配器语义，长度变化影响缓存及预算。若仅作词表置换，必须同步置换输入输出参数及相关资产；一般重新分词不能用简单行置换恢复，需重新训练或适配并独立评估。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 对本章的三词元查表示例，直接写出独热向量与矩阵乘法结果。若词表第1与第3行交换而输入编号保持不变，哪些输出发生变化？如果同时调整编号映射，结果又如何？
+\begin{exercise} 对本章的三词元查表示例，直接写出独热向量与矩阵乘法结果。若词表第1与第3行交换而输入编号保持不变，哪些输出发生变化？如果同时调整编号映射，结果又如何？
 
-\begin{workbookanswers}
+\begin{solution}
 输入编号 $(3,1,3)$ 的独热表示与查表结果为
 \[
 S=\begin{bmatrix}0&0&1\\1&0&0\\0&0&1\end{bmatrix},\qquad
@@ -78,18 +87,21 @@ E'=\begin{bmatrix}1&1\\0&2\\1&0\end{bmatrix},\qquad
 SE'=\begin{bmatrix}1&0\\1&1\\1&0\end{bmatrix}.
 \]
 三个输出位置均发生改变。若同时把旧编号1映射到新编号3、旧编号3映射到新编号1，查表恢复原结果；输出词表及标签也须同步保持同一映射。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 在式\tbobject{eq:rev5-tied-grad}中令 $\alpha=2$。说明为什么只有输入路径梯度显式带有该系数，而输出路径不能机械乘二。讨论 $H$ 的数值仍可能怎样随输入缩放变化。
+\begin{exercise} 在式\tbobject{eq:rev5-tied-grad}中令 $\alpha=2$。说明为什么只有输入路径梯度显式带有该系数，而输出路径不能机械乘二。讨论 $H$ 的数值仍可能怎样随输入缩放变化。
 
-\begin{workbookanswers}
+\begin{solution}
 若输入为 $X=\alpha SE$、输出分数 $Z=HE^{\mathsf T}$，则 $\overline E=\alpha S^{\mathsf T}\overline X+\overline Z^{\mathsf T}H$。取$\alpha=2$只在第一条链的局部导数显式出现2；输出路径局部映射没有该乘数。H本身依赖$\alpha$及整个主干，因此数值上两条梯度都可能改变；不能冻结H的推导与完整训练中的依赖混淆。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 取两个向量 $(1,1)$、$(1,-1)$，再将第一维都放大十倍。比较变换前后的内积和余弦相似度，解释一般可逆坐标变化为什么不能保持嵌入几何。
+\begin{exercise} 取两个向量 $(1,1)$、$(1,-1)$，再将第一维都放大十倍。比较变换前后的内积和余弦相似度，解释一般可逆坐标变化为什么不能保持嵌入几何。
 
-\begin{workbookanswers}
+\begin{solution}
 原向量内积 $1-1=0$，余弦为0。变换后为 $(10,1),(10,-1)$，内积99，两者范数均为 $\sqrt{101}$，余弦为 $\frac{99}{101}\approx.980198$。可逆性只保证信息可恢复；内积需要正交变换才普遍保持，余弦还允许共同的非零等比例尺度。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\end{exerciselist}
+\end{exercises}

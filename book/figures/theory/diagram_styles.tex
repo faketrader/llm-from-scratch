@@ -1,4 +1,10 @@
 % Shared visual language for LFS architecture diagrams.
+% 与 mymath.sty 一致，统一增加分数线两端的留白。
+\let\lfsdiagramstandardfrac\frac
+\renewcommand*{\frac}[2]{%
+  \lfsdiagramstandardfrac{\mkern2mu#1\mkern2mu}{\mkern2mu#2\mkern2mu}%
+}
+
 \definecolor{LFSBlue}{HTML}{2563EB}
 \definecolor{LFSBlueSoft}{HTML}{DBEAFE}
 \definecolor{LFSGreen}{HTML}{15803D}

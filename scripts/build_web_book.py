@@ -202,6 +202,29 @@ class Publisher:
         )
 
     def prepare(self, text, body=False):
+        def code(m):
+            content = m[2].strip("\n")
+            fence = "`" * max(3, 1 + max((len(x) for x in re.findall(r"`+", content)), default=0))
+            markup = run(["pandoc", "-f", "markdown", "-t", "html5", "--highlight-style=pygments"],
+                         input=fence + m[1] + "\n" + content + "\n" + fence)
+            return self.block(markup)
+
+        # Protect code before interpreting TeX comments or semantic commands.
+        text = re.sub(
+            r"\\begin\{minted\}(?:\[[^\]]*\])?\{([^}]+)\}([\s\S]*?)\\end\{minted\}",
+            code, text,
+        )
+
+        # Structured pseudocode becomes nested lists while retaining mathematical content.
+        for name, title in [("For", "对"), ("While", "当"), ("If", "若")]:
+            text = command(text, name, 1,
+                           lambda condition, t=title: r"\item \textbf{" + t + "} " + condition + r"\begin{enumerate}")
+        text = text.replace(r"\Else", r"\end{enumerate}\item \textbf{否则}\begin{enumerate}")
+        for name in ["EndFor", "EndWhile", "EndIf"]:
+            text = text.replace("\\" + name, r"\end{enumerate}")
+        text = text.replace(r"\State", r"\item").replace(r"\Return", r"\textbf{返回：}")
+        text = re.sub(r"\\begin\{algorithmic\}(?:\[[^\]]*\])?", r"\\begin{enumerate}", text)
+        text = text.replace(r"\end{algorithmic}", r"\end{enumerate}")
         text = re.sub(r"(?<!\\)%[^\n]*", "", text)
         if body:
             if r"\begin{document}" in text:
@@ -259,25 +282,49 @@ class Publisher:
             title = (
                 m[2]
                 or {
-                    "bookassumptions": "假设与适用范围",
-                    "bookinsight": "结论",
-                    "bookalgorithm": "计算过程",
+                    "assumption": "假设与适用范围",
+                    "note": "说明",
+                    "warning": "适用限制",
+                    "algorithm": "计算过程",
                 }[m[1]]
             )
-            if m[1] == "bookalgorithm":
+            prefixes = {"note": "说明：", "warning": "注意：", "assumption": "假设："}
+            title = prefixes.get(m[1], "") + title
+            if m[1] == "algorithm":
                 self.alg += 1
                 title = f"算法{self.ch['number']}.{self.alg}　" + title
             return r"\begin{quote}\textbf{" + title + "}\n\n"
 
         text = re.sub(
-            r"\\begin\{(bookassumptions|bookinsight|bookalgorithm)\}(?:\[([^\]]*)\])?",
+            r"\\begin\{(assumption|note|warning|algorithm)\}(?:\[([^\]]*)\])?",
             box,
             text,
         )
         text = re.sub(
-            r"\\end\{(?:bookassumptions|bookinsight|bookalgorithm)\}",
+            r"\\end\{(?:assumption|note|warning|algorithm)\}",
             r"\\end{quote}",
             text,
+        )
+
+        def statement(m):
+            names = {"theorem": "定理", "lemma": "引理", "proposition": "命题",
+                     "corollary": "推论", "definition": "定义", "example": "例", "remark": "注"}
+            if m[1] == "proof":
+                title = "证明"
+            else:
+                self.statement += 1
+                title = f"{names[m[1]]} {self.ch['number']}.{self.statement}"
+            if m[2]:
+                title += "（" + m[2] + "）"
+            return r"\begin{quote}\textbf{" + title + "}\n\n"
+
+        text = re.sub(
+            r"\\begin\{(theorem|lemma|proposition|corollary|definition|example|remark|proof)\}(?:\[([^\]]*)\])?",
+            statement, text,
+        )
+        text = re.sub(
+            r"\\end\{(?:theorem|lemma|proposition|corollary|definition|example|remark|proof)\}",
+            r"\\end{quote}", text,
         )
 
         def table_caption(title):
@@ -337,13 +384,17 @@ class Publisher:
             result = result.replace("<p>" + token + "</p>", markup)
         if "LFSWEBBLOCK" in result:
             raise ValueError("Unexpanded block")
+        def admonition(m):
+            kind = {"注意：": "warning", "说明：": "note", "假设：": "assumption"}[m[1]]
+            return '<blockquote class="admonition ' + kind + '">' + m[0][len('<blockquote>'):]
+        result = re.sub(r"<blockquote>(?=\s*<p[^>]*><strong>(注意：|说明：|假设：))", admonition, result)
         return re.sub(
             r"(<table\b[\s\S]*?</table>)", r'<div class="table-scroll">\1</div>', result
         )
 
     def publish(self, ch):
         self.ch = ch
-        self.eq = self.fig = self.alg = self.table = 0
+        self.eq = self.fig = self.alg = self.table = self.statement = 0
         self.blocks = {}
         content = self.render(self.prepare(ch["source"].read_text(), body=True))
         refs = re.search(r'<div id="refs"[\s\S]*', content)
@@ -378,9 +429,9 @@ class Publisher:
         )
         answers = []
         wb = ROOT / "book/workbook/chapters" / ch["source"].name
-        for i, item in enumerate(wb.read_text().split(r"\exerciseitem")[1:], 1):
-            q, a = item.split(r"\begin{workbookanswers}", 1)
-            a = a.split(r"\end{workbookanswers}", 1)[0]
+        for i, item in enumerate(wb.read_text().split(r"\begin{exercise}")[1:], 1):
+            q, a = item.split(r"\begin{solution}", 1)
+            a = a.split(r"\end{solution}", 1)[0]
             optional = r"\optional" in q
             q = q.replace(r"\optional", "")
             answers.append(

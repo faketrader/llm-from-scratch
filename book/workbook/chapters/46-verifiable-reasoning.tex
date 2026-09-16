@@ -1,21 +1,23 @@
 \workbookchapter{可验证推理训练}
 
-\begin{exerciselist}
-\exerciseitem 为算术等价、代码单元测试和数据库工具任务分别定义“通过”的范围，说明各自仍无法证明什么。
+\begin{exercises}
+\begin{exercise} 为算术等价、代码单元测试和数据库工具任务分别定义“通过”的范围，说明各自仍无法证明什么。
 
-\begin{workbookanswers}
+\begin{solution}
 算术符号等价只证明在声明定义域和假设下式子相同，不能证明建模符合题意；代码单测通过只覆盖给定输入/环境；数据库工具成功只说明语句执行或事务提交，仍要验证目标行、授权范围和最终业务不变量。三者都需区分执行器异常与候选失败。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 设基线正确率为0.02，正确通过率为0.95，希望筛选后正确率至少0.9。求错误通过率的最大允许值。
+\begin{exercise} 设基线正确率为0.02，正确通过率为0.95，希望筛选后正确率至少0.9。求错误通过率的最大允许值。
 
-\begin{workbookanswers}
+\begin{solution}
 筛后纯度为 $\frac{pr}{[pr+(1-p)f]}$。要求至少0.9得 $f\le \frac{pr(1-0.9)}{0.9(1-p)}=\frac{0.0019}{0.882}\approx0.0021542$，约0.2154\%。低基率下即便正确通过率很高，少量误收也会主导保留集；条件率必须在目标难度分布校准。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 对奖励 $(0,0,0,1)$，分别使用分母 $G$ 与 $G-1$ 计算标准化优势。再计算留一基线对应的未标准化优势，解释三种结果的区别。
+\begin{exercise} 对奖励 $(0,0,0,1)$，分别使用分母 $G$ 与 $G-1$ 计算标准化优势。再计算留一基线对应的未标准化优势，解释三种结果的区别。
 
-\begin{workbookanswers}
+\begin{solution}
 均值为$\frac{1}{4}$，平方偏差和为$\frac{3}{4}$。总体标准差为$\frac{\sqrt3}{4}$，样本标准差为$\frac{1}{2}$，三种优势分别为
 \[
 \begin{aligned}
@@ -25,72 +27,84 @@
 \end{aligned}
 \]
 前两者采用不同的随机尺度归一化；第三者使用留一基线且未标准化，不应互称同一优势。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 在二元奖励 $p=0.05$ 时，求 $G=2,8,32$ 的混合奖励组概率表达式。如何把该指标与生成成本联合比较？
+\begin{exercise} 在二元奖励 $p=0.05$ 时，求 $G=2,8,32$ 的混合奖励组概率表达式。如何把该指标与生成成本联合比较？
 
-\begin{workbookanswers}
+\begin{solution}
 独立二元奖励下概率为 $1-p^G-(1-p)^G$。p=.05时G=2为.095；G=8约.33657957；G=32约.80628852。可比较每单位生成词元的非零方差组数及最终质量，而非只最大化混合组概率；大G生成代价近线性增加，奖励相关时该式失效。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 重现式\tbobject{eq:reason-selfbaseline}，说明哪些步骤使用了条件独立性。若候选通过共享搜索树产生，原推导还能否直接成立？
+\begin{exercise} 重现式\tbobject{eq:reason-selfbaseline}，说明哪些步骤使用了条件独立性。若候选通过共享搜索树产生，原推导还能否直接成立？
 
-\begin{workbookanswers}
+\begin{solution}
 令 $g_i=\nabla\log\pi(y_i|x)$，条件于x时均值零。展开 $\mathbb E[(r_i-G^{-1}\sum_jr_j)g_i]$，自身项留下 $(1-\frac{1}{G})\mathbb E[r_ig_i]$，j不等i项需候选条件独立才消失。共享搜索树导致奖励与另一候选得分相关，不能直接沿用；需按联合采样分布重新推导或用独立对照。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 对两词元回答，概率比分别为1.5与0.5，求序列比。构造另一个平均词元比相同但序列比不同的回答。
+\begin{exercise} 对两词元回答，概率比分别为1.5与0.5，求序列比。构造另一个平均词元比相同但序列比不同的回答。
 
-\begin{workbookanswers}
+\begin{solution}
 原序列比为 $1.5\times0.5=0.75$，平均词元比为1。另一回答取 $(1,1)$，平均仍1但序列比1。乘积与平均捕获不同对象，序列长时差异会累积。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 在完整组内例题中，将裁剪宽度改为0.1，重新计算目标和每个位置的局部梯度，明确处于边界时采用的次梯度约定。
+\begin{exercise} 在完整组内例题中，将裁剪宽度改为0.1，重新计算目标和每个位置的局部梯度，明确处于边界时采用的次梯度约定。
 
-\begin{workbookanswers}
+\begin{solution}
 按回答平均、beta=0，四条平均项为1、1.1、-1、-.9，故J=.05，损失-.05。约定在饱和边界对比值取平坦分支导数0：第一条局部log概率导数 $(0,\frac{.9}{8})=(0,.1125)$；第二条比1.1都在上边界，导数全0；第三条为 $(0,-\frac{1.1}{8})=(0,-.1375)$；第四条比.9处于负优势下边界，导数全0。最小化损失再反号。边界可取其他合法次梯度，实现需明示；J数值不因此改变。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 从式\tbobject{eq:reason-kappa}证明非负性及当前策略采样下的期望。说明把行为样本当作当前样本为何会改变估计。
+\begin{exercise} 从式\tbobject{eq:reason-kappa}证明非负性及当前策略采样下的期望。说明把行为样本当作当前样本为何会改变估计。
 
-\begin{workbookanswers}
+\begin{solution}
 令 $x=\frac{\pi_{ref}(a|h)}{\pi(a|h)}>0$，由 $\log x\le x-1$ 得 $\kappa=x-1-\log x\ge0$。在当前pi完整支持上采样，$\mathbb E_\pi(x-1)=0$，故期望为 $\mathrm{KL}(\pi\|\pi_{ref})$。行为mu样本若不做校正，此归一恒等式不成立；共享支持或绝对连续性不足时须另外处理零概率。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 比较按回答、按批量词元及固定分母归约。对相同负优势的长度2与长度20回答，分析每词元权重及其可能引入的训练行为。
+\begin{exercise} 比较按回答、按批量词元及固定分母归约。对相同负优势的长度2与长度20回答，分析每词元权重及其可能引入的训练行为。
 
-\begin{workbookanswers}
+\begin{solution}
 按回答平均时同一负优势在长度2中的每位置系数为 $\frac{A}{2G}$，长度20为 $\frac{A}{20G}$，长回答每位置惩罚缩小10倍；按批量词元平均为 $\frac{A}{\sum_iT_i}$，两者每位置一致；固定分母为 $\frac{A}{GT_0}$，也一致但总体尺度不同。还要乘实际概率比及裁剪分支；这些局部系数提示长度动力学，不能单独证明最终长度必然增长。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 对 $n=20,c=4$，计算 $k=1,2,5$ 的 pass@k 组合估计。说明为什么该指标不等于多数投票返回准确率。
+\begin{exercise} 对 $n=20,c=4$，计算 $k=1,2,5$ 的 pass@k 组合估计。说明为什么该指标不等于多数投票返回准确率。
 
-\begin{workbookanswers}
+\begin{solution}
 $k=1$为$\frac{4}{20}$=.2；k=2为 $1-\frac{\binom{16}2}{\binom{20}2}=\frac{7}{19}\approx.368421$；k=5为 $1-\frac{4368}{15504}=\frac{232}{323}\approx.718266$。它估计候选中至少一条成功，产品多数投票仍需正确答案获得最多票；错误答案也可能聚集，故不能当投票返回准确率。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 若每题在第一次通过后停止生成，设计直接评估该服务策略的记录方式。说明为何不能无条件把变长样本数代入固定样本组合估计并宣称无偏。
+\begin{exercise}\optional 若每题在第一次通过后停止生成，设计直接评估该服务策略的记录方式。说明为何不能无条件把变长样本数代入固定样本组合估计并宣称无偏。
 
-\begin{workbookanswers}
+\begin{solution}
 以问题为单位记录全部尝试顺序、候选、验证结果、实际消耗、停止原因、最终返回及独立真值。直接统计策略返回成功率、成本分布和超时率。样本数取决于先前成功，固定n的组合无偏性前提已改变；可以直接评估服务策略，不能把该日志当作预先固定n的独立样本池。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 一个验证器奖励所有“工具执行成功”的轨迹。设计一种完成了操作但未完成任务的反例，并提出可核验的终点状态条件。
+\begin{exercise}\optional 一个验证器奖励所有“工具执行成功”的轨迹。设计一种完成了操作但未完成任务的反例，并提出可核验的终点状态条件。
 
-\begin{workbookanswers}
+\begin{solution}
 任务要求“仅取消指定未发货订单”，工具却成功取消了另一订单，或只成功查询而未取消。终点验证需检查目标订单ID、原状态、授权主体、事务提交及指定状态变化，并确认无额外行被改。奖励所有成功调用会鼓励无效操作，应以受控的目标状态和副作用约束给奖励。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 建立按题族隔离的推理蒸馏数据流程，分别指出教师、验证器调参和自适应测试可能引入污染的位置。
+\begin{exercise} 建立按题族隔离的推理蒸馏数据流程，分别指出教师、验证器调参和自适应测试可能引入污染的位置。
 
-\begin{workbookanswers}
+\begin{solution}
 先按原题来源/模板族划分，再生成教师轨迹；训练生成不能访问封存测试答案。验证器阈值在独立开发集确定，保留版本；教师检索和知识库也需查污染。测试只用于冻结方案，若按测试失败继续合成数据或改停止策略，应另设新测试集；字符串去重不足以覆盖改写与同模板题。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 训练奖励升高、回答变长、独立正确率不变。提出可区分长度偏置、验证器利用和问题分布变化的证据方案。
+\begin{exercise} 训练奖励升高、回答变长、独立正确率不变。提出可区分长度偏置、验证器利用和问题分布变化的证据方案。
 
-\begin{workbookanswers}
+\begin{solution}
 固定问题分布重评新旧策略；固定候选做长度保持/事实保持改写，测评分器对冗长的响应；用独立执行或人工真值核对高奖励失败例。报告长度、分项奖励、每题难度、独立正确率和生成预算。仅问题混合改变时用旧混合重加权作对照；评分漏洞需更新验证器并重新验收，不以更高平均奖励作解释。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\end{exerciselist}
+\end{exercises}

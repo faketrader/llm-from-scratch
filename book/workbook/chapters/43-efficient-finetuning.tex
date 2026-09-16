@@ -1,28 +1,32 @@
 \workbookchapter{训练工程优化}
 
-\begin{exerciselist}
-\exerciseitem 冻结基座有 $2\times10^9$ 个参数，每参数实际存储0.6字节；可训练参数有 $2\times10^7$ 个，每参数训练状态16字节，激活和运行时占 $4\times10^9$ 字节。计算总峰值预算，并说明将可训练参数减半的收益。
+\begin{exercises}
+\begin{exercise} 冻结基座有 $2\times10^9$ 个参数，每参数实际存储0.6字节；可训练参数有 $2\times10^7$ 个，每参数训练状态16字节，激活和运行时占 $4\times10^9$ 字节。计算总峰值预算，并说明将可训练参数减半的收益。
 
-\begin{workbookanswers}
+\begin{solution}
 冻结基座占 $1.2\times10^9$ 字节，可训练状态占 $3.2\times10^8$ 字节，总量为 $5.52\times10^9$ 字节。将可训练参数减半只节省 $1.6\times10^8$ 字节；激活、临时空间及运行时仍需要单独测量。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 两个微批次分别有3和9个有效监督词元，平均梯度分别为2和6。求词元平均梯度，并解释为什么累积步数不能替代标签计数。
+\begin{exercise} 两个微批次分别有3和9个有效监督词元，平均梯度分别为2和6。求词元平均梯度，并解释为什么累积步数不能替代标签计数。
 
-\begin{workbookanswers}
+\begin{solution}
 正确梯度为 $\frac{3\times2+9\times6}{12}=5$，微批均值平均为4。累积步数只计微批次，不能表示每个微批次的有效监督数量；回答掩码和变长样本会使这些数量不同。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 设 $L=100$、$A=20$ MiB，求均匀重计算模型的最优区间及激活存储，并列出实际峰值中还需计入的项。
+\begin{exercise} 设 $L=100$、$A=20$ MiB，求均匀重计算模型的最优区间及激活存储，并列出实际峰值中还需计入的项。
 
-\begin{workbookanswers}
+\begin{solution}
 取 $k=\sqrt{100}=10$，近似激活存储为 $20(10+10)=400$ MiB，全部保存为2000 MiB。峰值还需加入参数、梯度、优化器状态、临时张量、非均匀层开销和运行时工作空间；同时评估额外前向计算。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 一项适配器微调在增加序列长度后显存不足。设计完整更新步的显存测量与消融方案，区分基座权重、可训练状态、激活和临时工作空间。说明何时选择微批量调整、重计算或状态分片，以及普通数据并行为何可能无法解决问题。
+\begin{exercise} 一项适配器微调在增加序列长度后显存不足。设计完整更新步的显存测量与消融方案，区分基座权重、可训练状态、激活和临时工作空间。说明何时选择微批量调整、重计算或状态分片，以及普通数据并行为何可能无法解决问题。
 
-\begin{workbookanswers}
+\begin{solution}
 先核对可训练参数集合、基座精度和优化器状态，在目标长度下分别记录前向、反向与更新阶段的峰值，覆盖首次状态分配和稳定更新步。冻结权重仍可能参与输入梯度传播，应检查实际反向路径。分别改变长度、微批量和重计算配置，判断增长是否来自激活；基座及复制状态占主导时，再评估相应权重或状态分片。适配器优化器状态较小时，仅分片该部分收益有限。普通数据并行通常保留完整副本，不能直接消除单卡容量不足。比较方案时保持有效监督预算与质量要求，复核梯度累积的归一化、全局批量、通信和恢复语义，并同时记录峰值显存、墙钟时间与设备时。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\end{exerciselist}
+\end{exercises}

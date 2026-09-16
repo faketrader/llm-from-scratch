@@ -36,13 +36,13 @@
 先用单卡可容纳的模型验证请求路径，之后再研究量化与多卡并行。可用显存不仅要容纳权重，还要留出缓存、激活与工作空间；标称上下文长度也不等于既定并发下可以承载的长度。
 
 在vLLM环境中启动本地服务，保留启动日志：
-\begin{verbatim}
+\begin{minted}{bash}
 vllm serve /absolute/model-snapshot \
   --host 127.0.0.1 --port 8000 \
   --generation-config vllm
-\end{verbatim}
+\end{minted}
 \texttt{--generation-config vllm}使对照不隐式继承模型目录中的生成默认值；请求仍需显式给出采样与停止条件\cite{vllm2026framework}。先读取\texttt{/v1/models}确认实际服务模型名称，再向\texttt{/v1/chat/completions}发送请求。以下客户端只使用Python标准库；将其保存为实验记录中的\path{request.py}，首次以端口8000运行。
-\begin{verbatim}
+\begin{minted}{python}
 import json
 import sys
 import urllib.request
@@ -69,21 +69,21 @@ with opener.open(request, timeout=120) as r:
     result = json.load(r)
 assert result.get("choices"), result
 print(json.dumps(result, ensure_ascii=False, indent=2))
-\end{verbatim}
-\begin{verbatim}
+\end{minted}
+\begin{minted}{bash}
 python /absolute/run/request.py http://127.0.0.1:8000
-\end{verbatim}
+\end{minted}
 保存完整响应，检查模型身份、内容、停止原因和词元计数。状态码成功只能证明请求被处理，回答是否正确仍需任务判据。上述非流式客户端不能测量首词元或逐词元延迟；这些指标需要流式事件时间或服务器遥测。对外服务时，将认证、TLS、限流及访问控制接到经过验证的入口，不能直接把本地检查地址替换为公网监听便称为部署完成。
 
 推理模型还要核查“模型支持”和“引擎接口支持”两个条件。先从固定版本的模型卡与引擎请求文档确认推理强度的字段名、允许值、默认值和用量字段，再向测试服务发送一个支持值和一个故意无效的值。保存原始请求、响应和服务日志；只有错误可识别、响应能回显或日志能证明最终生效值时，才把该参数纳入跨引擎对照。OpenAI兼容路径不保证实现OpenAI全部字段，不能看到\texttt{/v1/chat/completions}便假定\texttt{reasoning\_effort}有效。
 
 停止前一引擎并确认显存释放，再在SGLang环境启动相同模型目录：
-\begin{verbatim}
+\begin{minted}{bash}
 python -m sglang.launch_server \
   --model-path /absolute/model-snapshot \
   --host 127.0.0.1 --port 30000
 python /absolute/run/request.py http://127.0.0.1:30000
-\end{verbatim}
+\end{minted}
 参数定义与启动路径见相应版本源码和官方请求说明\cite{sglang2026serverargs,sglang2026requests}。客户端读取实际模型名称，避免把端口切换误当作全部迁移工作。比较模板渲染后的输入词元、特殊词元、EOS及有效生成参数；相同消息JSON可能在不同配置下形成不同输入。
 
 对确定性设置仍应声明允许的数值或答案差异。内核、批组成和浮点规约可能改变生成轨迹；不能仅凭\texttt{temperature=0}要求不同引擎逐字相同。若引擎支持所需logprobs，可先比较固定前缀的分数，再用保留测试集评估任务质量。

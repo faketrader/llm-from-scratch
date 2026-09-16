@@ -40,7 +40,7 @@
 记数据并行设备数为 $D_p$，每设备微批次为 $b$，梯度累积次数为 $a$，则完整批次的样本数为 $D_pba$。单卡 $b=1,a=8$ 与两卡 $b=1,a=4$ 均为8，但尾批次、填充和不同回答长度仍可能改变有效监督词元数。对照中应保存样本划分、尾批处理及损失归一化方式。
 
 为DeepSpeed建立\path{/absolute/run/zero2.json}：
-\begin{verbatim}
+\begin{minted}{json}
 {
   "bf16": {"enabled": "auto"},
   "zero_optimization": {"stage": 2},
@@ -48,11 +48,11 @@
   "train_micro_batch_size_per_gpu": "auto",
   "train_batch_size": "auto"
 }
-\end{verbatim}
+\end{minted}
 这里的\texttt{auto}由Transformers训练器与Accelerate集成解析，实际数值从训练参数取得；这份配置不能作为完全脱离该集成的通用DeepSpeed配置\cite{huggingface2026accelerateframework}。优化器和调度器由上层训练配置管理，不在第二处重复定义。
 
 在训练环境中按所用PyTorch与加速器安装DeepSpeed并保存版本及算子诊断。启动命令为：
-\begin{verbatim}
+\begin{minted}{bash}
 torchrun --standalone --nproc_per_node=2 \
   book/workbook/examples/train_adapter.py \
   --model /absolute/model-snapshot \
@@ -62,7 +62,7 @@ torchrun --standalone --nproc_per_node=2 \
   --eos-token "$EOS_TOKEN" --steps 100 \
   --max-length 1024 --accumulation 4 \
   --deepspeed /absolute/run/zero2.json
-\end{verbatim}
+\end{minted}
 确认每个进程绑定不同GPU，打印的世界大小为2，生效全局批量与设计相符。不要给训练模型额外添加面向推理的\texttt{device\_map="auto"}；设备与状态归属由训练运行时管理。
 
 选择一次已完整保存的检查点，以同样的两进程启动命令加入\texttt{--resume /absolute/run/zero2-01/checkpoint-40}，并保持原输出目录。该路径须对应实际存在的检查点，不能按示例步数假定保存成功。比较恢复后的步数、数据位置、学习率和下一次更新，核对优化器、调度器及随机状态均按声明恢复。

@@ -38,26 +38,26 @@
 准备一个已下载并固定修订的因果聊天模型目录，以及来源明确的训练与验证JSONL文件。入口要求支持BF16的CUDA设备；所需显存取决于基座、长度和激活，不能仅由LoRA参数量估计。可先使用能够在单卡容纳的小型指令模型验证完整流程，再扩大规模。模型目录应包含权重、配置、分词器、聊天模板及相应特殊词元信息。
 
 接口核查基线为TRL 1.13.0与PEFT 0.20.0；训练依赖与推理引擎分别建环境。先按目标设备安装兼容的PyTorch，再安装并检查训练依赖，记录解析得到的完整版本集合。以下操作会安装软件，应在正式运行实验时执行。
-\begin{verbatim}
+\begin{minted}{bash}
 python -m venv .venv-train
 source .venv-train/bin/activate
 python -m pip install "trl==1.13.0" "peft==0.20.0" \
   "accelerate==1.15.0" datasets
 python -m pip check
 python -m pip freeze > /absolute/run/train-packages.txt
-\end{verbatim}
+\end{minted}
 \path{/absolute/run}须替换为已建立的实验记录目录。依赖解析成功只说明声明的包约束得到满足，设备算子、模型加载和反向计算仍需运行验证。重现实验时复用经验证的锁定环境，升级则重新核对数据处理与训练行为。
 
 每行包含\texttt{prompt}与\texttt{completion}两列，值为角色消息数组。下面仅展示记录格式，训练集应使用经过审校且有使用权限的数据；验证集按文档、来源或任务划分，避免同源近重复样本泄漏。
-\begin{verbatim}
+\begin{minted}{json}
 {"prompt":[{"role":"user","content":"请解释梯度累积。"}],"completion":[{"role":"assistant","content":"梯度累积在多个微批次上累计梯度，再执行一次参数更新。"}]}
-\end{verbatim}
+\end{minted}
 入口要求最后一条提示来自用户，且待学习部分恰好是一条助手回答。它检查训练与验证提示的完全重复、模板后的长度及首批监督目标；近重复和语义泄漏仍须在数据准备阶段检查。采用\texttt{completion\_only\_loss=True}，监督回答部分；\texttt{packing=False}让首次验收保留每条记录的边界。
 
 正式更新前，应从\texttt{trainer.get\_train\_dataloader()}取得一个批次，对照\texttt{input\_ids}与\texttt{labels}解码非\texttt{-100}位置，确认回答及结束标记受到监督，提示没有被错误计入。源码中的非空检查只能发现没有训练目标的情况，不能替代这项语义检查。EOS参数应取聊天模板规定的回答结束词元，不应仅凭词元名称猜测。
 
 把路径替换为实际的绝对路径，并从模型模板核实\texttt{EOS\_TOKEN}。下面的100步用于完整流程验收，不代表已达到某项质量目标；步数、学习率和验证频率应根据数据与验证曲线调整。
-\begin{verbatim}
+\begin{minted}{bash}
 python book/workbook/examples/train_adapter.py \
   --model /absolute/model-snapshot \
   --train /absolute/data/train.jsonl \
@@ -65,7 +65,7 @@ python book/workbook/examples/train_adapter.py \
   --output /absolute/run/lora-01 \
   --eos-token "$EOS_TOKEN" \
   --steps 100 --max-length 1024 --accumulation 8
-\end{verbatim}
+\end{minted}
 固定单卡微批次为1，累积8步；LoRA秩为16，缩放参数为32，目标为PEFT识别的线性层。先核对打印或保存的可训练参数名称，确认输出头和额外保存层是否符合任务要求。入口拒绝向已有非空输出目录开始新训练；恢复时必须显式指定检查点。
 
 \path{final/}保存适配器和分词器，\path{checkpoint-*}用于训练恢复，\path{experiment.json}记录参数及数据哈希。另行保存基座的不可变修订或文件哈希、驱动与库版本、显存和时间记录。仅有本地路径不能唯一标识基座内容。

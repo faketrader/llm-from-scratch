@@ -1,51 +1,58 @@
 \workbookchapter{训练数据工程基础}
 
-\begin{exerciselist}
-\exerciseitem 某数据集每组有十条观测，组内相关系数为 $0.2$。在等组大小假设下推导均值方差与等效样本量，并说明该量为何不能直接视为神经网络训练的有效样本数。
+\begin{exercises}
+\begin{exercise} 某数据集每组有十条观测，组内相关系数为 $0.2$。在等组大小假设下推导均值方差与等效样本量，并说明该量为何不能直接视为神经网络训练的有效样本数。
 
-\begin{workbookanswers}
+\begin{solution}
 设G组独立、每组$m=10$、各观测方差$\sigma^2$，组内相关$\rho=0.2$，总数$N=10G$。均值方差为 $\frac{\sigma^2[1+(m-1)\rho]}{N}=\frac{2.8\sigma^2}{N}$，匹配独立同方差均值可定义 $N_{\mathrm{eff}}=\frac{N}{2.8}$。它是特定均值估计量的方差等效，不刻画神经网络的函数复杂度、梯度相关结构和数据覆盖，不能直接解释为训练样本有效数量。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 为含工具调用、图片引用和偏好对的数据设计公共信封与三种载荷，列出必须由模式检查的跨字段约束。
+\begin{exercise} 为含工具调用、图片引用和偏好对的数据设计公共信封与三种载荷，列出必须由模式检查的跨字段约束。
 
-\begin{workbookanswers}
+\begin{solution}
 公共信封固定dataset/record/group身份、schema版本、来源与许可、时间、内容哈希及权限。工具载荷保存有序消息、call ID、参数和结果引用，校验每结果匹配已有调用及角色次序；媒体载荷保存消息块和图片引用，校验资源存在、类型及processor版本；偏好载荷保存同一prompt下chosen/rejected，校验共同条件、候选区分和分组原子性。未知类型进入隔离，不把三类字段拼成大量空列的万能表。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 推导式\tbobject{eq:ch14-filter}，构造两个领域原始数量相同但过滤后严重失衡的例子，并说明校正所需的信息。
+\begin{exercise} 推导式\tbobject{eq:ch14-filter}，构造两个领域原始数量相同但过滤后严重失衡的例子，并说明校正所需的信息。
 
-\begin{workbookanswers}
+\begin{solution}
 设接受事件A满足 $P(A\mid Z=z)=a(z)$，由条件概率 $P(Z=z\mid A)=\frac{a(z)P(z)}{P(A)}$，其中 $P(A)=\mathbb E_Pa(Z)>0$。两个领域原各1000条，接受率.9和.1，则过滤后900与100，份额.9/.1。校正需要各领域准入后数量、接受机制和目标份额；可抽样或重要性加权，但被完全过滤的子群没有支持，不能仅靠无限权重恢复。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 对 $J=0.5$，希望 MinHash 估计量标准差不超过 $0.025$，在独立排列模型下至少需要多少行？该条件是否保证每次误差都小于 $0.025$？
+\begin{exercise}\optional 对 $J=0.5$，希望 MinHash 估计量标准差不超过 $0.025$，在独立排列模型下至少需要多少行？该条件是否保证每次误差都小于 $0.025$？
 
-\begin{workbookanswers}
+\begin{solution}
 独立排列下 $\operatorname{Var}(\widehat J)=\frac{J(1-J)}{m}=\frac{.25}{m}$，要求标准差不超过.025，故 $m\ge\frac{.25}{.025^2}=400$。标准差是重复试验的波动尺度，不保证每次误差都在该范围内；确定概率容差还需另给置信水平并使用合适尾界或二项分布区间。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 固定签名长度 $m=100$，比较 $(b,r)=(20,5)$ 与 $(10,10)$ 对相似度 $0.6$ 的候选概率，解释计算量与漏检的取舍。
+\begin{exercise}\optional 固定签名长度 $m=100$，比较 $(b,r)=(20,5)$ 与 $(10,10)$ 对相似度 $0.6$ 的候选概率，解释计算量与漏检的取舍。
 
-\begin{workbookanswers}
+\begin{solution}
 候选概率为 $1-(1-s^r)^b$。s=.6时，(20,5)得到 $1-(1-.6^5)^{20}\approx.8019$；(10,10)得到 $1-(1-.6^{10})^{10}\approx.05885$。相同100行签名，后者要求更长连续匹配，候选更少、精确复核量下降，却更易漏掉.6相似记录。候选量还取决于全库分布，不能仅靠本概率断言总运行成本。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 用本章三个集合说明：为什么近重连通分量适合保守划分，却不能无条件作为“全部内容可互相替代”的证明？
+\begin{exercise} 用本章三个集合说明：为什么近重连通分量适合保守划分，却不能无条件作为“全部内容可互相替代”的证明？
 
-\begin{workbookanswers}
+\begin{solution}
 可取 $A=\{1,2\},B=\{1,2,3\},C=\{2,3\}$，相邻Jaccard为$\frac{2}{3}$，端点为$\frac{1}{3}$。阈值.6下三个节点连通，分到同一评估组可避免任何高相似边跨集合；但A和C不达到阈值，不能因连通便把它们当成同一内容删除。稳定代表去重需每个删除项与实际保留代表之间有直接依据。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 新数据把已分到训练和测试的两个家族连接起来。提出一个保留既有评估版本解释性的处理方案，明确哪些记录被隔离、哪些版本必须失效。
+\begin{exercise} 新数据把已分到训练和测试的两个家族连接起来。提出一个保留既有评估版本解释性的处理方案，明确哪些记录被隔离、哪些版本必须失效。
 
-\begin{workbookanswers}
+\begin{solution}
 冻结旧评估版本及其成员不做静默重排，先隔离引入连接的新记录和相关派生视图，调查新边是否揭示旧组已有泄漏。若旧测试解释确受影响，将该版本标为受污染并停止用其作独立准入；重建组图、分组划分和全部下游版本，建立新测试基准。历史分数保留但附失效说明；仅改新记录split不能自动修复已泄漏训练。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 三个来源的记录数为 $(10000,1000,100)$，平均有效长度为 $(50,200,500)$。计算 $\alpha=\frac{1}{2}$ 下记录概率与近似词元份额，并给出面向指定词元目标的调整思路。
+\begin{exercise} 三个来源的记录数为 $(10000,1000,100)$，平均有效长度为 $(50,200,500)$。计算 $\alpha=\frac{1}{2}$ 下记录概率与近似词元份额，并给出面向指定词元目标的调整思路。
 
-\begin{workbookanswers}
+\begin{solution}
 平方根计数归一化得到记录概率 $p$。随后乘各来源平均长度，得到未归一化词元量 $w$，再归一化得到词元份额 $q$：
 \[
 \begin{aligned}
@@ -56,30 +63,35 @@ q&\approx(0.30629,\ 0.38742,\ 0.30629).
 \end{aligned}
 \]
 若指定词元份额为 $q_i$，可设序列抽样概率 $p_i\propto \frac{q_i}{\mathbb E} L_i$，再按实际有效标签计数复核。长度与过滤分布变化会使目标和物化结果偏离。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 对长度 $(6,6,6)$ 与块长 $10$，比较连续流、不可拆原子样本以及独立注意力打包的容量和语义，不能仅比较填充比例；独立注意力打包分别讨论允许与禁止跨块拆分的条件。
+\begin{exercise} 对长度 $(6,6,6)$ 与块长 $10$，比较连续流、不可拆原子样本以及独立注意力打包的容量和语义，不能仅比较填充比例；独立注意力打包分别讨论允许与禁止跨块拆分的条件。
 
-\begin{workbookanswers}
+\begin{solution}
 连续流18词元用2个10长块，填充2，可按第一块6个A加4个B、第二块2个B加6个C排列；B被截断且允许跨样本读取会改变条件。不可拆样本时任意两条长度6都装不进10，需3块、填充12。独立注意力若也禁止拆样本，同为3块但还需块内样本mask；若允许拆段可用2块并阻断跨样本读取，但第二段B是否保留第一段B上下文必须另定，不能声称仅靠mask保持原目标。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 设计一个在块中跨越两个来源的词元跨度表，包含插入分隔符、填充与标签屏蔽。说明如何从一个输出位置反查到原始记录。
+\begin{exercise} 设计一个在块中跨越两个来源的词元跨度表，包含插入分隔符、填充与标签屏蔽。说明如何从一个输出位置反查到原始记录。
 
-\begin{workbookanswers}
+\begin{solution}
 取块长8：位置[0,3)来自数据集D1记录A源偏移[5,8)，[3,4)为插入SEP，[4,6)来自D2记录B偏移[0,2)，[6,8)为PAD。若A是提示、B是回答，可设相应目标监督仅覆盖B及协议所需EOS，具体按右移后目标而非输入编号判定。每跨度存父记录和变换版本；查询块位置5落在[4,6)，可反查B的偏移1。SEP记录生成规则、PAD为空来源，不能伪称原文。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 某作业先提交训练检查点，后保存数据游标，在两步之间崩溃。分析恢复后可能出现的重复，并给出一致性提交所需的状态边界。
+\begin{exercise} 某作业先提交训练检查点，后保存数据游标，在两步之间崩溃。分析恢复后可能出现的重复，并给出一致性提交所需的状态边界。
 
-\begin{workbookanswers}
+\begin{solution}
 权重已包含某批更新，但游标仍指向该批之前，恢复后会再消费并更新一次；若反过来先推进游标再提交权重，则可能漏更新。逻辑提交点应绑定权重、优化器/调度器、随机状态、分片游标、洗牌缓冲、未封存packing尾部及累计有效计数。可先写不可变状态对象，最后原子切换包含全部摘要的提交清单，消费者只恢复完整同版本组。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 一个源文档已从对象存储删除，但被去重代表、派生分片和训练检查点引用。画出需要处理的血缘图，并区分未来数据撤销与既有模型影响。
+\begin{exercise} 一个源文档已从对象存储删除，但被去重代表、派生分片和训练检查点引用。画出需要处理的血缘图，并区分未来数据撤销与既有模型影响。
 
-\begin{workbookanswers}
+\begin{solution}
 血缘关系为“源文档及别名→规范代表→训练视图→带source span的块→分片→训练任务→检查点”。删除原对象后仍需阻止别名再次导入、定位代表的其他合法来源、撤销或重建受影响视图和分片，并标记使用过旧版本的任务。未来消费撤销不自动去掉参数中已学影响；已有模型需按用途评估重训、遗忘或停用策略，保留受控审计而非继续公开敏感原文。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\end{exerciselist}
+\end{exercises}

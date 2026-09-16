@@ -1,62 +1,71 @@
 \workbookchapter{模型规模及资源预算}
 
-\begin{exerciselist}
-\exerciseitem\optional 取消 $h_qd_h=d$ 假设，重新推导注意力参数量，并说明式\tbobject{eq:budget-attn-params}第二行何时失效。
+\begin{exercises}
+\begin{exercise}\optional 取消 $h_qd_h=d$ 假设，重新推导注意力参数量，并说明式\tbobject{eq:budget-attn-params}第二行何时失效。
 
-\begin{workbookanswers}
+\begin{solution}
 设查询头总宽为 $h_qd_h$，键值总宽为 $h_{kv}d_h$，输入及输出均为 $d$，无偏置。四个矩阵参数之和为 $dh_qd_h+2dh_{kv}d_h+(h_qd_h)d=2dd_h(h_q+h_{kv})$。只有 $h_qd_h=d$ 时首尾两项才合为 $2d^2$；若键和值头宽不同，还应把两项分别写成 $dh_{kv}d_k$ 和 $dh_{kv}d_v$，输出矩阵宽度相应修改。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 将参数例题改为独立输出矩阵、每层两组及末端归一化均改为带偏置的 LayerNorm，其他投影仍无偏置，重新计数全部参数。
+\begin{exercise} 将参数例题改为独立输出矩阵、每层两组及末端归一化均改为带偏置的 LayerNorm，其他投影仍无偏置，重新计数全部参数。
 
-\begin{workbookanswers}
+\begin{solution}
 保留12层、每层两次归一化及末端一次归一化；补充约定末端也改为带缩放和偏置的LayerNorm，投影仍无偏置。矩阵主干为135266304，两个嵌入/输出矩阵为65536000，25次归一化各含 $2d=2048$ 个参数，合计 $200853504$。若仅按题干字面修改层内24次而末端仍为RMSNorm，则总量为200852480；两答案相差末端新增的1024偏置，必须声明此配置。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 对矩阵乘法完整写出前向与两条反向的形状和操作量，说明冻结权重后哪些梯度可能仍需计算。
+\begin{exercise} 对矩阵乘法完整写出前向与两条反向的形状和操作量，说明冻结权重后哪些梯度可能仍需计算。
 
-\begin{workbookanswers}
+\begin{solution}
 令 $Y=WX$，$W\in\mathbb R^{d_o\times d_i}$、$X\in\mathbb R^{d_i\times n}$、上游 $G\in\mathbb R^{d_o\times n}$。前向约 $2d_od_in$ FLOP；$\nabla_WL=GX^\mathsf T$ 形状 $d_o\times d_i$，$\nabla_XL=W^\mathsf TG$ 形状 $d_i\times n$，二者各约同样操作量。冻结 $W$ 可省其参数梯度及状态，却不能在前面有可训练层时省去 $\nabla_XL$。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 对长度分别为1000、2000、3000的请求及页长256，比较逻辑缓存位置数与独立分页后的保留位置数。
+\begin{exercise} 对长度分别为1000、2000、3000的请求及页长256，比较逻辑缓存位置数与独立分页后的保留位置数。
 
-\begin{workbookanswers}
+\begin{solution}
 逻辑长度总计6000，三条请求分别需要4、8、12页。因此分页保留的位置数为
 \[
  N_{\rm slots}=256(4+8+12)=6144,
 \]
 尾部浪费 $6144-6000=144$ 个槽位。它只计独立尾块碎片，未计页表、预留块或前缀共享。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 某量化方案每128个参数保存一个四字节尺度，权重四位。求每参数平均存储字节数，并解释为什么还可能低估实际权重文件。
+\begin{exercise} 某量化方案每128个参数保存一个四字节尺度，权重四位。求每参数平均存储字节数，并解释为什么还可能低估实际权重文件。
 
-\begin{workbookanswers}
+\begin{solution}
 每参数平均 $\frac{4}{8}+\frac{4}{128}=0.53125$ 字节。相对两字节权重为 $\frac{2}{0.53125}=\frac{64}{17}\approx3.765$ 倍压缩。逐行尾组、零点、对齐、未量化层和文件元数据都会增加实际尺寸；推理工作区另算。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 在16字节状态配置下将梯度改为四字节，重新推导 DDP 与各分片阶段的状态量。
+\begin{exercise} 在16字节状态配置下将梯度改为四字节，重新推导 DDP 与各分片阶段的状态量。
 
-\begin{workbookanswers}
+\begin{solution}
 参数权重2字节，梯度4字节，主权重和两个矩合计12字节，故DDP为 $18P$。设均匀分片组 $R$，ZeRO-1为 $(6+\frac{12}{R})P$，ZeRO-2为 $(2+\frac{16}{R})P$，ZeRO-3为 $\frac{18P}{R}$。这些仅为持久状态；聚合和通信峰值未包含。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 联合预算例题中，利用率降至 $.3$ 且期限仍为10天，求计算约束与八设备拓扑取整结果。
+\begin{exercise} 联合预算例题中，利用率降至 $.3$ 且期限仍为10天，求计算约束与八设备拓扑取整结果。
 
-\begin{workbookanswers}
+\begin{solution}
 基线工作量 $4.2\times10^{21}$，每卡有效速率 $2\times10^{14}\times0.3=6\times10^{13}$。期限864000秒，连续卡数81.0185，向上取整82；按8卡节点取整为88。需再次验证88卡拓扑能否保持所假定的0.3利用率。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 检查点每20分钟产生400 GB，后台有效写带宽为200 MB/s。队列能否长期稳定？给出同一单位下的推导。
+\begin{exercise} 检查点每20分钟产生400 GB，后台有效写带宽为200 MB/s。队列能否长期稳定？给出同一单位下的推导。
 
-\begin{workbookanswers}
+\begin{solution}
 按十进制单位，平均到达率 $\frac{400000}{1200}=333.33$ MB/s，大于200 MB/s服务率；每周期只能写240 GB，积压增加160 GB。单检查点写完需2000秒，故长期不稳定；临时缓存只能延迟溢出，不能消除平均速率差。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 设计包含长度峰值、数据供给降速和通信效率下降的三个压力情景，说明哪些影响已被利用率吸收，哪些必须单独加项。
+\begin{exercise}\optional 设计包含长度峰值、数据供给降速和通信效率下降的三个压力情景，说明哪些影响已被利用率吸收，哪些必须单独加项。
 
-\begin{workbookanswers}
+\begin{solution}
 可分别取上下文峰值翻倍、数据有效带宽减半、跨节点通信时间翻倍。第一项增加KV并可能使注意力计算按长度平方增长，须重算工作量和峰值；第二项检查预取耗尽后的供给下界；第三项重算暴露通信时间。若有效利用率来自包含相同数据等待和通信的端到端窗口，不再重复增加这两项；若仅测内核效率，则需单独建模。报告每项口径和联合最坏情景，不能把三个独立最坏系数无条件相乘。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\end{exerciselist}
+\end{exercises}

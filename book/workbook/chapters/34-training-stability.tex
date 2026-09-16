@@ -1,15 +1,16 @@
 \workbookchapter{训练稳定性}
 
-\begin{exerciselist}
-\exerciseitem 展开平方梯度的指数平均，并在各步二阶原点矩相同的假设下推导偏差修正。
+\begin{exercises}
+\begin{exercise} 展开平方梯度的指数平均，并在各步二阶原点矩相同的假设下推导偏差修正。
 
-\begin{workbookanswers}
+\begin{solution}
 从 $v_t=\beta_2v_{t-1}+(1-\beta_2)g_t^2,v_0=0$ 展开得 $v_t=(1-\beta_2)\sum_{i=1}^t\beta_2^{t-i}g_i^2$。若各步 $\mathbb E g_i^2=\mu_2$，则 $\mathbb Ev_t=(1-\beta_2^t)\mu_2$，除以 $1-\beta_2^t$ 后无此初始化偏差。无需时间独立性，但矩随时间变化时不等于当前真实矩。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 在两步算例的第二步之前把一阶矩、二阶矩和优化器内部步号一起清零。为避免零梯度坐标的 $\frac{0}{0}$，采用正 $\epsilon$ 并报告 $\epsilon\to0^+$ 的极限轨迹，解释与原轨迹的差异。
+\begin{exercise} 在两步算例的第二步之前把一阶矩、二阶矩和优化器内部步号一起清零。为避免零梯度坐标的 $\frac{0}{0}$，采用正 $\epsilon$ 并报告 $\epsilon\to0^+$ 的极限轨迹，解释与原轨迹的差异。
 
-\begin{workbookanswers}
+\begin{solution}
 约定矩和优化器内部步号一起重置，正 $\epsilon$ 保证零梯度坐标有定义，再取 $\epsilon\to0^+$ 的纸面极限。新步修正矩为 $(0,3)$ 与 $(0,9)$，方向 $(0,1)$，故
 \[
 \begin{aligned}
@@ -18,60 +19,70 @@
 \end{aligned}
 \]
 原例为 $(0.83094,-1.94543)$。若只清矩却保留步号2，第二坐标方向为 $\frac{\sqrt{0.0199}}{0.19}\approx0.74246$，得到 $(0.898101,-1.970348)$；这也是不同协议，不能含糊称为相同恢复。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 证明范数裁剪是欧氏球投影，并给出逐坐标裁剪改变方向的例子。
+\begin{exercise} 证明范数裁剪是欧氏球投影，并给出逐坐标裁剪改变方向的例子。
 
-\begin{workbookanswers}
+\begin{solution}
 最小化 $\frac12\|u-g\|^2$ 且 $\|u\|\le c$。可行时 $u=g$；否则拉格朗日方程 $u-g+\lambda u=0$ 给 $u=\frac{g}{1+\lambda}$，由边界得 $u=\frac{cg}{\|g\|}$。逐坐标截断如 $(3,4)\mapsto(2,2)$ 改变比例3:4；全局裁剪保持方向。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 推导非零 $\epsilon$ 下缩放整个梯度序列对 Adam 更新的影响。
+\begin{exercise}\optional 推导非零 $\epsilon$ 下缩放整个梯度序列对 Adam 更新的影响。
 
-\begin{workbookanswers}
+\begin{solution}
 对正数 $a$，梯度序列变 $ag_t$ 时，修正矩变 $a\widehat m_t,a^2\widehat v_t$，方向为 $\frac{\widehat m_t}{\sqrt{\widehat v_t}+\frac{\epsilon}{a}}$。只有 $\epsilon=0$ 或稳定项可忽略时尺度近似不变；负缩放会翻转一阶矩方向。解耦权重衰减项本身不由这项缩放抵消。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 设两组参数梯度范数为3和4，求阈值2时的全局裁剪结果，比较分别裁剪两组的结果。
+\begin{exercise} 设两组参数梯度范数为3和4，求阈值2时的全局裁剪结果，比较分别裁剪两组的结果。
 
-\begin{workbookanswers}
+\begin{solution}
 两组正交参数坐标空间使全局范数为5，阈值2给共同因子$\frac{2}{5}$，两组范数变1.2与1.6。分别裁到2后总范数为 $\sqrt8>2$，且两组相对权重改变；它解决的是两个球约束，非同一个全局球约束。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 为不使用预热的情况定义无除零、端点明确的余弦日程，并写出首末更新的学习率。
+\begin{exercise} 为不使用预热的情况定义无除零、端点明确的余弦日程，并写出首末更新的学习率。
 
-\begin{workbookanswers}
+\begin{solution}
 若总更新数 $T\ge2$，对 $t=1,\ldots,T$ 取 $\eta_t=\eta_{\min}+\frac12(\eta_{\max}-\eta_{\min})[1+\cos(\frac{\pi(t-1)}{T-1})]$，首步峰值、末步最低值。$T=1$ 单独约定唯一一步为峰值或任务指定值，避免除零；只在成功参数更新后推进计数。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 说明梯度累积中途保存检查点相比更新边界保存多需要哪些状态。
+\begin{exercise} 说明梯度累积中途保存检查点相比更新边界保存多需要哪些状态。
 
-\begin{workbookanswers}
+\begin{solution}
 除模型、优化器、调度和随机状态外，保存当前未提交梯度、已累计有效目标数、微步位置、损失缩放器、数据消费与在途状态。还要明确梯度是和还是均值、是否已反缩放或同步。若不保存这些，可退回上一更新边界重放整个累积窗口，不能从中间游标继续而丢梯度。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 数据加载器已预取但尚未消费三个批次。设计恢复方案，避免重复计入消费量或遗漏批次。
+\begin{exercise} 数据加载器已预取但尚未消费三个批次。设计恢复方案，避免重复计入消费量或遗漏批次。
 
-\begin{workbookanswers}
+\begin{solution}
 以已消费游标为权威，预取不计训练进度。方案一取消在途预取并从已消费游标确定性重建三个批次；方案二保存预取内容及顺序、工作线程随机状态并恢复队列。不能既从已消费位置重读又恢复同一队列。随机增强无法重建时，应保存其种子或物化结果。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 为分片缺失、摘要错误和资产版本不匹配分别设计恢复拒绝条件。
+\begin{exercise} 为分片缺失、摘要错误和资产版本不匹配分别设计恢复拒绝条件。
 
-\begin{workbookanswers}
+\begin{solution}
 清单缺必要分片、大小/摘要校验不符或制品依赖不兼容时拒绝该版本，回退最近完整一致版本。输出明确失效类型、步骤和可能损失进度。允许迁移时先执行显式转换并产生新清单；不得跳过错误分片或混入其他步骤参数。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 解释为何完整检查点不保证改变设备数后的逐位复现，并区分语义和数值验收。
+\begin{exercise}\optional 解释为何完整检查点不保证改变设备数后的逐位复现，并区分语义和数值验收。
 
-\begin{workbookanswers}
+\begin{solution}
 改变设备数会改变归约顺序、批次分组、数据分片和随机流，即使完整状态可重分片，浮点舍入也可不同。资产验收检查清单完整，语义验收检查有效目标和更新定义，数值验收比较容差内梯度/损失；逐位验收要求更强的确定性内核、顺序及随机配置，不能由前三级自动推出。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 训练出现非有限梯度，某次更新可能已经改变优化器状态。设计覆盖更新提交前后两种情况的处理流程，说明降低学习率、梯度裁剪与损失缩放各自能解决什么，并列出恢复时必须保持一致的状态和计数。
+\begin{exercise} 训练出现非有限梯度，某次更新可能已经改变优化器状态。设计覆盖更新提交前后两种情况的处理流程，说明降低学习率、梯度裁剪与损失缩放各自能解决什么，并列出恢复时必须保持一致的状态和计数。
 
-\begin{workbookanswers}
+\begin{solution}
 先定位非有限数值首次出现于输入、前向、反向还是优化器更新，并保留必要的批次与数值统计。若更新尚未提交且各设备一致确认异常，可跳过该次参数和优化器更新；动态损失缩放场景按协议调整缩放值。若参数或优化器状态已污染，应恢复一致检查点，包含参数、优化器、调度器、缩放器、随机状态与数据位置。降低学习率只可能缓解过大更新引起的不稳定，不能修复错误输入或已污染状态；梯度裁剪处理有限的大梯度，不能把 NaN 变为有效梯度。应分别记录成功更新数、跳步数与数据消耗，明确调度器按哪一计数推进，并在分布式训练中保持跳步与恢复决策一致。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\end{exerciselist}
+\end{exercises}

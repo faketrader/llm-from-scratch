@@ -93,7 +93,7 @@ def main():
             expected = (
                 (ROOT / "book/workbook/chapters" / name)
                 .read_text()
-                .count(r"\exerciseitem")
+                .count(r"\begin{exercise}")
             )
             if pages[slug].exercises != expected:
                 errors.append("Exercise count mismatch " + slug)

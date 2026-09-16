@@ -1,58 +1,67 @@
 \workbookchapter{双向语言建模}
 
-\begin{exerciselist}
-\exerciseitem 给定一条句对输入，分别写出词元、位置和句段编号，说明句段不同为什么不自动阻断注意力。
+\begin{exercises}
+\begin{exercise} 给定一条句对输入，分别写出词元、位置和句段编号，说明句段不同为什么不自动阻断注意力。
 
-\begin{workbookanswers}
+\begin{solution}
 任选句对 $(\mathrm{CLS},a,\mathrm{SEP},b,\mathrm{SEP})$，词元编号为各词表ID，位置编号为 $(0,1,2,3,4)$，常见句段编号为 $(0,0,0,1,1)$。句段编号只选择一条可学习向量加入表示，未产生负无穷屏蔽；只要注意力mask允许，两个句段仍可互读。实际特殊词元ID以固定制品为准。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 在掩码数值例题中，将第1个键改为填充，计算第2个查询在双向与因果条件下的权重和输出。
+\begin{exercise} 在掩码数值例题中，将第1个键改为填充，计算第2个查询在双向与因果条件下的权重和输出。
 
-\begin{workbookanswers}
+\begin{solution}
 第1键无效后，双向剩余分数指数为2、3，权重 $(0,\frac{2}{5},\frac{3}{5})$，输出 $(\frac{2}{5})4+(\frac{3}{5})10=7.6$。因果还要屏蔽第3键，仅第2键可见，权重 $(0,1,0)$，输出4。必须在剩余允许集合重新归一化，不能仅将原权重置零。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 若从 $20$ 个候选位置独立以 $.15$ 概率选择监督，求空集合概率。若改成固定选择三个位置，讨论选择指示变量是否独立。
+\begin{exercise} 若从 $20$ 个候选位置独立以 $.15$ 概率选择监督，求空集合概率。若改成固定选择三个位置，讨论选择指示变量是否独立。
 
-\begin{workbookanswers}
+\begin{solution}
 独立选择时空集合概率为 $(1-.15)^{20}=.85^{20}\approx.038760$。固定选3个则空集合概率为0，每个位置仍有边缘概率$\frac{3}{20}$，但不同位置的联合选择概率为 $\frac{3\times2}{20\times19}$，不等于 $(\frac{3}{20})^2$；指示量负相关。两种策略具有不同批量监督量分布。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 假设随机替换从包含原值的 $V$ 个词元中均匀选择，计算经典三分支配方下被选中位置实际保持原值的概率，并区分它与进入保留分支的概率。
+\begin{exercise}\optional 假设随机替换从包含原值的 $V$ 个词元中均匀选择，计算经典三分支配方下被选中位置实际保持原值的概率，并区分它与进入保留分支的概率。
 
-\begin{workbookanswers}
+\begin{solution}
 条件于位置已被选中，显式保留分支概率为0.1，随机替换分支恰好抽回原词元概率为 $\frac{0.1}{V}$，总和 $0.1+\frac{0.1}{V}$。此处假设MASK符号不等于原词元且随机词表含原值。若统计所有候选位置还需加上未被选中的概率，不能把两个条件空间混用。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 两条序列分别有一个和三个监督词元，平均损失分别为 $.2$ 与 $.8$。计算逐序列平均和逐监督词元平均，解释训练目标的差异。
+\begin{exercise} 两条序列分别有一个和三个监督词元，平均损失分别为 $.2$ 与 $.8$。计算逐序列平均和逐监督词元平均，解释训练目标的差异。
 
-\begin{workbookanswers}
+\begin{solution}
 逐序列平均为 $\frac{.2+.8}{2}=.5$；逐监督词元平均为 $\frac{1\times.2+3\times.8}{4}=.65$。前者给短序列每个目标更大权重，后者给每个监督词元相同权重。应在训练目标和报告指标中固定同一分母，并排除空监督序列的除零情形。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 推导式\tbobject{eq:mlm-head}中共享词元表的输出路径梯度，并说明为什么还要加入损坏输入查表路径的梯度。
+\begin{exercise} 推导式\tbobject{eq:mlm-head}中共享词元表的输出路径梯度，并说明为什么还要加入损坏输入查表路径的梯度。
 
-\begin{workbookanswers}
+\begin{solution}
 把监督位置收集为 $G\in\Real^{N_M\times d}$，目标独热矩阵Y，平均损失的分数梯度为 $D=\frac{Q-Y}{N_M}$。由 $U=GE^{\mathsf T}+b_V$ 得 $\overline E_{\mathrm{out}}=D^{\mathsf T}G$。损坏输入也通过查表使用E，因此总梯度还加按实际损坏后编号散射求和的输入梯度；输出目标是原词元，两条索引路径不同。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 构造一组起止分数，使分别取最大值产生终点早于起点的结果；在最大答案长度为二的约束下求最优合法片段。
+\begin{exercise}\optional 构造一组起止分数，使分别取最大值产生终点早于起点的结果；在最大答案长度为二的约束下求最优合法片段。
 
-\begin{workbookanswers}
+\begin{solution}
 例如起点分数 $(0,5,1)$，终点分数 $(5,0,1)$，独立argmax选起点2、终点1而非法。按 $i\le j$、$j-i+1\le2$ 枚举合法片段，分数依次 $(1,1):5,(1,2):0,(2,2):5,(2,3):6,(3,3):2$，最优为 $(2,3)$。采用起终分数之和并固定并列规则；若模型定义另有长度惩罚，目标需同步改变。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 使用本章伪似然例题验证总质量为 $1.64$。若将结果另行归一化，为什么仍不能宣称这些条件预测就是新联合分布的条件概率？
+\begin{exercise}\optional 使用本章伪似然例题验证总质量为 $1.64$。若将结果另行归一化，为什么仍不能宣称这些条件预测就是新联合分布的条件概率？
 
-\begin{workbookanswers}
+\begin{solution}
 同值两序列各为 $.9^2=.81$，异值各为 $.1^2=.01$，总质量 $2(.81+.01)=1.64$。归一化后，同值条件概率变成 $\frac{.81}{.81+.01}=\frac{81}{82}\approx.987805$，并非原来的.9。归一化能构造一个联合分布，但不保证保留原先条件预测。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 为同一原文的两套损坏策略设计比较方案，区分参数质量变化与任务难度变化，并说明验证位置是否需要固定。
+\begin{exercise} 为同一原文的两套损坏策略设计比较方案，区分参数质量变化与任务难度变化，并说明验证位置是否需要固定。
 
-\begin{workbookanswers}
+\begin{solution}
 先固定原文、候选位置、数据隔离、模型初始状态和训练预算；分别记录掩码率、随机替换规则和有效目标数。比较参数质量时，在共同固定的验证损坏集合及相同下游任务上评价；比较任务难度时，固定模型交叉评估两种损坏策略。若每次验证随机重新抽位置，需多次重复并报告波动，不能把抽样难度变化误当改进。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\end{exerciselist}
+\end{exercises}

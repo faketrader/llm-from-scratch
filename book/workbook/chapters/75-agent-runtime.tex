@@ -1,96 +1,111 @@
 \workbookchapter{智能体运行系统}
 
-\begin{exerciselist}
-\exerciseitem 为知识回答、操作提案和已完成写入分别设计输出契约，并说明各自需要什么证据。
+\begin{exercises}
+\begin{exercise} 为知识回答、操作提案和已完成写入分别设计输出契约，并说明各自需要什么证据。
 
-\begin{workbookanswers}
+\begin{solution}
 知识回答返回论断、引用版本和支持状态；操作提案返回目标、规范参数、预期副作用与所需批准，不声称已完成；完成结果返回业务对象ID、动作键、回执、状态与时间。三者的证据分别是可定位来源、可校验计划、真实业务后置条件。模型自报“完成”不能替代第三类证据。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 证明确定转换函数按同一事件序列重放得到相同状态；加入一次未记录的外部读取后，该证明在哪一步失效？
+\begin{exercise} 证明确定转换函数按同一事件序列重放得到相同状态；加入一次未记录的外部读取后，该证明在哪一步失效？
 
-\begin{workbookanswers}
+\begin{solution}
 令$s_{t+1}=F(s_t,e_t)$且F确定，初态一致。若重放到t时状态相同，则输入同一记录事件$e_t$后仍相同，由归纳所有状态一致。若F读取未记录的时钟、网络或模型输出，第二次可能取得不同值，归纳步的相同输入前提失效。应把这些结果记录为事件并回放，不重新调用以替代历史。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 给出两个工作进程同时更新任务的时序，说明版本条件如何避免丢失更新，以及为何仍需外部隔离机制。
+\begin{exercise} 给出两个工作进程同时更新任务的时序，说明版本条件如何避免丢失更新，以及为何仍需外部隔离机制。
 
-\begin{workbookanswers}
+\begin{solution}
 A、B同时读版本7；A条件写7成功置8，B写7失败再读取8，避免丢更新。但A的旧租约可能在远端继续写，即使本地版本已经更新，数据库CAS也不能让远端自动停止。工具端需验证递增隔离代次或稳定幂等键，并拒绝陈旧执行者；租约时间还需考虑时钟与延迟。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 构造服务端先登记键再执行与先执行再登记的两种崩溃窗口。怎样的原子边界可以消除重复副作用？
+\begin{exercise} 构造服务端先登记键再执行与先执行再登记的两种崩溃窗口。怎样的原子边界可以消除重复副作用？
 
-\begin{workbookanswers}
+\begin{solution}
 先登记已完成再执行，登记后崩溃会导致动作从未发生却被当完成；先执行再登记，执行后崩溃会在重试时重复。若业务状态变更和去重结果可放在同一服务端事务，二者原子提交可避免两窗口。跨服务事务不可得时，使用发件箱保证可投递、远端幂等保证重复提交不增副作用，并保留未知状态；本地记键本身不等于恰好一次。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 发件箱消息已发送但发送状态未更新时进程崩溃，恢复后会发生什么？为什么不能因此删除接收方去重？
+\begin{exercise} 发件箱消息已发送但发送状态未更新时进程崩溃，恢复后会发生什么？为什么不能因此删除接收方去重？
 
-\begin{workbookanswers}
+\begin{solution}
 发件箱未标发送会在恢复后再次投递，这是至少一次路径的正常行为。接收端以逻辑动作键和摘要去重，返回既有结果；若删去去重，同一业务写可能执行两次。发送标记提前写也可能丢消息，因此不能用“先标记”替代完整交付协议。去重保留窗口需覆盖重试和灾难恢复时间。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 推导预算不变量，并讨论工具最终成本超过预留时应如何改变契约。
+\begin{exercise} 推导预算不变量，并讨论工具最终成本超过预留时应如何改变契约。
 
-\begin{workbookanswers}
+\begin{solution}
 设总预算B、已用U、预留R，接纳成本上界b必须满足$U+R+b\le B$；原子将R加b后并发接纳仍保持不变量。结算实际c且$c\le b$时，$U'=U+c,R'=R-b$，总和减少$b-c\ge0$。若c可能大于b，原证明失效；需硬上限执行、分段追加预留或明确可承受超支政策，不能把事后记账称为预先预算保证。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 为“创建工单成功但响应丢失”设计状态机，包括自动核对与人工核对路径。
+\begin{exercise} 为“创建工单成功但响应丢失”设计状态机，包括自动核对与人工核对路径。
 
-\begin{workbookanswers}
+\begin{solution}
 状态可为已准备、已授权、发送中、未知、已确认成功、明确失败。工单已建但响应丢失时，以稳定动作键向工单系统查询并取得ID后转成功；查询明确未创建才允许同键重试。无查询能力时安排人工以审计字段核对，期间最终回答明确未知，禁止以新键创建第二张。人工核对本身也应留下证据与权限。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 设计一个审批摘要，证明参数变化不能复用旧审批；讨论对象版本变化但参数不变的情况。
+\begin{exercise} 设计一个审批摘要，证明参数变化不能复用旧审批；讨论对象版本变化但参数不变的情况。
 
-\begin{workbookanswers}
+\begin{solution}
 摘要覆盖主体、租户、工具版本、规范资源、参数、用途、数据级别、有效期及必要对象版本。批准签名绑定其哈希，任何参与字段变化都会产生新摘要，因此原批准失配。即使参数未变，所有权、余额或ACL版本改变也可能使动作不再授权，应在执行点重查或要求重新批准。摘要哈希不取代批准人身份验证。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 对不可逆通知设计补偿策略，解释哪些事实无法撤销。
+\begin{exercise} 对不可逆通知设计补偿策略，解释哪些事实无法撤销。
 
-\begin{workbookanswers}
+\begin{solution}
 误发通知可发送更正、撤销可撤销链接、停止后续推送并联系受影响接收者，均作为独立授权动作记录。已被读取或复制的内容无法保证收回，通知历史和隐私影响仍存在。不得把发送一条更正消息标为原事件从未发生；应分别报告业务缓解与信息披露残余。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 区分轨迹回放、真实接口集成验证和线上任务评估的证据范围。
+\begin{exercise} 区分轨迹回放、真实接口集成验证和线上任务评估的证据范围。
 
-\begin{workbookanswers}
+\begin{solution}
 轨迹回放验证给定历史输入下的控制器分支、预算和状态一致，不能证明外部接口现在可用。真实集成验证检查认证、协议及业务后置条件，但样本和受控环境有限。线上评估观察实际任务分布与依赖漂移，需要分层指标和故障归因，不能只靠HTTP成功率。三者互补而不能互相替代。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 构造两个强相关失败环节，使边际成功率乘积显著偏离端到端成功率。
+\begin{exercise} 构造两个强相关失败环节，使边际成功率乘积显著偏离端到端成功率。
 
-\begin{workbookanswers}
+\begin{solution}
 设两环节各以概率0.1失败，且由同一个错误目标解析触发，二者完全相关。各自成功率0.9，独立乘积预测0.81；真实端到端两者成功概率0.9。反向也可构造互斥失败得到0.8。通用式为$P(E_1)P(E_2\mid E_1)$，应测条件依赖而非假设层数越多就独立相乘。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 设计旧任务跨应用版本升级的恢复方案，列出必须保留的解释逻辑与版本字段。
+\begin{exercise}\optional 设计旧任务跨应用版本升级的恢复方案，列出必须保留的解释逻辑与版本字段。
 
-\begin{workbookanswers}
+\begin{solution}
 保留任务状态模式版本、转换器版本、模型/提示/工具修订、原动作键、批准摘要及业务回执。旧任务可继续由旧解释器执行，或在检查点作可审计的状态迁移，迁移前确认无未决副作用；未知动作先对账。新模型只用于新决策，不能重写已记录决定。回滚应用版本不能撤销已经提交的工单或通知。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 一张1920乘1080的完整视口截图对应960乘540的逻辑坐标视口，原点为零；目标位于截图坐标(1200,600)。计算动作坐标，并说明页面滚动后能否直接复用。
+\begin{exercise} 一张1920乘1080的完整视口截图对应960乘540的逻辑坐标视口，原点为零；目标位于截图坐标(1200,600)。计算动作坐标，并说明页面滚动后能否直接复用。
 
-\begin{workbookanswers}
+\begin{solution}
 
 在轴对齐缩放且没有裁剪偏移的前提下，$x_v=\frac{1200\times960}{1920}=600$，$y_v=\frac{600\times540}{1080}=300$，故为逻辑坐标$(600,300)$。页面滚动后对象相对视口的位置可能变化，旧观测不再保证有效；应重新读取界面并定位。这里已经用视口与截图尺寸完成单位换算，不应再无依据地乘一次设备像素比。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem 某界面任务有10步，每步在此前均成功的条件下成功概率都是0.98。求全程成功率；提交最后一步后回执丢失，是否应从头重放？
+\begin{exercise} 某界面任务有10步，每步在此前均成功的条件下成功概率都是0.98。求全程成功率；提交最后一步后回执丢失，是否应从头重放？
 
-\begin{workbookanswers}
+\begin{solution}
 
 由条件概率链式法则，$P=0.98^{10}\approx0.8171$。该乘法使用条件概率，不需要另加独立假设。回执丢失时动作可能已经生效；应保存目标对象与动作身份，查询业务结果或人工核实，再判断是否重试。重新执行整条链可能重复创建对象，阶段检查点也不能替代写入幂等性。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\exerciseitem\optional 比较 CDP、Computer Use 和智能体工具协议所在的层次。通过一个工具协议连接浏览器后，是否自动获得跨浏览器兼容和安全授权？
+\begin{exercise}\optional 比较 CDP、Computer Use 和智能体工具协议所在的层次。通过一个工具协议连接浏览器后，是否自动获得跨浏览器兼容和安全授权？
 
-\begin{workbookanswers}
+\begin{solution}
 Computer Use 是利用观察与输入操作软件的能力；CDP 是 Chromium 系浏览器的检测与控制协议；智能体工具协议负责向模型或运行系统描述并调用能力。适配器可以把工具调用转为 CDP 命令，但兼容范围仍受底层驱动和版本限制，授权仍须由受信执行层按主体、对象及动作检查。三者组合也不自动提供业务幂等与后置条件验证。
-\end{workbookanswers}
+\end{solution}
+\end{exercise}
 
-\end{exerciselist}
+\end{exercises}
