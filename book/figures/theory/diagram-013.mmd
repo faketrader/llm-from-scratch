@@ -1,9 +1,0 @@
-flowchart TD
-    Q["Prompt"] --> G["候选轨迹"]
-    G --> X["结构化解析"]
-    X --> P["逐步执行 / 单元测试 / 符号验证"]
-    P --> O["Outcome Reward"]
-    P --> M["Process Labels"]
-    O --> L["RLVR / 拒绝采样"]
-    M --> L
-    L --> E["策略与 Verifier 评测"]

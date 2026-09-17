@@ -5,7 +5,7 @@
 \begin{document}
 \begin{tikzpicture}[lfs picture]
 
-\node[storage] (x) {$x$\\\scriptsize $[B,T,d]$};
+\node[storage] (x) {$\vect{x}$\\\scriptsize $[B,T,d]$};
 \node[compute, right=of x] (attn) {双向多头自注意力};
 \node[compute, right=of attn] (drop1) {Dropout};
 \node[interface, right=of drop1] (add1) {Add + LayerNorm};

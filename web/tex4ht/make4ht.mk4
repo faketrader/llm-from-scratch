@@ -1,0 +1,9 @@
+Make:htlatex()
+Make:add('biber_build', 'biber ${builddir}/${input}')
+Make:biber_build()
+Make:htlatex()
+Make:htlatex()
+Make:htlatex()
+-- HTML5 permits colons in IDs. Keep the book's semantic labels intact.
+local domfilter = require 'make4ht-domfilter'
+Make:match('html?$', domfilter({'fixinlines', 'joincharacters', 'tablecaption', 'mathmlfixes', 'tablerows', 'booktabs', 'itemparagraphs'}))

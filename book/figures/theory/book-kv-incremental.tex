@@ -5,11 +5,11 @@
 \begin{document}
 \begin{tikzpicture}[lfs picture,node distance=9mm and 12mm]
 \node[storage] (x) {新位置 $x_t$};
-\node[compute,right=of x] (qkv) {当前层投影\\$q_t,k_t,v_t$};
-\node[storage,below=of qkv] (kv) {历史缓存追加\\$K_{\le t},V_{\le t}$};
-\node[compute,right=of qkv] (a) {当前查询读取历史\\$\operatorname{softmax}(\frac{q_tK_{\le t}^{\mathsf T}}{\sqrt{d_k}})V_{\le t}$};
+\node[compute,right=of x] (qkv) {当前层投影\\$\vect{q}_t,\vect{k}_t,\vect{v}_t$};
+\node[storage,below=of qkv] (kv) {历史缓存追加\\$\mat{K}_{\le t},\mat{V}_{\le t}$};
+\node[compute,right=of qkv] (a) {当前查询读取历史\\$\operatorname{softmax}(\frac{\vect{q}_t\mat{K}_{\le t}^{\mathrm{T}}}{\sqrt{d_k}})\mat{V}_{\le t}$};
 \node[block,below=of a] (o) {输出投影、残差、FFN\\进入下一层};
-\draw[->] (x)--(qkv);\draw[->] (qkv)--node[right]{$k_t,v_t$}(kv);\draw[->] (qkv)--node[above]{$q_t$}(a);\draw[->] (kv.east)-|(a.south);\draw[->] (a)--(o);
+\draw[->] (x)--(qkv);\draw[->] (qkv)--node[right]{$\vect{k}_t,\vect{v}_t$}(kv);\draw[->] (qkv)--node[above]{$\vect{q}_t$}(a);\draw[->] (kv.east)-|(a.south);\draw[->] (a)--(o);
 \node[neutral,below=of kv] {历史位置不重投影\\历史键值仍参与读取};
 \end{tikzpicture}
 \end{document}

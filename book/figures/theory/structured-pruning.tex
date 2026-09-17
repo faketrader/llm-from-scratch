@@ -6,9 +6,9 @@
 \begin{tikzpicture}[lfs picture]
 
 \node[storage] (x) {输入\\\scriptsize $[B,d]$};
-\node[compute, right=of x] (up) {Up Projection\\\scriptsize $W_{up}:[h,d]$};
+\node[compute, right=of x] (up) {Up Projection\\\scriptsize $\mat{W}_{up}:[h,d]$};
 \node[compute, right=of up] (act) {Activation\\\scriptsize $[B,h]$};
-\node[compute, right=of act] (down) {Down Projection\\\scriptsize $W_{down}:[o,h]$};
+\node[compute, right=of act] (down) {Down Projection\\\scriptsize $\mat{W}_{down}:[o,h]$};
 \node[storage, right=of down] (y) {输出\\\scriptsize $[B,o]$};
 \node[compute, below=of act] (score) {通道重要性评分};
 \node[decision, below=of score] (keep) {保留 $h'$ 个\\中间通道};

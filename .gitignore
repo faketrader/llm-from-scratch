@@ -330,10 +330,9 @@ TSWLatexianTemp*
 # Uncomment the next line to have this generated file ignored.
 #*Notes.bib
 
-# Project outputs and generated reference caches
+# Project outputs
 /build/
-/book/*.generated.tex
-/book/workbook/*.generated.tex
+/dist/
 /notebook/target/
 **/__pycache__/
 *.pyc

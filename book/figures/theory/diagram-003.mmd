@@ -1,5 +1,0 @@
-flowchart TD
-    A["文本 str"] -->|"正则预分词"| B["text pieces"]
-    B -->|"UTF-8 encode"| C["byte tokens：0..255"]
-    C -->|"按 merge rank 合并"| D["token IDs [L]"]
-    D -->|"拼接字节并解码"| E["恢复文本 str"]

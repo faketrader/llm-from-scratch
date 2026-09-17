@@ -1,4 +1,4 @@
-\workbookchapter{模型规模及资源预算}
+\workbookchapter{模型规模与资源预算}
 
 \begin{exercises}
 \begin{exercise}\optional 取消 $h_qd_h=d$ 假设，重新推导注意力参数量，并说明式\tbobject{eq:budget-attn-params}第二行何时失效。
@@ -18,7 +18,7 @@
 \begin{exercise} 对矩阵乘法完整写出前向与两条反向的形状和操作量，说明冻结权重后哪些梯度可能仍需计算。
 
 \begin{solution}
-令 $Y=WX$，$W\in\mathbb R^{d_o\times d_i}$、$X\in\mathbb R^{d_i\times n}$、上游 $G\in\mathbb R^{d_o\times n}$。前向约 $2d_od_in$ FLOP；$\nabla_WL=GX^\mathsf T$ 形状 $d_o\times d_i$，$\nabla_XL=W^\mathsf TG$ 形状 $d_i\times n$，二者各约同样操作量。冻结 $W$ 可省其参数梯度及状态，却不能在前面有可训练层时省去 $\nabla_XL$。
+令 $\mat{Y}=\mat{W}\mat{X}$，$\mat{W}\in\mathbb R^{d_o\times d_i}$、$\mat{X}\in\mathbb R^{d_i\times n}$、上游 $\mat{G}\in\mathbb R^{d_o\times n}$。前向约 $2d_od_in$ FLOP；$\nabla_{\mat{W}}L=\mat{G}\mat{X}^{\mathrm{T}}$ 形状 $d_o\times d_i$，$\nabla_{\mat{X}}L=\mat{W}^{\mathrm{T}}\mat{G}$ 形状 $d_i\times n$，二者各约同样操作量。冻结 $\mat{W}$ 可省其参数梯度及状态，却不能在前面有可训练层时省去 $\nabla_{\mat{X}}L$。
 \end{solution}
 \end{exercise}
 

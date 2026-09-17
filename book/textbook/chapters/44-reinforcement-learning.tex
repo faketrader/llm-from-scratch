@@ -1,28 +1,30 @@
+\ifdefined\LFSWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
+\fi
 \bookchapter{强化学习基础}{ch:reinforcement-learning}
 
 监督微调给出应当模仿的回答，强化学习则给出行为产生的反馈，并据此调整未来行为的概率。语言模型的输出是一个逐词元决策过程，工具使用还会改变外部环境。要理解策略优化，必须先区分状态、观测、动作、奖励和回报，再解释为什么不可微的采样与环境仍能产生可估计的参数梯度。
 
 策略梯度、基线、优势估计与近端策略优化共同构成语言模型策略训练的基础。\bookxref{ch:supervised-finetuning}讨论示范模仿，本章讨论采样行为的期望回报。奖励建模与直接偏好优化由\bookxref{ch:preference-alignment}展开，可验证推理及组相对方法由\bookxref{ch:verifiable-reasoning}展开；本章为这些方法建立共同的数学基础。
 
-\section{决策过程及语言模型}
+\section{决策过程与语言模型}
 
 \subsection{马尔可夫决策过程}
 \term{强化学习}{Reinforcement Learning}{RL}研究策略如何通过与环境交互最大化期望累积反馈。\term{马尔可夫决策过程}{Markov Decision Process}{MDP}可表示为 $(\mathcal S,\mathcal A,P,r,d_0,\gamma)$：$\mathcal S$ 是状态集合，$\mathcal A$ 是动作集合，$P(s'\mid s,a)$ 是状态转移分布，$r$ 描述奖励机制，$d_0$ 是初始分布，$\gamma$ 是折扣因子。
 
 马尔可夫性要求给定当前状态与动作后，下一状态和奖励的条件分布不再依赖更早历史。状态应包含预测下一步所需的历史信息。时间有限的问题可将剩余步数纳入状态，使最优行为能够随期限改变。
 
-策略 $\pi_\theta(a\mid s)$ 给出动作概率。一次\term{轨迹}{Trajectory}{}写为
+策略 $\pi_{\vect{\theta}}(a\mid s)$ 给出动作概率。一次\term{轨迹}{Trajectory}{}写为
 \begin{equation}
  \tau=(s_0,a_0,r_0,s_1,a_1,r_1,\ldots,s_H),
 \end{equation}
-$r_t$ 在执行 $a_t$ 后产生，$H$ 为终止步数。这里的奖励下标对应当前动作，部分文献将同一量记为 $R_{t+1}$，两种约定不可混用。\footnote{本章区分即时奖励 reward 与累计回报 return。中文资料偶尔都称“奖励”，推导时应以时间下标和求和定义识别具体对象。}
+$r_t$ 在执行 $a_t$ 后产生，$H$ 为终止步数。从初始状态依策略逐步采样并与环境交互直至终止的这次完整执行，常称为\term{策略轨迹采样}{Rollout}{}，亦简称“轨迹采样”；其记录结果就是一条轨迹。这里的奖励下标对应当前动作，部分文献将同一量记为 $R_{t+1}$；采用其中一套约定时须全程一致。\footnote{本章区分即时奖励 reward 与累计回报 return。中文资料偶尔都称“奖励”，推导时应以时间下标和求和定义识别具体对象。}
 
-\subsection{文本生成的状态及动作}
+\subsection{文本生成的状态与动作}
 对给定提示 $x$，可令 $s_t=(x,y_{<t})$，动作 $a_t=y_t$ 为词表中的下一词元，转移为把该词元追加到前缀。采样策略为模型条件分布。若评分规则只依赖提示和最终文本，完整前缀足以描述纯文本生成的决策状态。
 
-结束标记是合法动作，会进入终止状态。提示词元由任务分布提供，不是当前策略采样动作；工具返回文本由环境产生，也不能像助手生成词元一样乘入策略动作概率。若动作是一整次工具调用，则动作空间、时间尺度与成本单位均发生变化，不能把一次调用与一个词元的折扣无说明地混合。
+结束标记是合法动作，会进入终止状态。提示词元由任务分布提供，不由当前策略采样；工具返回文本由环境产生，其概率与助手生成词元在处理上属于两类。若动作是一整次工具调用，则动作空间、时间尺度与成本单位均发生变化，一次调用与一个词元的折扣需要分别说明。
 
 \subsection{部分可观测交互}
 工具或应用环境通常包含不可见状态，如数据库真实内容、服务内部进度和用户未表达的目标。此时更适合\term{部分可观测马尔可夫决策过程}{Partially Observable Markov Decision Process}{POMDP}：环境有状态 $s_t$，模型仅获得观测 $o_t$，策略依赖历史 $h_t=(o_0,a_0,\ldots,o_t)$。
@@ -31,28 +33,31 @@ $r_t$ 在执行 $a_t$ 后产生，$H$ 为终止步数。这里的奖励下标对
 \begin{equation}
  b_{t+1}(s')\propto O(o_{t+1}\mid s')\sum_sP(s'\mid s,a_t)b_t(s)
 \end{equation}
-更新，$O$ 为观测概率。本式采用观测只依赖新状态的简化形式。实际语言智能体通常没有完整环境模型，而是使用历史或记忆近似信息状态。截断历史可能丢失必要信息，因此有限上下文不自动满足马尔可夫性。
+更新，$O$ 为观测概率。本式采用观测只依赖新状态的简化形式。实际语言智能体通常没有完整环境模型，而是使用历史或记忆近似信息状态。截断历史可能丢失必要信息，有限上下文要满足马尔可夫性还需额外条件。
 
-\subsection{符号及共同假设}
-\begin{center}
+\subsection{符号与共同假设}
+\begin{table}[htbp]
+\centering
+\caption{强化学习与策略梯度主要符号与计量对象}
+\label{tab:rev-rl-symbols}
 \begin{tabularx}{\linewidth}{lX}
 \toprule 符号 & 含义\\\midrule
 $s_t,a_t,r_t$ & 决策前状态、所选动作及随后获得的即时奖励。\\
 $G_t,\gamma,H$ & 从 $t$ 开始的折扣回报、折扣因子与终止长度。\\
 $V^\pi,Q^\pi,A^\pi$ & 状态价值、动作价值与优势函数。\\
-$\pi_\theta,\mu,\pi_{\mathrm{ref}}$ & 待优化策略、采样行为策略与参考策略。\\
-$V_\phi,\delta_t,\widehat A_t$ & 参数化价值估计、时序差分残差与优势估计。\\
+$\pi_{\vect{\theta}},\mu,\pi_{\mathrm{ref}}$ & 待优化策略、采样行为策略与参考策略。\\
+$V_{\vect{\phi}},\delta_t,\widehat A_t$ & 参数化价值估计、时序差分残差与优势估计。\\
 $\lambda,\epsilon$ & 广义优势估计的混合参数与 PPO 裁剪宽度。\\
 $\rho_t,W(\tau)$ & 单动作概率比与整轨迹重要性权重。\\
 \bottomrule
 \end{tabularx}
-\end{center}
+\end{table}
 
 \begin{assumption}[策略梯度的前提]
 初始分布和环境转移不直接依赖策略参数，奖励在本次策略更新中固定。策略可微且在所讨论动作支持集上为正；奖励有界，轨迹有限，或 $\gamma<1$ 使求和收敛。交换导数与期望需要相应可积条件。采样概率必须对应实际生成分布。
 \end{assumption}
 
-\section{回报及 Bellman 关系}
+\section{回报与 Bellman 关系}
 
 \subsection{价值函数递推}
 定义
@@ -76,7 +81,7 @@ $\rho_t,W(\tau)$ & 单动作概率比与整轨迹重要性权重。\\
 \end{align}
 $\bar r(s,a)$ 是即时奖励的条件期望。终止状态价值为零；有限时域若未把时间并入状态，应显式写作 $V_t^\pi$。
 
-\subsection{策略评估及最优性}
+\subsection{策略评估与最优性}
 固定策略时，Bellman 方程是策略评估；最优价值把动作平均替换为最大化，得到
 \begin{equation}
  V^*(s)=\max_a\left[\bar r(s,a)+\gamma\sum_{s'}P(s'\mid s,a)V^*(s')\right].
@@ -99,12 +104,12 @@ $\bar r(s,a)$ 是即时奖励的条件期望。终止状态价值为零；有限
 \section{两步决策过程}
 
 \begin{example}
-\label{q:ch21:example:01}
 
 
 初始状态 $s_0$ 选择左动作 $L$ 或右动作 $R$，概率分别为 $p$ 和 $1-p$，第一步奖励均为零。选择 $L$ 到达 $s_L$，第二步选择成功动作 $S$ 的概率为 $q$，奖励4；选择失败动作 $F$ 的概率为 $1-q$，奖励0。选择 $R$ 到达 $s_R$，第二步只有一个动作，奖励2。随后均终止，取 $\gamma=1$。
 
-\begin{center}
+\begin{figure}[htbp]
+\centering
 \begin{tikzpicture}[>=stealth,every node/.style={font=\small},state/.style={draw,circle,minimum size=9mm}]
 \node[state] (s0) at (0,0){$s_0$};
 \node[state] (sl) at (3,1){$s_L$};\node[state] (sr) at (3,-1){$s_R$};
@@ -115,9 +120,9 @@ $\bar r(s,a)$ 是即时奖励的条件期望。终止状态价值为零；有限
 \draw[->] (sl)--node[above]{$S:q$}(four);\draw[->] (sl)--node[below]{$F:1-q$}(zero);
 \draw[->] (sr)--node[above]{概率1}(two);
 \end{tikzpicture}
-\captionof{figure}{两步 MDP。所有第一步奖励为零，第二步奖励给出完整回报。该构造用于精确计算价值与策略梯度。}
+\caption{两步 MDP。所有第一步奖励为零，第二步奖励给出完整回报。该构造用于精确计算价值与策略梯度。}
 \label{fig:rl-two-step}
-\end{center}
+\end{figure}
 
 由 Bellman 递推得到
 \begin{equation}
@@ -129,33 +134,33 @@ $\bar r(s,a)$ 是即时奖励的条件期望。终止状态价值为零；有限
 
 三条可能轨迹概率与回报为 $P(LS)=\frac{3}{8},G=4$；$P(LF)=\frac{1}{8},G=0$；$P(R)=\frac{1}{2},G=2$。平均回报为2.5，二阶矩为 $\tfrac38\times16+\tfrac12\times4=8$，所以方差为 $8-2.5^2=1.75$。成功轨迹的回报为4，策略价值为所有轨迹回报的期望2.5。
 
-令 $p=\sigma(\theta)$、$q=\sigma(\psi)$，则
+令 $p=\sigma(\vect{\theta})$、$q=\sigma(\psi)$，则
 \begin{align}
- \frac{\partial J}{\partial\theta}&=p(1-p)(4q-2)=0.25,\\
+ \frac{\partial J}{\partial\vect{\theta}}&=p(1-p)(4q-2)=0.25,\\
  \frac{\partial J}{\partial\psi}&=4pq(1-q)=0.375.
  \label{eq:rl-example-gradient}
 \end{align}
-后文将用采样轨迹的对数概率重新得到同一梯度，说明策略梯度并不要求对动作选择本身求导。
+后文将用采样轨迹的对数概率重新得到同一梯度，说明策略梯度可以绕开对动作选择本身的求导。
 \end{example}
 
 \section{策略梯度推导}
 
 \subsection{对数导数技巧}
-目标为 $J(\theta)=\mathbb E_{\tau\sim P_\theta}[R(\tau)]$，其中 $R(\tau)=\sum_t\gamma^tr_t$。由轨迹概率分解
+目标为 $J(\vect{\theta})=\mathbb E_{\tau\sim P_{\vect{\theta}}}[R(\tau)]$，其中 $R(\tau)=\sum_t\gamma^tr_t$。由轨迹概率分解
 \begin{equation}
- P_\theta(\tau)=d_0(s_0)\prod_{t=0}^{H-1}\pi_\theta(a_t\mid s_t)P(s_{t+1},r_t\mid s_t,a_t).
+ P_{\vect{\theta}}(\tau)=d_0(s_0)\prod_{t=0}^{H-1}\pi_{\vect{\theta}}(a_t\mid s_t)P(s_{t+1},r_t\mid s_t,a_t).
 \end{equation}
 环境项不含待优化参数，因此
 \begin{equation}
- \nabla_\theta\log P_\theta(\tau)=\sum_t\nabla_\theta\log\pi_\theta(a_t\mid s_t).
+ \nabla_{\vect{\theta}}\log P_{\vect{\theta}}(\tau)=\sum_t\nabla_{\vect{\theta}}\log\pi_{\vect{\theta}}(a_t\mid s_t).
 \end{equation}
 利用 $\nabla P=P\nabla\log P$，得到\term{得分函数估计}{Score-Function Estimation}{}
 \begin{align}
- \nabla J&=\sum_\tau R(\tau)\nabla P_\theta(\tau)\\
- &=\mathbb E_\pi\left[R(\tau)\sum_t\nabla\log\pi_\theta(a_t\mid s_t)\right].
+ \nabla J&=\sum_\tau R(\tau)\nabla P_{\vect{\theta}}(\tau)\\
+ &=\mathbb E_\pi\left[R(\tau)\sum_t\nabla\log\pi_{\vect{\theta}}(a_t\mid s_t)\right].
  \label{eq:rl-score}
 \end{align}
-这一形式属于 REINFORCE 类方法的基础\cite{williams1992reinforce}。离散动作和外部奖励无需可微；梯度来自调整产生该轨迹的概率。若奖励函数直接包含可训练参数并且目标要求对其求导，还会出现额外导数，不能继续使用固定奖励推导而省略它。
+这一形式属于 REINFORCE 类方法的基础\cite{williams1992reinforce}。离散动作和外部奖励无需可微；梯度来自调整产生该轨迹的概率。若奖励函数直接包含可训练参数并且目标要求对其求导，还会出现额外导数，固定奖励的推导需要补上这一项。
 
 \subsection{因果性消除过去奖励}
 给定动作前的历史，过去奖励已经确定，而
@@ -165,7 +170,7 @@ $\bar r(s,a)$ 是即时奖励的条件期望。终止状态价值为零；有限
 \end{equation}
 所以当前位置得分函数与过去奖励乘积的期望为零，可将完整回报换为从当前动作开始的后续回报，得到
 \begin{equation}
- \nabla J=\mathbb E_\pi\left[\sum_{t=0}^{H-1}\gamma^tG_t\nabla\log\pi_\theta(a_t\mid s_t)\right].
+ \nabla J=\mathbb E_\pi\left[\sum_{t=0}^{H-1}\gamma^tG_t\nabla\log\pi_{\vect{\theta}}(a_t\mid s_t)\right].
  \label{eq:rl-causal-gradient}
 \end{equation}
 外面的 $\gamma^t$ 来自目标对起点的折扣，$G_t$ 内部则从当前时刻重新计量。若取 $\gamma=1$，两者自然消失；若省去外部折扣，需要说明采用了怎样的状态采样或目标约定。
@@ -178,10 +183,9 @@ $\bar r(s,a)$ 是即时奖励的条件期望。终止状态价值为零；有限
 
 \subsection{策略梯度分析}
 \begin{example}
-\label{q:ch21:example:02}
 
 
-初始动作得分为：选 $L$ 时 $\frac{\partial\log p}{\partial\theta}=1-p=\frac{1}{2}$，选 $R$ 时为 $-p=-\frac{1}{2}$。故式\eqref{eq:rl-score}给出
+初始动作得分为：选 $L$ 时 $\frac{\partial\log p}{\partial\vect{\theta}}=1-p=\frac{1}{2}$，选 $R$ 时为 $-p=-\frac{1}{2}$。故式\eqref{eq:rl-score}给出
 \begin{equation}
  \frac38\times4\times\frac12+
  \frac18\times0\times\frac12+
@@ -192,7 +196,7 @@ $\bar r(s,a)$ 是即时奖励的条件期望。终止状态价值为零；有限
 终点奖励会乘到整条轨迹各决策的得分函数上，因而能够给早期动作提供信号。这种\term{信用分配}{Credit Assignment}{}依靠跨轨迹统计相关性完成，奖励稀疏时方差通常较大。
 \end{example}
 
-\section{基线、优势及方差}
+\section{基线、优势与方差}
 
 \subsection{状态基线的无偏性}
 令 $b(s)$ 与当前采样动作无关，则
@@ -202,7 +206,7 @@ $\bar r(s,a)$ 是即时奖励的条件期望。终止状态价值为零；有限
 \end{equation}
 因此式\eqref{eq:rl-causal-gradient}中可把 $G_t$ 替换为 $G_t-b(s_t)$，而不改变梯度期望。选择 $b=V^\pi$ 时得到优势估计。即使基线近似不精确，只要它在动作采样条件下满足独立性并按固定量使用，完整回报减基线的估计仍无偏；不准确基线可能降低方差效果。
 
-若基线与策略共享参数，策略损失中应阻断通过基线的求导；否则会加入不属于上述估计的项。用包含当前动作回报的样本均值作为基线，也不自动满足动作独立条件。例如同一状态 $K$ 个独立动作，以包括自身的平均回报为基线，平均得分估计的期望为原梯度的 $(1-\frac{1}{K})$ 倍；使用其余样本均值可在对应独立条件下避免这项偏差。标准差归一化还会产生额外随机比例，不能仅凭“均值为零”证明无偏。
+若基线与策略共享参数，策略损失中应阻断通过基线的求导；否则会加入不属于上述估计的项。用包含当前动作回报的样本均值作为基线，会破坏动作独立条件。例如同一状态 $K$ 个独立动作，以包括自身的平均回报为基线，平均得分估计的期望为原梯度的 $(1-\frac{1}{K})$ 倍；使用其余样本均值可在对应独立条件下避免这项偏差。标准差归一化还会引入随机比例，均值为零只说明组内中心化。
 
 \subsection{最小方差基线}
 设 $g=\nabla\log\pi(a\mid s)$，在固定状态下最小化 $\mathbb E[\|(G-b)g\|^2]$，对 $b$ 求导可得
@@ -211,24 +215,24 @@ $\bar r(s,a)$ 是即时奖励的条件期望。终止状态价值为零；有限
 \end{equation}
 当得分范数与回报无关或近似固定时，$V(s)$ 接近该选择。最小方差基线由回报与得分范数共同决定。价值网络便于学习，并能在不同状态间泛化。
 
-在两步算例中，初始状态两动作得分范数相同，取基线2.5。三条轨迹对 $\theta$ 的样本梯度为 $0.75,-1.25,0.25$，期望仍为0.25。二阶矩为 $\tfrac38(0.75)^2+\tfrac18(1.25)^2+\tfrac12(0.25)^2=0.4375$，方差为0.375；无基线时样本梯度为2、0、$-1$，方差为1.9375。基线改变方差而保持期望，本例可以逐项验证。
+在两步算例中，初始状态两动作得分范数相同，取基线2.5。三条轨迹对 $\vect{\theta}$ 的样本梯度为 $0.75,-1.25,0.25$，期望仍为0.25。二阶矩为 $\tfrac38(0.75)^2+\tfrac18(1.25)^2+\tfrac12(0.25)^2=0.4375$，方差为0.375；无基线时样本梯度为2、0、$-1$，方差为1.9375。基线改变方差而保持期望，本例可以逐项验证。
 
-\section{蒙特卡洛、时序差分及广义优势估计}
+\section{蒙特卡洛、时序差分与广义优势估计}
 
-\subsection{回报估计及自举}
-\term{蒙特卡洛估计}{Monte Carlo Estimation}{MC}使用完整实际回报 $G_t$ 拟合 $V_\phi(s_t)$。它不依赖下一状态的价值预测，但需要等待后续奖励，且受到整段轨迹随机性的影响。
+\subsection{回报估计与自举}
+\term{蒙特卡洛估计}{Monte Carlo Estimation}{MC}使用完整实际回报 $G_t$ 拟合 $V_{\vect{\phi}}(s_t)$。它不依赖下一状态的价值预测，但需要等待后续奖励，且受到整段轨迹随机性的影响。
 
-\term{时序差分}{Temporal Difference}{TD}使用一步目标 $r_t+\gamma V_\phi(s_{t+1})$，残差为
+\term{时序差分}{Temporal Difference}{TD}使用一步目标 $r_t+\gamma V_{\vect{\phi}}(s_{t+1})$，残差为
 \begin{equation}
- \delta_t=r_t+\gamma V_\phi(s_{t+1})-V_\phi(s_t).
+ \delta_t=r_t+\gamma V_{\vect{\phi}}(s_{t+1})-V_{\vect{\phi}}(s_t).
  \label{eq:rl-td}
 \end{equation}
-以现有预测构造目标称为\term{自举}{Bootstrapping}{}。若 $V_\phi=V^\pi$，给定状态和动作后 $\mathbb E[\delta_t\mid s_t,a_t]=A^\pi(s_t,a_t)$；若价值近似有误，残差会同时包含奖励信息和价值误差。
+以现有预测构造目标称为\term{自举}{Bootstrapping}{}。若 $V_{\vect{\phi}}=V^\pi$，给定状态和动作后 $\mathbb E[\delta_t\mid s_t,a_t]=A^\pi(s_t,a_t)$；若价值近似有误，残差会同时包含奖励信息和价值误差。
 
 $n$ 步优势估计为
 \begin{equation}
  \widehat A_t^{(n)}=\sum_{k=0}^{n-1}\gamma^kr_{t+k}
- +\gamma^nV_\phi(s_{t+n})-V_\phi(s_t)
+ +\gamma^nV_{\vect{\phi}}(s_{t+n})-V_{\vect{\phi}}(s_t)
  =\sum_{k=0}^{n-1}\gamma^k\delta_{t+k}.
 \end{equation}
 等号来自中间价值项逐项消去。越长的回报使用更多实际奖励，越短的回报更多依赖价值估计。
@@ -242,13 +246,31 @@ $n$ 步优势估计为
 \end{equation}
 它可以由 $n$ 步估计的几何加权得到：在无限展开中，残差 $\delta_{t+l}$ 出现在所有 $n>l$ 的项中，其权重之和为 $(1-\lambda)\sum_{n=l+1}^\infty\lambda^{n-1}\gamma^l=(\gamma\lambda)^l$。有限轨迹需要把剩余权重放到最后可用回报上，并正确处理边界价值。
 
-当 $\lambda=0$ 时只保留一步 TD；当 $\lambda=1$ 且轨迹真实终止、末状态价值为零时，得到 $G_t-V_\phi(s_t)$。后一形式对策略梯度仍具有状态基线的无偏性质；较小 $\lambda$ 在价值近似不准确时可能引入偏差，但通常减少远期随机性。若使用精确 $V^\pi$，相应在策略条件下各 $n$ 步估计的条件期望一致。
+当 $\lambda=0$ 时只保留一步 TD；当 $\lambda=1$ 且轨迹真实终止、末状态价值为零时，得到 $G_t-V_{\vect{\phi}}(s_t)$。后一形式对策略梯度仍具有状态基线的无偏性质；较小 $\lambda$ 在价值近似不准确时可能引入偏差，但通常减少远期随机性。若使用精确 $V^\pi$，相应在策略条件下各 $n$ 步估计的条件期望一致。表\ref{tab:rev-advantage-comparison}对比了语言模型策略优化中主流优势估计与更新范式的机制。
+
+\begin{table}[htbp]
+\centering
+\small
+\setlength{\tabcolsep}{3.5pt}
+\caption{强化学习优势估计与策略优化算法机制对比}
+\label{tab:rev-advantage-comparison}
+\begin{tabularx}{\linewidth}{lp{24mm}ccX}
+\toprule
+算法 & 优势估计 $\widehat A_t$ & 偏差/方差 & Critic 显存 & 核心特征与适用场景 \\
+\midrule
+REINFORCE & $G_t - b(s_t)$ & 无偏 / 高方差 & 否 & 极简，样本效率低，需海量采样平抑方差 \\
+Actor--Critic & $r_t + \gamma V(s_{t+1}) - V(s_t)$ & 高偏差 / 低方差 & 是 & 单步自举更新，对价值网络拟合误差敏感 \\
+GAE ($\lambda$) & $\sum_{l=0}^{H-1-t} (\gamma\lambda)^l \delta_{t+l}$ & 连续可调 & 是 & PPO 标准配置，平衡长期回报与方差 \\
+PPO-Clip & 概率比截断重要性采样 & 局部近似受限 & 是 & 稳定性高，防止策略单步更新过大崩溃 \\
+GRPO & $\frac{R_i - \operatorname{mean}(\vect{R})}{\operatorname{std}(\vect{R})}$ & 组内相对无偏 & 否 & 组内相对归一化，省去 Critic 显存与模型 \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
 \begin{example}
-\label{q:ch21:example:03}
 
 
-在成功轨迹 $LS$ 上取估计值 $V_\phi(s_0)=2.4,V_\phi(s_L)=2.8$，终止价值0，$\gamma=1,\lambda=0.8$。于是
+在成功轨迹 $LS$ 上取估计值 $V_{\vect{\phi}}(s_0)=2.4,V_{\vect{\phi}}(s_L)=2.8$，终止价值0，$\gamma=1,\lambda=0.8$。于是
 \begin{equation}
  \delta_0=0+2.8-2.4=0.4,\qquad\delta_1=4-2.8=1.2,
 \end{equation}
@@ -258,50 +280,50 @@ $n$ 步优势估计为
 完整回报减基线在初始状态为 $4-2.4=1.6$。差异来自 $\lambda$ 对后续残差的衰减。成功轨迹的优势估计使用一次采样结果，精确优势0.5则对第二步动作取了期望。
 \end{example}
 
-\subsection{终止及截断}
-真正终止后没有未来回报，价值设为零。若只是采样批次或计算窗口结束，而任务还会继续，应在最后状态自举。若达到输出预算被任务定义为失败终止，则属于另一种环境终止规则，不能沿用继续任务的自举解释。
+\subsection{终止与截断}
+真正终止后没有未来回报，价值设为零。若只是采样批次或计算窗口结束，而任务还会继续，应在最后状态自举。若达到输出预算被任务定义为失败终止，则属于另一种环境终止规则，其自举方式与继续任务不同。
 
-实践中需要分别标识“允许从下一状态自举”和“允许沿当前缓冲继续传播残差”。数据切片末尾可以保留下一状态价值，却不能跨到另一个样本的残差。把这两类标记合并为一个含糊的 done，容易造成边界回报错误。
+实践中需要分别标识“允许从下一状态自举”和“允许沿当前缓冲继续传播残差”。数据切片末尾可以保留下一状态价值，跨到另一个样本的残差则不允许。把这两类标记合并为一个含糊的 done，容易造成边界回报错误。
 
-\section{Actor--Critic 及策略分布}
+\section{Actor--Critic 与策略分布}
 
-\subsection{策略及价值的分工}
-\term{行动者—评论家}{Actor--Critic}{}用策略网络选择动作，用价值网络估计未来回报并降低更新方差。策略更新最大化近似目标 $\mathbb E[\log\pi_\theta(a_t\mid s_t)\widehat A_t]$，其中采样动作与优势在本次求导中固定；价值网络可最小化
+\subsection{策略与价值的分工}
+\term{行动者—评论家}{Actor--Critic}{}用策略网络选择动作，用价值网络估计未来回报并降低更新方差。策略更新最大化近似目标 $\mathbb E[\log\pi_{\vect{\theta}}(a_t\mid s_t)\widehat A_t]$，其中采样动作与优势在本次求导中固定；价值网络可最小化
 \begin{equation}
- L_V(\phi)=\frac12\mathbb E[(V_\phi(s_t)-\widehat G_t)^2],
+ L_V(\vect{\phi})=\frac12\mathbb E[(V_{\vect{\phi}}(s_t)-\widehat G_t)^2],
 \end{equation}
 并把回报目标视为固定量。共享骨干可以节约计算，却也会引入策略与价值梯度的相互影响，需要明确权重与更新范围。
 
 评论家估计当前策略下的未来回报。奖励器定义反馈，价值模型估计反馈期望，参考策略提供行为变化的比较基准。
 
-\subsection{在策略及离策略}
+\subsection{在策略与离策略}
 \term{在策略学习}{On-Policy Learning}{}主要使用当前待评估策略产生的数据；\term{离策略学习}{Off-Policy Learning}{}使用其他行为策略产生的数据。一次策略更新后，旧轨迹已经不完全来自新策略，多次复用必须处理这种偏移。
 
-语言模型训练常同时存在当前策略 $\pi_\theta$、采样旧策略 $\mu$ 与参考策略 $\pi_{\mathrm{ref}}$。$\mu$ 决定数据从哪里来，$\pi_{\mathrm{ref}}$ 通常作为行为保持的比较基准。它们即使最初参数相同，也承担不同职责；不能用参考概率代替实际采样概率计算重要性比。
+语言模型训练常同时存在当前策略 $\pi_{\vect{\theta}}$、采样旧策略 $\mu$ 与参考策略 $\pi_{\mathrm{ref}}$。$\mu$ 决定数据从哪里来，$\pi_{\mathrm{ref}}$ 通常作为行为保持的比较基准。它们即使最初参数相同，也承担不同职责；重要性比应由实际采样概率构成。
 
-\section{重要性采样及 PPO}
+\section{重要性采样与 PPO}
 
 \subsection{整轨迹分布校正}
 假设行为策略对目标策略的轨迹支持集均为正，环境相同，则
 \begin{equation}
- W(\tau)=\frac{P_\theta(\tau)}{P_\mu(\tau)}
- =\prod_t\frac{\pi_\theta(a_t\mid s_t)}{\mu(a_t\mid s_t)}
+ W(\tau)=\frac{P_{\vect{\theta}}(\tau)}{P_\mu(\tau)}
+ =\prod_t\frac{\pi_{\vect{\theta}}(a_t\mid s_t)}{\mu(a_t\mid s_t)}
  =\prod_t\rho_t,
 \end{equation}
 \begin{equation}
- \mathbb E_{\pi_\theta}[f(\tau)]=\mathbb E_\mu[W(\tau)f(\tau)].
+ \mathbb E_{\pi_{\vect{\theta}}}[f(\tau)]=\mathbb E_\mu[W(\tau)f(\tau)].
  \label{eq:rl-importance}
 \end{equation}
 这是\term{重要性采样}{Importance Sampling}{IS}的精确换测度关系。长序列中概率比连乘可能产生极端方差；某些每步仅略大的比率，累计后仍可能很大。
 
-如果采样使用温度、词表截断或其他概率变换，行为概率应对应变换后的实际分布。尤其硬截断可能令目标策略仍有概率的动作在行为分布中为零，破坏精确校正所需支持条件。记录原始模型 softmax 并不能补回未被采样的支持集。
+如果采样使用温度、词表截断或其他概率变换，行为概率应对应变换后的实际分布。尤其硬截断可能令目标策略仍有概率的动作在行为分布中为零，破坏精确校正所需支持条件。未进入采样的支持集无法由记录原始模型 softmax 补回。
 
 \subsection{局部替代目标}
 PPO 采用旧策略状态与动作样本，构造单步概率比的\term{替代目标}{Surrogate Objective}{}\cite{schulman2017ppo}：
 \begin{equation}
- L_{\mathrm{sur}}(\theta)=\mathbb E_{(s_t,a_t)\sim\mu}
- [\rho_t(\theta)\widehat A_t],\qquad
- \rho_t=\exp[\log\pi_\theta(a_t\mid s_t)-\log\mu(a_t\mid s_t)].
+ L_{\mathrm{sur}}(\vect{\theta})=\mathbb E_{(s_t,a_t)\sim\mu}
+ [\rho_t(\vect{\theta})\widehat A_t],\qquad
+ \rho_t=\exp[\log\pi_{\vect{\theta}}(a_t\mid s_t)-\log\mu(a_t\mid s_t)].
 \end{equation}
 本节为突出更新机制取 $\gamma=1$；折扣目标需要相应状态或时间权重。单步比率校正旧状态下的动作分布，状态访问量仍取自旧策略，因此该目标是对策略回报的局部近似。
 
@@ -317,7 +339,8 @@ PPO 采用旧策略状态与动作样本，构造单步概率比的\term{替代�
 
 取 $\epsilon=0.2$：当 $\widehat A=2,\rho=1.4$ 时两项为2.8和2.4，选2.4；当 $\widehat A=-2,\rho=0.6$ 时两项为 $-1.2,-1.6$，选 $-1.6$。但当 $\widehat A=-2,\rho=1.4$，选的是 $-2.8$，不会把错误增大负优势动作概率的惩罚裁为 $-2.4$。
 
-\begin{center}
+\begin{figure}[htbp]
+\centering
 \begin{tikzpicture}[x=3cm,y=1cm,>=stealth,every node/.style={font=\small}]
 \draw[->] (0,0)--(1.75,0) node[right]{$\rho$};\draw[->] (0,-2)--(0,2) node[above]{单项目标};
 \draw[thick] (0,0)--(1.2,1.2)--(1.65,1.2);
@@ -326,18 +349,18 @@ PPO 采用旧策略状态与动作样本，构造单步概率比的\term{替代�
 \node[above] at (.8,1.5){$1-\epsilon$};\node[above] at (1.3,1.5){$1+\epsilon$};
 \node[right] at (1.65,1.2){$\widehat A=1$};\node[right] at (1.65,-1.65){$\widehat A=-1$};
 \end{tikzpicture}
-\captionof{figure}{PPO 单样本裁剪目标的解析分段线。裁剪限制有利方向上的继续增益，并不是把所有概率比强制限制在区间内。}
+\caption{PPO 单样本裁剪目标的解析分段线。裁剪在有利方向上截断增益，概率比本身仍可越出区间。}
 \label{fig:rl-clip}
-\end{center}
+\end{figure}
 
 裁剪使部分样本的目标进入饱和区域；共享参数、其他样本梯度与多次更新仍会改变这些样本的概率比。因此应监控新旧策略差异、裁剪比例、熵与实际回报，并在偏移过大时停止复用旧批次。裁剪比例反映进入局部饱和区域的样本占比，实际回报反映策略质量。
 
-\section{语言模型的奖励及长度目标}
+\section{语言模型的奖励与长度目标}
 
-\subsection{序列奖励及词元信用分配}
+\subsection{序列奖励与词元信用分配}
 若只有终点评分 $R(x,y)$，取 $\gamma=1$，则一条回答中每个动作的后续回报均为同一终点奖励。策略梯度为
 \begin{equation}
- \nabla J=\mathbb E_{x,y}\left[R(x,y)\sum_{t=1}^{T(y)}\nabla\log\pi_\theta(y_t\mid x,y_{<t})\right].
+ \nabla J=\mathbb E_{x,y}\left[R(x,y)\sum_{t=1}^{T(y)}\nabla\log\pi_{\vect{\theta}}(y_t\mid x,y_{<t})\right].
  \label{eq:rl-lm-gradient}
 \end{equation}
 这与把示范所有词元一律提高概率不同：回报或优势的符号可以使采样回答概率降低。奖励稀疏时需要足够不同轨迹才有区分信号；同一问题所有回答同分，往往无法提供有效的相对改进证据。
@@ -347,36 +370,37 @@ PPO 采用旧策略状态与动作样本，构造单步概率比的\term{替代�
 \subsection{长度归一化效应}
 式\eqref{eq:rl-lm-gradient}对一条序列的所有动作得分求和。若改成每条序列除以自身随机长度 $T(y)$，并使用终点奖励而无基线，则得到
 \begin{equation}
- \mathbb E\left[\frac{R(x,y)}{T(y)}\sum_t\nabla\log\pi_\theta(y_t\mid x,y_{<t})\right]
+ \mathbb E\left[\frac{R(x,y)}{T(y)}\sum_t\nabla\log\pi_{\vect{\theta}}(y_t\mid x,y_{<t})\right]
  =\nabla\mathbb E\left[\frac{R(x,y)}{T(y)}\right],
 \end{equation}
-即优化单位长度奖励，而不是原始期望奖励。这里长度是采样轨迹的函数，不能当作所有样本共用常数。再加入依赖状态的基线时，若将基线也除以未来随机长度，原来的动作独立无偏证明不一定成立。
+即优化单位长度奖励，原始期望奖励则退居其次。这里长度是采样轨迹的函数，随样本变化。再加入依赖状态的基线时，若将基线也除以未来随机长度，原来的动作独立无偏证明不一定成立。
 
 例如两个可选完整回答长度为1和4、奖励均为1，原始目标对它们无偏好；$\frac{R}{T}$ 目标明显偏向短回答。按整批总词元归约与按每条回答长度归约又是不同权重：前者在一个冻结批次中对全部项施加共同尺度，后者改变序列之间的相对贡献。比较语言模型策略算法时，必须同时写出提示、序列和词元三个层级的归约。
 
-\subsection{停止、预算及惩罚}
-若 $\gamma<1$ 且只在终点给奖励，则起点回报为 $\gamma^{T-1}R$，隐含偏向更早取得相同奖励。显式每步成本 $c$ 则给出 $R-cT$ 一类目标，语义与折扣不同。结束动作是否正确、达到最大长度如何评分、无答案或工具失败怎样终止，都属于环境目标而非日志选项。
+\subsection{停止、预算与惩罚}
+若 $\gamma<1$ 且只在终点给奖励，则起点回报为 $\gamma^{T-1}R$，隐含偏向更早取得相同奖励。显式每步成本 $c$ 则给出 $R-cT$ 一类目标，语义与折扣不同。结束动作是否正确、达到最大长度如何评分、无答案或工具失败怎样终止，都由环境目标定义。
 
 超长输出可能来自奖励偏好、停止协议或探索分布。仅缩短最大长度可以限制成本，却不必然训练出更有效的策略；反过来，无限制提高生成预算也可能增加无效搜索和验证负担。应同时记录成功率、输出长度、终止原因和单位成功成本。
 
-\section{采样、估计及更新的数据流}
+\section{采样、估计与更新的数据流}
 
-\begin{center}
+\begin{figure}[htbp]
+\centering
 \begin{tikzpicture}[>=stealth,node distance=7mm,every node/.style={font=\small},box/.style={draw,rounded corners,align=center,text width=28mm,minimum height=10mm}]
 \node[box] (prompt){提示分布\\环境初始状态};
 \node[box,right=of prompt] (roll){行为策略 $\mu$\\动作与实际概率};
 \node[box,right=of roll] (env){环境与奖励\\终止、截断};
-\node[box,right=of env] (adv){价值 $V_\phi$\\回报与优势};
-\node[box,below=11mm of adv] (update){当前策略 $\pi_\theta$\\概率比与裁剪};
+\node[box,right=of env] (adv){价值 $V_{\vect{\phi}}$\\回报与优势};
+\node[box,below=11mm of adv] (update){当前策略 $\pi_{\vect{\theta}}$\\概率比与裁剪};
 \node[box,left=of update] (ref){参考策略\\可选分布约束};
 \node[box,left=of ref] (eval){独立任务评估\\回报、成本、退化};
 \draw[->] (prompt)--(roll);\draw[->] (roll)--(env);\draw[->] (env)--(adv);\draw[->] (adv)--(update);
 \draw[->] (ref)--(update);\draw[->] (update.south)--++(0,-.5)-|(eval.south);
 \draw[dashed,->] (update.east)--++(.3,0)|-(roll.north);
 \end{tikzpicture}
-\captionof{figure}{策略训练的数据流。行为策略产生数据，价值模型估计回报，当前策略执行更新，参考策略提供可选约束。更新后须明确何时刷新采样策略。}
+\caption{策略训练的数据流。行为策略产生数据，价值模型估计回报，当前策略执行更新，参考策略提供可选约束。更新后须明确何时刷新采样策略。}
 \label{fig:rl-training-flow}
-\end{center}
+\end{figure}
 
 \begin{algorithm}[有限轨迹上的 GAE 与 PPO 更新]
 输入为提示分布、初始策略与价值网络、奖励规则、采样预算及裁剪参数；输出为新策略和可追溯训练状态。本算法取有限终止任务、$\gamma=1$，一般折扣情形须补相应时间权重。
@@ -391,16 +415,16 @@ PPO 采用旧策略状态与动作样本，构造单步概率比的\term{替代�
 长度为 $H$ 的 GAE 递推时间与额外存储均可为 $O(H)$；主要计算由策略、价值及环境调用决定。动作概率必须来自对应的实际行为策略，不得用更新后的概率覆盖历史记录。
 \end{algorithm}
 
-\begin{note}[估计正确不等于奖励正确]
+\begin{note}[估计正确与奖励正确是两件事]
 策略梯度估计对应给定的期望回报目标。奖励覆盖、验证器可靠性和提示分布决定这个目标与实际任务的符合程度，因此训练还需结合独立任务评估。
 \end{note}
 
-\section{奖励及验证边界}
+\section{奖励与验证边界}
 
-采样策略、参考概率、裁剪和优势应统一到决策过程与概率比中解释；组相对目标由\bookxref{ch:verifiable-reasoning}展开。终点奖励、步骤证据和轨迹预算承担不同职责，验证器设计不等同于价值估计。策略改进通过实际交互中的回报与任务完成率评估。
+采样策略、参考概率、裁剪和优势应统一到决策过程与概率比中解释；组相对目标由\bookxref{ch:verifiable-reasoning}展开。终点奖励、步骤证据和轨迹预算承担不同职责，验证器设计与价值估计属于两类对象。策略改进通过实际交互中的回报与任务完成率评估。
 
 
 
 
 \chapterreferences
-\end{document}
+\lfsendchapterdocument

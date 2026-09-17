@@ -1,0 +1,86 @@
+\documentclass[tikz,border=5pt]{standalone}
+\usepackage{ctex}
+\usepackage{amsmath,amssymb}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds}
+\input{diagram_styles.tex}
+
+\begin{document}
+\begin{tikzpicture}[lfs picture, >=Latex, node distance=7mm]
+
+\tikzset{
+  op/.style={draw=LFSPurple, fill=LFSPurpleSoft, rounded corners=2pt, font=\footnotesize\bfseries, align=center, inner sep=4pt, minimum height=7mm},
+  norm/.style={draw=LFSOrange, fill=LFSOrangeSoft, rounded corners=2pt, font=\footnotesize\bfseries, align=center, inner sep=3pt, minimum width=32mm, minimum height=6.5mm},
+  add/.style={draw=LFSBlue, fill=LFSBlueSoft, circle, font=\small\bfseries, inner sep=1pt, minimum size=6mm},
+  tensor/.style={font=\scriptsize\ttfamily, text=LFSGray},
+  wire/.style={->, draw=LFSGray, line width=0.8pt},
+  reswire/.style={->, draw=LFSBlue, line width=0.9pt}
+}
+
+% Input
+\node (in) at (0, 0) {};
+\node[tensor, left=2mm of in] {输入 $\mat{X}\ [B, T, d]$};
+
+% Attention Block with Pre-Norm
+\node[add, above=7mm of in] (add1) {$+$};
+\node[norm, above=7mm of add1] (norm1) {RMSNorm};
+\node[op, above=7mm of norm1, minimum width=38mm] (attn) {
+  因果自注意力 (Causal Attn / GQA)\\[1mm]
+  \scriptsize $\mat{Q},\mat{K},\mat{V}$ 投影 $+$ RoPE 旋转 $+$ 输出投影 $\mat{W}_O$
+};
+
+% FFN Block with Pre-Norm
+\node[add, above=9mm of attn] (add2) {$+$};
+\node[norm, above=7mm of add2] (norm2) {RMSNorm};
+\node[op, above=7mm of norm2, minimum width=38mm] (ffn) {
+  SwiGLU 门控前馈网络 (FFN)\\[1mm]
+  \scriptsize $(\operatorname{SiLU}(\mat{X}\mat{W}_g) \odot \mat{X}\mat{W}_u)\mat{W}_d$
+};
+
+% Output
+\node[above=7mm of ffn] (out) {};
+\node[tensor, left=2mm of out] {输出 $\mat{X}_{\mathrm{out}}\ [B, T, d]$};
+
+% Main feedforward connections
+\draw[wire] (in) -- (add1);
+\draw[wire] (add1) -- (norm1) node[midway, right, tensor] {$[B, T, d]$};
+\draw[wire] (norm1) -- (attn) node[midway, right, tensor] {$[B, T, d]$};
+\draw[wire] (attn) -- (add2) node[midway, right, tensor] {$[B, T, d]$};
+\draw[wire] (add2) -- (norm2) node[midway, right, tensor] {$[B, T, d]$};
+\draw[wire] (norm2) -- (ffn) node[midway, right, tensor] {$[B, T, d]$};
+\draw[wire] (ffn) -- (out) node[midway, right, tensor] {$[B, T, d]$};
+
+% Residual bypass 1 (around Attn)
+\draw[reswire] (0, 0.4) -- ++(-2.3, 0) |- (add1);
+\node[font=\tiny, text=LFSBlue, left] at (-2.3, 1.4) {残差连接分支 (Identity)};
+
+% Residual bypass 2 (around FFN)
+\draw[reswire] (0, 4.0) -- ++(-2.3, 0) |- (add2);
+\node[font=\tiny, text=LFSBlue, left] at (-2.3, 5.0) {残差连接分支 (Identity)};
+
+% Background container box for one Decoder Block
+\begin{scope}[on background layer]
+  \node[draw=LFSGray!40, fill=LFSGraySoft!40, rounded corners=6pt, dashed, line width=0.8pt,
+        fit=(add1) (norm1) (attn) (add2) (norm2) (ffn),
+        inner xsep=26mm, inner ysep=4mm] (block) {};
+  \node[font=\small\bfseries, text=LFSGray, anchor=north west] at (block.north west) {现代纯解码器 Transformer 层 (Decoder-Only Block)};
+\end{scope}
+
+% Right side dimension annotations
+\node[font=\scriptsize, text=LFSGray, align=left, anchor=west] at (2.4, 2.7) {
+  \textbf{注意量子层}：\\
+  $\bullet\ \mat{Q},\mat{K},\mat{V} \in \Real^{B \times T \times d}$\\
+  $\bullet$ 键值头分组 (GQA)\\
+  $\bullet$ 旋转位置编码 (RoPE)\\
+  $\bullet\ \mat{W}_O \in \Real^{d \times d}$
+};
+
+\node[font=\scriptsize, text=LFSGray, align=left, anchor=west] at (2.4, 6.2) {
+  \textbf{前馈子层 (SwiGLU)}：\\
+  $\bullet$ 门控投影 $\mat{W}_g \in \Real^{d \times f}$\\
+  $\bullet$ 上投影 $\mat{W}_u \in \Real^{d \times f}$\\
+  $\bullet$ 激活宽度 $f \approx \frac{8}{3}d$\\
+  $\bullet$ 下投影 $\mat{W}_d \in \Real^{f \times d}$
+};
+
+\end{tikzpicture}
+\end{document}

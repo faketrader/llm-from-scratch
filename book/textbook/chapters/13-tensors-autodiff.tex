@@ -1,5 +1,7 @@
+\ifdefined\LFSWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
+\fi
 \bookchapter{神经网络基础}{ch:rev-tensors}
 
 神经网络由仿射变换与非线性激活构成，损失函数衡量预测误差，反向传播计算参数梯度，优化算法据此更新参数。张量运算把这一过程扩展到批量计算，自动微分则沿计算图应用链式法则。
@@ -11,17 +13,38 @@
 \subsection{神经元计算}
 一个人工神经元先计算输入的加权和，再通过激活函数得到输出：
 \begin{equation}
- z=w^{\mathsf T}x+b,\qquad a=\phi(z).
+ z=\vect{w}^{\mathrm{T}}\vect{x}+b,\qquad a=\phi(z).
 \end{equation}
-$w$ 决定各输入对结果的作用，$b$ 调整激活阈值，$\phi$ 提供非线性。把多个神经元并排写成矩阵形式，便得到一层网络 $A=\phi(XW+b)$。层数增加并不改变这一基本单元，只是让前一层的输出成为后一层的输入。
+$\vect{w}$ 决定各输入对结果的作用，$b$ 调整激活阈值，$\phi$ 提供非线性。把多个神经元并排写成矩阵形式，便得到一层网络 $\mat{A}=\phi(\mat{X}\mat{W}+b)$。基本单元不随层数增加而改变，前一层的输出直接成为后一层的输入。
 
-常见激活函数包括 ReLU、Sigmoid 和双曲正切：
+常见激活函数包括 ReLU、Sigmoid 和双曲正切，以及现代大模型常用的 GELU 和 SiLU：
 \begin{equation}
  \operatorname{ReLU}(z)=\max(0,z),\qquad
- \sigma(z)=\frac{1}{1+e^{-z}},\qquad
- \tanh(z)=\frac{e^z-e^{-z}}{e^z+e^{-z}}.
+ \sigma(z)=\frac{1}{1+\conste{}^{-z}},\qquad
+ \tanh(z)=\frac{\conste{}^z-\conste{}^{-z}}{\conste{}^z+\conste{}^{-z}}.
 \end{equation}
-ReLU 计算简单，正区间梯度不衰减；Sigmoid 将数值压到 $(0,1)$，适合表示二元概率；$\tanh$ 输出以零为中心。Sigmoid 和 $\tanh$ 在绝对值较大时导数接近零，深层或长序列中容易出现梯度消失。激活函数的选择既改变表达能力，也改变梯度传播。
+ReLU 计算简单，正区间梯度不衰减；Sigmoid 将数值压到 $(0,1)$，适合表示二元概率；$\tanh$ 输出以零为中心。Sigmoid 和 $\tanh$ 在绝对值较大时导数接近零，深层或长序列中容易出现梯度消失。图\ref{fig:activation-functions-curve}给出了常见激活函数及其一阶导数的几何形态，表\ref{tab:rev-activation-functions}总结了其数学性质与工程特点。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.92\linewidth]{\subfix{../../figures/theory/activation-functions-curve.pdf}}
+\caption{常见激活函数及其一阶导数曲线。Sigmoid 与 Tanh 存在饱和区与导数极小值；ReLU 在正半轴梯度恒定；GELU 与 SiLU 具备平滑非单调性，在大输入时接近 ReLU，在小负区间提供平滑负反馈。}\label{fig:activation-functions-curve}
+\end{figure}
+
+\begin{table}[htbp]
+\centering
+\caption{常见神经网络激活函数的定义、导数与计算特性比较}\label{tab:rev-activation-functions}
+\begin{tabularx}{\linewidth}{p{20mm}p{34mm}p{22mm}X}
+\toprule
+激活函数 & 数学定义 & 导数取值范围 & 梯度特性与适用场景 \\\midrule
+Sigmoid & $\sigma(z)=\frac{1}{1+\conste{}^{-z}}$ & $(0, 0.25]$ & 输出压至 $(0,1)$，非零中心，两端饱和易梯度消失，用于门控与二分类 \\
+Tanh & $\tanh(z)=\frac{\conste{}^z-\conste{}^{-z}}{\conste{}^z+\conste{}^{-z}}$ & $(0, 1]$ & 零中心化，但两端同样饱和，常用于循环网络门控 \\
+ReLU & $\max(0,z)$ & $\{0, 1\}$ ($z\neq 0$) & 正半轴导数恒为 1 不衰减，计算极快；负半轴神经元永久死亡风险 \\
+GELU & $z\,\Phi(z)$ & $(-0.17, 1.08]$ & 平滑非单调，小负数提供微弱负响应，为现代大语言模型主流 \\
+SiLU / Swish & $z\,\sigma(z)$ & $(-0.10, 1.10]$ & 自门控平滑非单调，导数连续，配合 SwiGLU 门控单元用于现代开源架构 \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
 \subsection{标量损失目标}
 网络输出必须通过损失函数与目标比较。回归常用均方误差
@@ -30,120 +53,128 @@ ReLU 计算简单，正区间梯度不衰减；Sigmoid 将数值压到 $(0,1)$�
 \end{equation}
 互斥多分类先用 Softmax 把分数 $u_j$ 变成概率，再用交叉熵评价目标类别：
 \begin{equation}
- q_j=\frac{e^{u_j}}{\sum_{k=1}^{C}e^{u_k}},\qquad
+ q_j=\frac{\conste{}^{u_j}}{\sum_{k=1}^{C}\conste{}^{u_k}},\qquad
  \ell=-\sum_{j=1}^{C}y_j\log q_j.
 \end{equation}
-Softmax 的各输出共享同一个分母，所以类别概率相互耦合。它适合“只能选一个类别”的任务；多标签任务通常对各标签分别使用 Sigmoid。实际计算交叉熵时应直接使用原始分数的稳定实现，避免先算极小概率再取对数。
+Softmax 的各输出共享同一个分母，所以类别概率相互耦合。它适合“只能选一个类别”的任务；多标签任务通常对各标签分别使用 Sigmoid。交叉熵的实现直接接收原始分数，避免先算极小概率再取对数。
 
-\section{训练、梯度下降及反向传播}
+\section{训练、梯度下降与反向传播}
 
-训练的目标是寻找使训练目标较小的参数 $\theta$。最基本的梯度下降更新为
+训练的目标是寻找使训练目标较小的参数 $\vect{\theta}$。最基本的梯度下降更新为
 \begin{equation}
- \theta_{t+1}=\theta_t-\eta\nabla_\theta\mathcal L(\theta_t),
+ \vect{\theta}_{t+1}=\vect{\theta}_t-\eta\nabla_{\vect{\theta}}\mathcal L(\vect{\theta}_t),
 \end{equation}
 其中 $\eta$ 是学习率。学习率过小会使训练缓慢，过大可能越过低损失区域而振荡或发散。小批量训练用一部分样本估计梯度，降低单步成本，也引入抽样噪声。
 
 一次训练迭代包含五个阶段：取出一个批次；执行前向传播；计算标量损失；反向传播得到所有参数的梯度；由优化器统一更新参数。梯度的归一化和累积方式应与损失定义一致，优化器在反向传播完成后统一更新参数。
 
-训练集损失下降说明优化正在拟合训练数据，不等同于模型对新数据有效。验证集用于选择超参数和训练停止点，测试集用于最后评估；若测试信息参与选择，它就不再是独立测试。更完整的学习率、初始化、正则化和泛化问题见\bookxref{ch:optimization-generalization}。
+训练集损失下降说明优化正在拟合训练数据，它对新数据是否有效由验证结果给出。验证集用于选择超参数和训练停止点，测试集用于最后评估；测试信息一旦参与选择，它就不再独立。更完整的学习率、初始化、正则化和泛化问题见\bookxref{ch:optimization-generalization}。
 
-\section{张量、形状及线性映射}
+\section{张量、形状和线性映射}
 
 \subsection{形状表达计算对象的语义}
 \begin{definition}[计算语境中的张量]
-在本书的计算语境中，张量（tensor）指带有若干索引轴的数值数组。标量没有轴，向量有一个轴，矩阵有两个轴。三维张量 $X\in\Real^{B\times T\times d}$ 可以表示 $B$ 个样本、每个样本 $T$ 个位置、每个位置 $d$ 个特征。$X_{itj}$ 则是第 $i$ 个样本在第 $t$ 个位置的第 $j$ 个特征。
+在本书的计算语境中，张量（tensor）指带有若干索引轴的数值数组。标量没有轴，向量有一个轴，矩阵有两个轴。三维张量 $\mat{X}\in\Real^{B\times T\times d}$ 可以表示 $B$ 个样本、每个样本 $T$ 个位置、每个位置 $d$ 个特征。$X_{itj}$ 则是第 $i$ 个样本在第 $t$ 个位置的第 $j$ 个特征。
 \footnote{微分几何中的张量还涉及坐标变换法则。本章使用深度学习计算中的数组含义，不将数组维数与几何张量的变换性质混为一谈。}
 \end{definition}
 形状只给出各轴的长度，轴的语义还需要文字约定。两个形状同为 $B\times B$ 的矩阵，一个可能描述样本之间的相似度，另一个可能只是特征维数碰巧等于批量大小；轴的含义需要结合计算对象确定。
 
-本章主要讨论二维批处理，并使用下列符号。单个向量在定义梯度和雅可比时视为列向量；批量矩阵中每个样本按行存放。两种约定之间通过转置明确转换。
-\begin{center}
-\begin{tabularx}{\linewidth}{lXl}
+本章主要讨论二维批处理，并使用表\ref{tab:rev-tensor-notations}所列符号。单个向量在定义梯度和雅可比时视为列向量；批量矩阵中每个样本按行存放。两种约定之间通过转置明确转换。
+\begin{table}[htbp]
+\centering
+\caption{张量运算与多层感知机反向传播核心数学符号}\label{tab:rev-tensor-notations}
+\begin{tabularx}{\linewidth}{p{24mm}Xp{26mm}}
 \toprule 符号 & 含义 & 形状或范围\\\midrule
 $B,d,h,C$ & 批量大小、输入宽度、隐藏宽度、类别数 & 正整数\\
-$X$ & 批量输入，每行一个样本 & $B\times d$\\
-$W_1,b_1$ & 第一层权重和偏置 & $d\times h,\ h$\\
-$Z,A$ & 隐藏层预激活和激活 & $B\times h$\\
-$W_2,b_2$ & 第二层权重和偏置 & $h\times C,\ C$\\
-$U,Q,Y$ & 分类分数、预测概率和目标分布 & $B\times C$\\
+$\mat{X}$ & 批量输入，每行一个样本 & $B\times d$\\
+$\mat{W}_1,\vect{b}_1$ & 第一层权重和偏置 & $d\times h,\ h$\\
+$\mat{Z},\mat{A}$ & 隐藏层预激活和激活 & $B\times h$\\
+$\mat{W}_2,\vect{b}_2$ & 第二层权重和偏置 & $h\times C,\ C$\\
+$\mat{U},\mat{Q},\mat{Y}$ & 分类分数、预测概率和目标分布 & $B\times C$\\
 $\mathcal L$ & 批量平均损失 & 标量\\
-$\overline R$ & 损失对中间量 $R$ 的梯度 & 与 $R$ 同形\\
+$\overline{\mat{R}}$ & 损失对中间量 $\mat{R}$ 的梯度 & 与 $\mat{R}$ 同形\\
 $\mathbf1_B$ & 元素全为一的列向量 & $B$\\
 \bottomrule
 \end{tabularx}
-\end{center}
+\end{table}
 
 \subsection{矩阵乘法的公共轴归约}
-设 $X\in\Real^{B\times d}$，$W\in\Real^{d\times h}$，则线性映射 $Z=XW$ 的分量形式为
+设 $\mat{X}\in\Real^{B\times d}$，$\mat{W}\in\Real^{d\times h}$，则线性映射 $\mat{Z}=\mat{X}\mat{W}$ 的分量形式为
 \begin{equation}
- Z_{ij}=\sum_{k=1}^{d}X_{ik}W_{kj},\qquad Z\in\Real^{B\times h}.
+ Z_{ij}=\sum_{k=1}^{d}X_{ik}W_{kj},\qquad \mat{Z}\in\Real^{B\times h}.
 \end{equation}
-这里被求和的 $k$ 是输入特征轴；样本轴 $i$ 与输出特征轴 $j$ 得以保留。对每个样本使用同一个 $W$，意味着参数在样本之间共享，而不是为每一行分配一套权重。
+这里被求和的 $k$ 是输入特征轴；样本轴 $i$ 与输出特征轴 $j$ 得以保留。对每个样本使用同一个 $\mat{W}$，参数因此在样本之间共享。
 
-若加入偏置 $b\in\Real^h$，仿射映射为
+若加入偏置 $\vect{b}\in\Real^h$，仿射映射为
 \begin{equation}
- Z=XW+\mathbf1_Bb^{\mathsf T},\qquad
+ \mat{Z}=\mat{X}\mat{W}+\mathbf1_B\vect{b}^{\mathrm{T}},\qquad
  Z_{ij}=\sum_kX_{ik}W_{kj}+b_j.
 \end{equation}
 偏置平移输出，因此严格说包含偏置的层是仿射层。习惯上所称的线性层常包含这项平移，推导时应保留它的独立梯度。
 
-矩阵乘法不同于逐元素乘法。$A\odot D$ 要求元素一一对应，或先按明确规则广播；$AD$ 则沿一个公共轴收缩。将 $XW$ 误写成逐元素运算，可能直接触发形状错误，也可能因特殊尺寸而得到合法却完全不同的函数。核对分量公式可以识别后一种隐蔽错误。
+矩阵乘法不同于逐元素乘法。$\mat{A}\odot \mat{D}$ 要求元素一一对应，或先按明确规则广播；$\mat{A}\mat{D}$ 则沿一个公共轴收缩。将 $\mat{X}\mat{W}$ 误写成逐元素运算，可能直接触发形状错误，也可能因特殊尺寸而得到合法却完全不同的函数。核对分量公式可以识别后一种隐蔽错误。
 
 序列上的共享线性层可以写为
 \begin{equation}
  Z_{itj}=\sum_{k=1}^{d}X_{itk}W_{kj}+b_j,
- \qquad Z\in\Real^{B\times T\times h}.
+ \qquad \mat{Z}\in\Real^{B\times T\times h}.
 \end{equation}
 它只变换最后一个特征轴，不混合不同位置。暂时将前两个轴合并为 $BT$ 行，是执行同一计算的一种方式，前提是恢复形状时保留位置与样本的对应关系。
 
-\subsection{转置、重排及存储布局}
-转置 $X^{\mathsf T}$ 交换矩阵的两个索引：$(X^{\mathsf T})_{ji}=X_{ij}$。重塑形状则按约定的元素顺序重新分组。将一个 $2\times3$ 数组直接重塑为 $3\times2$，通常不等于转置；前者不自动把行索引变成列索引。在多头注意力等运算中，重排轴与合并轴必须分别说明，否则即使元素总数不变，位置之间的关系也可能被破坏。
+\subsection{转置、重排与存储布局}
+转置 $\mat{X}^{\mathrm{T}}$ 交换矩阵的两个索引：$(\mat{X}^{\mathrm{T}})_{ji}=X_{ij}$。重塑形状则按约定的元素顺序重新分组。将一个 $2\times3$ 数组直接重塑为 $3\times2$，元素顺序按行展开后重新分组，与转置得到的数组一般不同。在多头注意力等运算中，重排轴与合并轴必须分别说明，否则即使元素总数不变，位置之间的关系也可能被破坏。
 
-数学上的形状还应与物理存储区分。某些重排可由索引步长描述，不必立即复制数据；另一些后续运算会要求重新组织连续存储。两种实现可能计算同一函数，却具有不同的数据搬运代价。存储带宽和算子效率见算力基础设施与推理优化相关章节。
+数学上的形状还应与物理存储区分。图\ref{fig:tensor-memory-layout}展示了张量行主序连续存储、转置视图以及连续化内存拷贝的映射机制。某些重排可由索引步长（Stride）描述，不必立即复制数据；另一些后续运算会要求重新组织连续存储。两种实现可能计算同一函数，却具有不同的数据搬运代价。存储带宽和算子效率见算力基础设施与推理优化相关章节。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.88\linewidth]{\subfix{../../figures/theory/tensor-memory-layout.pdf}}
+\caption{张量连续存储、跨步视图与内存重排映射关系示意。逻辑转置仅修改步长而不搬运内存，后续操作若依赖连续内存则触发显式拷贝重整。}\label{fig:tensor-memory-layout}
+\end{figure}
 
 \section{矩阵梯度}
 
 \subsection{梯度刻画标量函数的一阶变化}
-对于可微函数 $\mathcal L:\Real^n\to\Real$，在 $x$ 附近有
+对于可微函数 $\mathcal L:\Real^n\to\Real$，在 $\vect{x}$ 附近有
 \begin{equation}
- \mathcal L(x+\Delta x)=\mathcal L(x)
- +\nabla_x\mathcal L^{\mathsf T}\Delta x+o(\|\Delta x\|).
+ \mathcal L(\vect{x}+\Delta \vect{x})=\mathcal L(\vect{x})
+ +\nabla_{\vect{x}}\mathcal L^{\mathrm{T}}\Delta \vect{x}+o(\|\Delta \vect{x}\|).
 \end{equation}
-梯度的第 $j$ 个分量是 $\frac{\partial\mathcal L}{\partial x_j}$。该展开中的线性项常记为全微分 $\dif\mathcal L=\nabla_x\mathcal L^{\mathsf T}\dif x$。它描述任意微小扰动的损失变化，而不仅是沿某一个坐标的变化。
+梯度的第 $j$ 个分量是 $\frac{\partial\mathcal L}{\partial x_j}$。该展开中的线性项常记为全微分 $\dif\mathcal L=\nabla_{\vect{x}}\mathcal L^{\mathrm{T}}\dif \vect{x}$。它描述任意微小扰动的损失变化，而不仅是沿某一个坐标的变化。
 
-对矩阵 $X$，将各元素的贡献相加，得到
+对矩阵 $\mat{X}$，将各元素的贡献相加，得到
 \begin{equation}
  \dif\mathcal L=\sum_{i,j}\overline X_{ij}\dif X_{ij}
- =\langle\overline X,\dif X\rangle_F
- =\operatorname{tr}(\overline X^{\mathsf T}\dif X).
- \label{eq:rev3-matrix-differential}
+ =\langle\overline{\mat{X}},\dif \mat{X}\rangle_F
+ =\operatorname{tr}(\overline{\mat{X}}^{\mathrm{T}}\dif \mat{X}).
+ \label{eq:tensor-matrix-differential}
 \end{equation}
-其中 $\langle A,B\rangle_F=\sum_{ij}A_{ij}B_{ij}$ 是 Frobenius 内积，$\operatorname{tr}$ 表示方阵对角元素之和。式\eqref{eq:rev3-matrix-differential}定义了与 $X$ 同形的矩阵梯度；不必把矩阵展平后再写一个高阶导数数组。
+其中 $\langle \mat{A},\mat{B}\rangle_F=\sum_{ij}A_{ij}B_{ij}$ 是 Frobenius 内积，$\operatorname{tr}$ 表示方阵对角元素之和。式\eqref{eq:tensor-matrix-differential}定义了与 $\mat{X}$ 同形的矩阵梯度，无需把矩阵展平后再写一个高阶导数数组。
 
-例如，$\mathcal L=\frac12\|X\|_F^2=\frac12\sum_{ij}X_{ij}^2$，故
-$\dif\mathcal L=\sum_{ij}X_{ij}\dif X_{ij}$，于是 $\overline X=X$。若系数 $\frac{1}{2}$ 被省略，梯度变成 $2X$。这类常数不会改变单独最小化该项的极小点，却会改变与其他损失项组合时的相对尺度。
+例如，$\mathcal L=\frac12\|\mat{X}\|_F^2=\frac12\sum_{ij}X_{ij}^2$，故
+$\dif\mathcal L=\sum_{ij}X_{ij}\dif X_{ij}$，于是 $\overline{\mat{X}}=\mat{X}$。若系数 $\frac{1}{2}$ 被省略，梯度变成 $2\mat{X}$。这类常数不会改变单独最小化该项的极小点，却会改变与其他损失项组合时的相对尺度。
 
 \subsection{线性层梯度的推导}
-令 $Z=XW+\mathbf1_Bb^{\mathsf T}$，上游已经给出 $G=\overline Z\in\Real^{B\times h}$。在一次微分中，三个输入分别产生
+令 $\mat{Z}=\mat{X}\mat{W}+\mathbf1_B\vect{b}^{\mathrm{T}}$，上游已经给出 $\mat{G}=\overline{\mat{Z}}\in\Real^{B\times h}$。在一次微分中，三个输入分别产生
 \begin{equation}
- \dif Z=(\dif X)W+X(\dif W)+\mathbf1_B(\dif b)^{\mathsf T}.
+ \dif \mat{Z}=(\dif \mat{X})\mat{W}+\mat{X}(\dif \mat{W})+\mathbf1_B(\dif \vect{b})^{\mathrm{T}}.
 \end{equation}
 代入矩阵内积，并利用迹在维数相容时的循环性质，可得
 \begin{align}
  \dif\mathcal L
- &=\operatorname{tr}\!\left(G^{\mathsf T}(\dif X)W\right)
-  +\operatorname{tr}\!\left(G^{\mathsf T}X(\dif W)\right)
-  +\operatorname{tr}\!\left(G^{\mathsf T}\mathbf1_B(\dif b)^{\mathsf T}\right)\\
- &=\operatorname{tr}\!\left((GW^{\mathsf T})^{\mathsf T}\dif X\right)
-  +\operatorname{tr}\!\left((X^{\mathsf T}G)^{\mathsf T}\dif W\right)
-  +(G^{\mathsf T}\mathbf1_B)^{\mathsf T}\dif b.
+ &=\operatorname{tr}\!\left(\mat{G}^{\mathrm{T}}(\dif \mat{X})\mat{W}\right)
+  +\operatorname{tr}\!\left(\mat{G}^{\mathrm{T}}\mat{X}(\dif \mat{W})\right)
+  +\operatorname{tr}\!\left(\mat{G}^{\mathrm{T}}\mathbf1_B(\dif \vect{b})^{\mathrm{T}}\right)\\
+ &=\operatorname{tr}\!\left((\mat{G}\mat{W}^{\mathrm{T}})^{\mathrm{T}}\dif \mat{X}\right)
+  +\operatorname{tr}\!\left((\mat{X}^{\mathrm{T}}\mat{G})^{\mathrm{T}}\dif \mat{W}\right)
+  +(\mat{G}^{\mathrm{T}}\mathbf1_B)^{\mathrm{T}}\dif \vect{b}.
 \end{align}
 与梯度的定义逐项比较，得到
 \begin{equation}
- \boxed{\overline X=GW^{\mathsf T},\qquad
- \overline W=X^{\mathsf T}G,\qquad
- \overline b=G^{\mathsf T}\mathbf1_B.}
- \label{eq:rev3-linear-backward}
+ \boxed{\overline{\mat{X}}=\mat{G}\mat{W}^{\mathrm{T}},\qquad
+ \overline{\mat{W}}=\mat{X}^{\mathrm{T}}\mat{G},\qquad
+ \overline{\vect{b}}=\mat{G}^{\mathrm{T}}\mathbf1_B.}
+ \label{eq:tensor-linear-backward}
 \end{equation}
 这三个式子分别回答：误差如何传回输入、各样本如何共同调整权重，以及共享偏置如何接收整批样本的影响。
 
@@ -152,35 +183,35 @@ $\frac{\partial Z_{ij}}{\partial W_{kr}}=X_{ik}\mathbf1[j=r]$，链式法则给�
 \begin{equation}
  \frac{\partial\mathcal L}{\partial W_{kr}}
  =\sum_{i,j}G_{ij}X_{ik}\mathbf1[j=r]
- =\sum_iX_{ik}G_{ir}=(X^{\mathsf T}G)_{kr}.
+ =\sum_iX_{ik}G_{ir}=(\mat{X}^{\mathrm{T}}\mat{G})_{kr}.
 \end{equation}
-求和不是一种额外的经验处理，而是共享参数影响多个输出所必需的结果。梯度形状也随之确定：$GW^{\mathsf T}$ 为 $B\times d$，$X^{\mathsf T}G$ 为 $d\times h$，$G^{\mathsf T}\mathbf1_B$ 为 $h$。
+求和来自共享参数对多个输出的共同影响。梯度形状也随之确定：$\mat{G}\mat{W}^{\mathrm{T}}$ 为 $B\times d$，$\mat{X}^{\mathrm{T}}\mat{G}$ 为 $d\times h$，$\mat{G}^{\mathrm{T}}\mathbf1_B$ 为 $h$。
 
-\subsection{逐元素非线性及不可微点}
+\subsection{逐元素非线性和不可微点}
 若 $A_{ij}=\phi(Z_{ij})$，各输出仅依赖对应输入，故
 \begin{equation}
- \overline Z=\overline A\odot\phi'(Z).
- \label{eq:rev3-elementwise}
+ \overline{\mat{Z}}=\overline{\mat{A}}\odot\phi'(\mat{Z}).
+ \label{eq:tensor-elementwise}
 \end{equation}
 整流线性单元（Rectified Linear Unit，ReLU）为 $\phi(z)=\max(0,z)$。在 $z>0$ 时导数为一，在 $z<0$ 时为零。因此正区间直接传递梯度，负区间阻断经过该节点的局部梯度；在零点不存在通常意义下的唯一导数。
 \footnote{ReLU 是凸函数，其零点次微分为 $[0,1]$。计算实现需要约定零点取值，常见约定为零。整个网络的优化性质还取决于各层的复合与参数化。}
 
 如果两个仿射层之间没有非线性，则
-$(XW_1+\mathbf1_Bb_1^{\mathsf T})W_2+\mathbf1_Bb_2^{\mathsf T}$
+$(\mat{X}\mat{W}_1+\mathbf1_B\vect{b}_1^{\mathrm{T}})\mat{W}_2+\mathbf1_B\vect{b}_2^{\mathrm{T}}$
 仍可合并为一个仿射映射。非线性使不同输入区域具有不同的有效映射，是两层网络超出单层表达形式的关键。其反向代价则是梯度要乘以依赖前向状态的局部导数，因而需要保存或重新计算该状态。
 
-\section{计算图及自动微分}
+\section{计算图与自动微分}
 
 \subsection{链式法则的依赖结构}
-设 $z=f(x)\in\Real^m$，$x\in\Real^n$。雅可比矩阵（Jacobian matrix）定义为 $J_f\in\Real^{m\times n}$，其中 $(J_f)_{ij}=\frac{\partial z_i}{\partial x_j}$。微分满足 $\dif z=J_f\dif x$。若 $\mathcal L=g(z)$，则
+设 $\vect{z}=f(\vect{x})\in\Real^m$，$\vect{x}\in\Real^n$。雅可比矩阵（Jacobian matrix）定义为 $\mat{J}_f\in\Real^{m\times n}$，其中 $(\mat{J}_f)_{ij}=\frac{\partial z_i}{\partial x_j}$。微分满足 $\dif \vect{z}=\mat{J}_f\dif \vect{x}$。若 $\mathcal L=g(\vect{z})$，则
 \begin{equation}
- \dif\mathcal L=\overline z^{\mathsf T}J_f\dif x,
- \qquad \overline x=J_f^{\mathsf T}\overline z.
- \label{eq:rev3-vjp}
+ \dif\mathcal L=\overline{\vect{z}}^{\mathrm{T}}\mat{J}_f\dif \vect{x},
+ \qquad \overline{\vect{x}}=\mat{J}_f^{\mathrm{T}}\overline{\vect{z}}.
+ \label{eq:tensor-vjp}
 \end{equation}
-正向计算把输入映射到输出；反向计算把输出上的损失敏感度映射回输入。后者对应\term{向量雅可比积}{Vector--Jacobian Product}{VJP}：行向量形式为 $\overline z^{\mathsf T}J_f$，本章使用其转置 $J_f^{\mathsf T}\overline z$ 表示列梯度。它通常不必显式形成整个雅可比。
+正向计算把输入映射到输出；反向计算把输出上的损失敏感度映射回输入。后者对应\term{向量雅可比积}{Vector--Jacobian Product}{VJP}：行向量形式为 $\overline{\vect{z}}^{\mathrm{T}}\mat{J}_f$，本章使用其转置 $\mat{J}_f^{\mathrm{T}}\overline{\vect{z}}$ 表示列梯度。它通常不必显式形成整个雅可比。
 
-计算图把基本运算表示为节点，把依赖表示为有向边。对于无循环的计算图，可按拓扑顺序求出前向值，再按相反顺序应用式\eqref{eq:rev3-vjp}。即使模型包含循环结构，有限次展开的一次执行也可以表达为这样的依赖序列。
+计算图把基本运算表示为节点，把依赖表示为有向边。对于无循环的计算图，可按拓扑顺序求出前向值，再按相反顺序应用式\eqref{eq:tensor-vjp}。即使模型包含循环结构，有限次展开的一次执行也可以表达为这样的依赖序列。
 
 一个变量若经由两条路径影响损失，两条路径的贡献必须相加。考虑 $a=x^2$、$b=3x$、$\mathcal L=ab$。前向在 $x=2$ 时得到 $a=4$、$b=6$、$\mathcal L=24$；反向先得到 $\overline a=b=6$、$\overline b=a=4$，再得到
 \begin{equation}
@@ -189,7 +220,8 @@ $(XW_1+\mathbf1_Bb_1^{\mathsf T})W_2+\mathbf1_Bb_2^{\mathsf T}$
 \end{equation}
 直接对 $3x^3$ 求导同样得到 $9x^2=36$。若仅保留最后一条路径，结果便会错误地变成 $12$。权重共享、残差连接和重复嵌入编号都遵循同一条累加原则。
 
-\begin{center}
+\begin{figure}[htbp]
+\centering
 \begin{tikzpicture}[>=Stealth, every node/.style={font=\small},
  box/.style={draw,rounded corners,minimum width=25mm,minimum height=10mm,align=center}]
 \node[box] (x) at (0,0) {$x=2$};
@@ -202,71 +234,83 @@ $(XW_1+\mathbf1_Bb_1^{\mathsf T})W_2+\mathbf1_Bb_2^{\mathsf T}$
 \draw[->,dashed] (l.south) to[bend left=35] node[below] {$\overline b=4$} (b.south);
 \node[align=center] at (0,-2) {$\overline x=24+12$\\两条路径累加};
 \end{tikzpicture}
-\captionof{figure}{共享输入的计算图。实线表示前向依赖，虚线表示从乘法节点返回的梯度。}
-\end{center}
+\caption{共享输入的计算图。实线表示前向依赖，虚线表示从乘法节点返回的梯度。}\label{fig:autodiff-shared-input}
+\end{figure}
 
-\subsection{正向模式及反向模式}
-自动微分按照基本运算的导数规则，对实际执行的组合函数计算导数。它与把表达式化简成一个符号公式不同，也不通过微小扰动近似导数。除基本运算与浮点计算本身的误差外，链式法则不引入有限差分那样的步长截断误差。
+\subsection{正向模式和反向模式}
+自动微分按照基本运算的导数规则，对实际执行的组合函数计算导数。它不把表达式化简成一个符号公式，也不用微小扰动近似导数，因此除基本运算与浮点计算本身的误差外，不引入有限差分那样的步长截断误差。
 
-正向模式给定输入方向 $v$，随前向传播计算 $J_fv$；反向模式给定输出权重 $w$，从后向前计算 $J_f^{\mathsf T}w$。如果一个函数具有大量参数而只有一个标量损失，反向模式以输出端种子 $\overline{\mathcal L}=1$ 开始，一次反向遍历即可得到所有参数的梯度。逐坐标使用正向模式则通常需要多次遍历。因此，标量训练目标特别适合反向模式。若输入方向很少、需要多个输出的方向响应，正向模式也有价值。
+正向模式给定输入方向 $v$，随前向传播计算 $\mat{J}_fv$；反向模式给定输出权重 $w$，从后向前计算 $\mat{J}_f^{\mathrm{T}}w$。如果一个函数具有大量参数而只有一个标量损失，反向模式以输出端种子 $\overline{\mathcal L}=1$ 开始，一次反向遍历即可得到所有参数的梯度。逐坐标使用正向模式则通常需要多次遍历。因此，标量训练目标特别适合反向模式。若输入方向很少、需要多个输出的方向响应，正向模式也有价值。两种模式的计算特性如表\ref{tab:rev-autodiff-modes}所示。
 
-反向模式的局部梯度往往依赖前向中间量，例如线性层需要 $X$，ReLU 需要知道 $Z$ 的符号。这些量可以保存在计算过程中，也可以在反向时重新计算。保存占用内存，重算消耗计算，二者的取舍构成后续激活重计算方法的基础。
+\begin{table}[htbp]
+\centering
+\caption{正向模式与反向模式自动微分的核心特性对比}\label{tab:rev-autodiff-modes}
+\begin{tabularx}{\linewidth}{p{22mm}p{30mm}p{28mm}X}
+\toprule
+微分模式 & 乘积类型 & 计算复杂度 & 适用场景与内存开销 \\\midrule
+正向模式 (Forward) & 雅可比--向量积（JVP） $\mat{J}_{\vect{f}}\vect{v}$ & $\mathcal{O}(n_{\text{in}})$ 次前向遍历 & 输入维数远小于输出维数（$n_{\text{in}} \ll n_{\text{out}}$），无需缓存中间激活值，内存开销极低 \\
+反向模式 (Reverse) & 向量--雅可比积（VJP） $\vect{w}^{\mathrm{T}}\mat{J}_{\vect{f}}$ & $\mathcal{O}(n_{\text{out}})$ 次反向遍历 & 标量或低维损失目标（$n_{\text{out}} \ll n_{\text{in}}$），为深度学习反向传播基石；需要缓存前向激活 \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
-\subsection{梯度计算及参数更新}
-在一次前向和反向之间，参数以及反向所需的中间量必须保持一致。若计算 $\overline W_2$ 后立刻更新 $W_2$，再使用更新后的 $W_2$ 计算隐藏层梯度，那么该梯度已经不再对应原来的前向函数。正确过程是完成当前损失的全部反向计算，再进行参数更新。
+反向模式的局部梯度往往依赖前向中间量，例如线性层需要 $\mat{X}$，ReLU 需要知道 $\mat{Z}$ 的符号。这些量可以保存在计算过程中，也可以在反向时重新计算。保存占用内存，重算消耗计算，二者的取舍构成后续激活重计算方法的基础。
+
+\subsection{梯度计算与参数更新}
+在一次前向和反向之间，参数以及反向所需的中间量必须保持一致。若计算 $\overline{\mat{W}}_2$ 后立刻更新 $\mat{W}_2$，再使用更新后的 $\mat{W}_2$ 计算隐藏层梯度，那么该梯度已经不再对应原来的前向函数。正确过程是完成当前损失的全部反向计算，再进行参数更新。
 
 对于多个小批量，梯度既可以在每批后清除，也可以有意累加。但累加的归一化必须与目标一致：两个批次分别含 $B_1,B_2$ 个有效样本时，总体平均梯度为
 \begin{equation}
- g=\frac{B_1g_1+B_2g_2}{B_1+B_2},
+ \vect{g}=\frac{B_1\vect{g}_1+B_2\vect{g}_2}{B_1+B_2},
 \end{equation}
-其中 $g_1,g_2$ 是各自的平均梯度。简单平均两个批次的平均梯度，仅在两批大小相等或目标确实赋予每批相等权重时成立。
+其中 $\vect{g}_1,\vect{g}_2$ 是各自的平均梯度。简单平均两个批次的平均梯度，仅在两批大小相等或目标确实赋予每批相等权重时成立。
 
-计算图中的切断梯度会保留某个数值却改变对其来源的求导关系。离散索引选择、阈值决策、随机采样也不能不加说明地按光滑函数处理。训练模式和是否记录梯度同样是两个问题：随机失活等机制影响前向函数，梯度记录则决定是否保存求导依赖。关闭梯度记录不会自动把随机训练函数变成确定性的评估函数。
+计算图中的切断梯度会保留某个数值却改变对其来源的求导关系。离散索引选择、阈值决策、随机采样按光滑函数处理时需要额外约定。训练模式和是否记录梯度属于两件独立的事：随机失活等机制影响前向函数，梯度记录决定是否保存求导依赖。关闭梯度记录后，随机训练函数仍是随机的，评估所需的确定性来自显式切换到评估模式。
 
 \begin{algorithm}[标量损失的反向自动微分]
-\label{alg:rev3-reverse}
+\label{alg:tensor-reverse}
 \textbf{输入：}有限无环计算图、输入与固定参数，各节点的前向运算及局部反向规则。\textbf{输出：}损失对各可训练参数的梯度。
-\begin{algorithmic}[1]
+\begin{lfsalgorithmic}[1]
 \State 按拓扑顺序执行前向计算，保存局部求导状态，得到标量损失 $\mathcal L$
 \State 所有伴随量置零，$\overline{\mathcal L}\gets1$
-\For{逆拓扑顺序中的节点 $v=f(u_1,\ldots,u_k)$}
-  \For{每条输入边 $(u_i,v)$，包括指向同一节点的重复边}
-    \State $\overline u_i\gets\overline u_i+J_{f,u_i}^{\mathsf T}\overline v$
+\For{逆拓扑顺序中的节点 $\vect{v}=f(\vect{u}_1,\ldots,\vect{u}_k)$}
+  \For{每条输入边 $(\vect{u}_i,\vect{v})$，包括指向同一节点的重复边}
+    \State $\overline{\vect{u}}_i\gets\overline{\vect{u}}_i+\mat{J}_{f,u_i}^{\mathrm{T}}\overline{\vect{v}}$
   \EndFor
 \EndFor
 \State 完成全部反向计算后，优化器才可更新参数
 \State \Return 各可训练参数节点的伴随量
-\end{algorithmic}
+\end{lfsalgorithmic}
 \textbf{不变量：}访问某节点时，其所有后继已将经过各自路径的贡献累加到该节点。若单个基本运算的反向成本与前向同阶，总算术成本与计算图执行成本同阶；保存中间状态的内存另计。不可微点采用已声明的求导约定。
 \end{algorithm}
 
-\section{分类损失的导数及数值稳定性}
+\section{分类损失的导数与数值稳定性}
 
 \subsection{Softmax 的雅可比}
-设单个样本的分数列向量为 $u\in\Real^C$，其第 $j$ 类概率为
+设单个样本的分数列向量为 $\vect{u}\in\Real^C$，其第 $j$ 类概率为
 \begin{equation}
- q_j=\frac{\exp(u_j)}{S},\qquad S=\sum_{k=1}^{C}\exp(u_k).
+ q_j=\frac{\exp(u_j)}{\mat{S}},\qquad \mat{S}=\sum_{k=1}^{C}\exp(u_k).
 \end{equation}
 分子在 $j=r$ 时依赖 $u_r$，分母在所有情况下都依赖 $u_r$。同时求导，得到
 \begin{align}
  \frac{\partial q_j}{\partial u_r}
- &=\frac{\mathbf1[j=r]\exp(u_j)S-\exp(u_j)\exp(u_r)}{S^2}\\
+ &=\frac{\mathbf1[j=r]\exp(u_j)\mat{S}-\exp(u_j)\exp(u_r)}{\mat{S}^2}\\
  &=q_j\bigl(\mathbf1[j=r]-q_r\bigr).
 \end{align}
 因此对角元素为 $q_j(1-q_j)$，非对角元素为 $-q_jq_r$，矩阵形式为
 \begin{equation}
- J_{\softmax}=\operatorname{diag}(q)-qq^{\mathsf T}.
- \label{eq:rev3-softmax-jac}
+ \mat{J}_{\softmax}=\operatorname{diag}(\vect{q})-\vect{q}\vect{q}^{\mathrm{T}}.
+ \label{eq:tensor-softmax-jac}
 \end{equation}
-非对角项体现类别之间的竞争：一个分数升高时，其他类别概率会因公共分母增大而下降。只保留对角项会遗漏这种耦合。
+非对角项体现类别之间的竞争：一个分数升高时，其他类别概率会因公共分母增大而下降。对角近似会遗漏这种耦合。
 
-给定概率端的梯度 $g=\overline q$，式\eqref{eq:rev3-softmax-jac}与 $g$ 的乘积可以写为
+给定概率端的梯度 $\vect{g}=\overline{\vect{q}}$，式\eqref{eq:tensor-softmax-jac}与 $\vect{g}$ 的乘积可以写为
 \begin{equation}
- \overline u=q\odot\left(g-(q^{\mathsf T}g)\mathbf1_C\right).
+ \overline{\vect{u}}=\vect{q}\odot\left(\vect{g}-(\vect{q}^{\mathrm{T}}\vect{g})\mathbf1_C\right).
 \end{equation}
 显式雅可比需要 $C^2$ 个元素，而这个向量形式只需要长度为 $C$ 的数组及一次内积。这种写法以向量运算代替了显式矩阵存储。
 
-由于 $J_{\softmax}\mathbf1_C=0$，沿所有分数同时增加相同常数的方向，概率不变。这也可由 $\softmax(u+c\mathbf1_C)=\softmax(u)$ 直接验证。对归一化交叉熵，其分数梯度各分量之和为零，正是同一不变性的另一种表现。
+由于 $\mat{J}_{\softmax}\mathbf1_C=0$，沿所有分数同时增加相同常数的方向，概率不变。这也可由 $\softmax(\vect{u}+c\mathbf1_C)=\softmax(\vect{u})$ 直接验证。对归一化交叉熵，其分数梯度各分量之和为零，正是同一不变性的另一种表现。
 
 \subsection{交叉熵梯度化简}
 设目标分布 $y_j\ge0$ 且 $\sum_jy_j=1$，交叉熵为 $\ell=-\sum_jy_j\log q_j$。先对概率求导，再代入 Softmax 雅可比：
@@ -275,146 +319,146 @@ $(XW_1+\mathbf1_Bb_1^{\mathsf T})W_2+\mathbf1_Bb_2^{\mathsf T}$
  &=\sum_j\left(-\frac{y_j}{q_j}\right)
             q_j\bigl(\mathbf1[j=r]-q_r\bigr)\\
  &=-y_r+q_r\sum_jy_j=q_r-y_r.
- \label{eq:rev3-ce-grad}
+ \label{eq:tensor-ce-grad}
 \end{align}
-因此，对 $B$ 个样本取平均并沿类别轴归一化时，$\overline U=\frac{Q-Y}{B}$。独热标签是 $Y$ 的特例；软标签只要保持非负且行和为一，也满足相同公式。
+因此，对 $B$ 个样本取平均并沿类别轴归一化时，$\overline{\mat{U}}=\frac{\mat{Q}-\mat{Y}}{B}$。独热标签是 $\mat{Y}$ 的特例；软标签只要保持非负且行和为一，也满足相同公式。
 
-若目标权重之和为 $s\ne1$，梯度实际为 $sq-y$，不能继续机械使用 $q-y$。例如多标签向量可以同时含多个一，其语义是多个二元事件，通常不应强行放入互斥类别的归一化模型。这说明损失的张量形状相同，也不保证任务定义相同。
+若目标权重之和为 $s\ne1$，梯度实际为 $s\vect{q}-\vect{y}$，$\vect{q}-\vect{y}$ 只对应 $s=1$ 的情形。例如多标签向量可以同时含多个一，其语义是多个二元事件，通常不应强行放入互斥类别的归一化模型。损失的张量形状相同，任务定义仍可能不同。
 
 \subsection{分数空间损失}
 对独热目标类别 $k$，交叉熵可以直接写为
 \begin{equation}
- \ell(u,k)=-u_k+\log\sum_j e^{u_j}.
+ \ell(\vect{u},k)=-u_k+\log\sum_j \conste{}^{u_j}.
 \end{equation}
 令 $m=\max_j u_j$，利用指数的公共因子得到
 \begin{equation}
- \log\sum_j e^{u_j}=m+\log\sum_j e^{u_j-m}.
- \label{eq:rev3-logsumexp}
+ \log\sum_j \conste{}^{u_j}=m+\log\sum_j \conste{}^{u_j-m}.
+ \label{eq:tensor-logsumexp}
 \end{equation}
-右侧指数的自变量均不大于零，且至少一个等于零，从而避免直接计算巨大正分数的指数。对于有限分数，数学上的 Softmax 概率严格为正；浮点计算却可能将极小概率舍入为零。若先形成概率再取对数，就可能得到无穷损失；直接使用式\eqref{eq:rev3-logsumexp}可以避免这条不稳定路径。
+右侧指数的自变量均不大于零，且至少一个等于零，从而避免直接计算巨大正分数的指数。对于有限分数，数学上的 Softmax 概率严格为正；浮点计算却可能将极小概率舍入为零。若先形成概率再取对数，就可能得到无穷损失；直接使用式\eqref{eq:tensor-logsumexp}可以避免这条不稳定路径。
 
-例如 $u=(1000,999)$，直接计算 $e^{1000}$ 可能溢出，减去最大值后只需计算 $(1,e^{-1})$。两种写法在实数算术中等价，数值可靠性却不同。稳定变换也不能修复输入本身已经包含的非有限值；对异常输入仍应追溯其上游来源。
+例如 $\vect{u}=(1000,999)$，直接计算 $\conste{}^{1000}$ 可能溢出，减去最大值后只需计算 $(1,\conste{}^{-1})$。两种写法在实数算术中等价，数值可靠性却不同。稳定变换无法修复输入本身已经包含的非有限值，异常输入需要追溯其上游来源。
 
-\subsection{二分类及多标签的对应关系}
+\subsection{二分类和多标签的对应关系}
 二分类用一个分数 $z$ 表示正类相对于负类的对数几率，通过
-$\sigma(z)=\frac{1}{1+e^{-z}}$ 得到正类概率。对目标 $y\in[0,1]$，二元交叉熵为
+$\sigma(z)=\frac{1}{1+\conste{}^{-z}}$ 得到正类概率。对目标 $y\in[0,1]$，二元交叉熵为
 \begin{align}
  \ell(z,y)&=-y\log\sigma(z)-(1-y)\log(1-\sigma(z))\\
- &=\log(1+e^z)-yz\\
- &=\max(z,0)-yz+\log(1+e^{-|z|}).
+ &=\log(1+\conste{}^z)-yz\\
+ &=\max(z,0)-yz+\log(1+\conste{}^{-|z|}).
 \end{align}
 最后一式给出稳定的计算形式。由中间一式求导可得
 \begin{equation}
- \frac{\partial\ell}{\partial z}=\frac{e^z}{1+e^z}-y=\sigma(z)-y.
+ \frac{\partial\ell}{\partial z}=\frac{\conste{}^z}{1+\conste{}^z}-y=\sigma(z)-y.
 \end{equation}
 把两类 Softmax 分数设为 $(0,z)$，恰好得到相同的概率和损失，因此二者的梯度结果是一致的。多标签任务则对每个类别分别构造这样的二元损失，不要求各类别概率之和为一。
 
-模型输出原始分数之后，应将其交给包含该稳定变换的损失计算。若先进行一次 Sigmoid，再把所得概率当成分数传入同类损失，相当于优化另一个复合函数，既改变预测范围，也改变梯度。是否已经执行概率变换应由公式判断，而不是仅凭变量名称判断。
+模型输出原始分数之后，应将其交给包含该稳定变换的损失计算。若先进行一次 Sigmoid，再把所得概率当成分数传入同类损失，相当于优化另一个复合函数，既改变预测范围，也改变梯度。是否已执行概率变换由公式决定，变量名称只提供约定。
 
 \begin{example}
-\label{q:ch3:example:01}
 考虑两层感知机（Multilayer Perceptron，MLP）：
 \begin{equation}
- Z=XW_1+\mathbf1_Bb_1^{\mathsf T},\quad
- A=\operatorname{ReLU}(Z),\quad
- U=AW_2+\mathbf1_Bb_2^{\mathsf T},\quad Q=\softmax(U).
+ \mat{Z}=\mat{X}\mat{W}_1+\mathbf1_B\vect{b}_1^{\mathrm{T}},\quad
+ \mat{A}=\operatorname{ReLU}(\mat{Z}),\quad
+ \mat{U}=\mat{A}\mat{W}_2+\mathbf1_B\vect{b}_2^{\mathrm{T}},\quad \mat{Q}=\softmax(\mat{U}).
 \end{equation}
 取 $B=d=h=C=2$，给定
 \begin{equation}
- X=\begin{bmatrix}1&2\\-2&1\end{bmatrix},\quad
- W_1=\begin{bmatrix}1&-1\\1&1\end{bmatrix},\quad
- W_2=\begin{bmatrix}\frac{1}{2}&-\frac{1}{2}\\-\frac{1}{2}&\frac{1}{2}\end{bmatrix},
- \quad b_1=b_2=\begin{bmatrix}0\\0\end{bmatrix}.
+ \mat{X}=\begin{bmatrix}1&2\\-2&1\end{bmatrix},\quad
+ \mat{W}_1=\begin{bmatrix}1&-1\\1&1\end{bmatrix},\quad
+ \mat{W}_2=\begin{bmatrix}\frac{1}{2}&-\frac{1}{2}\\-\frac{1}{2}&\frac{1}{2}\end{bmatrix},
+ \quad \vect{b}_1=\vect{b}_2=\begin{bmatrix}0\\0\end{bmatrix}.
 \end{equation}
-第一个样本属于第1类，第二个样本属于第2类，故目标矩阵 $Y=I_2$。
+第一个样本属于第1类，第二个样本属于第2类，故目标矩阵 $\mat{Y}=\mat{I}_2$。
 
 逐步相乘得到
 \begin{align}
- Z&=\begin{bmatrix}1+2&-1+2\\-2+1&2+1\end{bmatrix}
+ \mat{Z}&=\begin{bmatrix}1+2&-1+2\\-2+1&2+1\end{bmatrix}
    =\begin{bmatrix}3&1\\-1&3\end{bmatrix},\\
- A&=\begin{bmatrix}3&1\\0&3\end{bmatrix},\qquad
- U=\begin{bmatrix}1&-1\\-\frac{3}{2}&\frac{3}{2}\end{bmatrix}.
+ \mat{A}&=\begin{bmatrix}3&1\\0&3\end{bmatrix},\qquad
+ \mat{U}=\begin{bmatrix}1&-1\\-\frac{3}{2}&\frac{3}{2}\end{bmatrix}.
 \end{align}
 第二个样本的第一隐藏单元处在 ReLU 负区间，因此输出为零。定义
-$a=(1+e^2)^{-1}\approx0.119203$，$b=(1+e^3)^{-1}\approx0.047426$，则
+$a=(1+\conste{}^2)^{-1}\approx0.119203$，$b=(1+\conste{}^3)^{-1}\approx0.047426$，则
 \begin{equation}
- Q=\begin{bmatrix}1-a&a\\b&1-b\end{bmatrix}
+ \mat{Q}=\begin{bmatrix}1-a&a\\b&1-b\end{bmatrix}
  \approx\begin{bmatrix}0.880797&0.119203\\0.047426&0.952574\end{bmatrix}.
 \end{equation}
 取批量平均交叉熵，有
 \begin{equation}
  \mathcal L=-\frac12\bigl(\log(1-a)+\log(1-b)\bigr)
- =\frac12\bigl(\log(1+e^{-2})+\log(1+e^{-3})\bigr)
+ =\frac12\bigl(\log(1+\conste{}^{-2})+\log(1+\conste{}^{-3})\bigr)
  \approx0.087758.
 \end{equation}
 至此，损失值、所有中间量和参数均来自同一次前向计算，反向过程应保持这组数值不变。
 
-\begin{center}
+\begin{figure}[htbp]
+\centering
 \begin{tikzpicture}[>=Stealth,every node/.style={font=\small},
  box/.style={draw,rounded corners,align=center,minimum width=21mm,minimum height=12mm}]
-\node[box] (x) at (0,0) {$X$\\$B\times d$};
-\node[box] (z) at (2.5,0) {$Z$\\$B\times h$};
-\node[box] (a) at (5,0) {$A$\\$B\times h$};
-\node[box] (u) at (7.5,0) {$U$\\$B\times C$};
+\node[box] (x) at (0,0) {$\mat{X}$\\$B\times d$};
+\node[box] (z) at (2.5,0) {$\mat{Z}$\\$B\times h$};
+\node[box] (a) at (5,0) {$\mat{A}$\\$B\times h$};
+\node[box] (u) at (7.5,0) {$\mat{U}$\\$B\times C$};
 \node[box] (l) at (10,0) {$\mathcal L$\\标量};
 \draw[->] (x)--node[above] {仿射}(z);
 \draw[->] (z)--node[above] {ReLU}(a);
 \draw[->] (a)--node[above] {仿射}(u);
 \draw[->] (u)--node[above] {交叉熵}(l);
-\draw[->,dashed] (l.south) to[bend left=32] node[below] {$G$}(u.south);
-\draw[->,dashed] (u.south) to[bend left=32] node[below] {$GW_2^{\mathsf T}$}(a.south);
-\draw[->,dashed] (a.south) to[bend left=32] node[below] {$D$}(z.south);
-\node at (2.5,1.15) {$W_1,b_1$};\node at (7.5,1.15) {$W_2,b_2$};
+\draw[->,dashed] (l.south) to[bend left=32] node[below] {$\mat{G}$}(u.south);
+\draw[->,dashed] (u.south) to[bend left=32] node[below] {$\mat{G}\mat{W}_2^{\mathrm{T}}$}(a.south);
+\draw[->,dashed] (a.south) to[bend left=32] node[below] {$\mat{D}$}(z.south);
+\node at (2.5,1.15) {$\mat{W}_1,\vect{b}_1$};\node at (7.5,1.15) {$\mat{W}_2,\vect{b}_2$};
 \end{tikzpicture}
-\captionof{figure}{两层网络的前向与反向路径。图中 $G=\overline U$，$D=\overline Z$；各仿射层还分别产生权重与偏置梯度。}
-\end{center}
+\caption{两层网络的前向与反向路径。图中 $\mat{G}=\overline{\mat{U}}$，$\mat{D}=\overline{\mat{Z}}$；各仿射层还分别产生权重与偏置梯度。}\label{fig:math-two-layer-autodiff}
+\end{figure}
 
 由交叉熵的推导，首先得到
 \begin{equation}
- G=\overline U=\frac{Q-Y}{2}
+ \mat{G}=\overline{\mat{U}}=\frac{\mat{Q}-\mat{Y}}{2}
  =\frac12\begin{bmatrix}-a&a\\b&-b\end{bmatrix}.
 \end{equation}
 输出层参数梯度为
 \begin{align}
- \overline W_2=A^{\mathsf T}G
+ \overline{\mat{W}}_2=\mat{A}^{\mathrm{T}}\mat{G}
  &=\begin{bmatrix}-\frac{3a}{2}&\frac{3a}{2}\\\frac{-a+3b}{2}&\frac{a-3b}{2}\end{bmatrix}
  \approx\begin{bmatrix}-0.178804&0.178804\\0.011537&-0.011537\end{bmatrix},\\
- \overline b_2=G^{\mathsf T}\mathbf1_2
+ \overline b_2=\mat{G}^{\mathrm{T}}\mathbf1_2
  &=\begin{bmatrix}\frac{b-a}{2}\\\frac{a-b}{2}\end{bmatrix}
  \approx\begin{bmatrix}-0.035889\\0.035889\end{bmatrix}.
 \end{align}
-在计算隐藏激活的梯度时仍使用原来的 $W_2$：
+在计算隐藏激活的梯度时仍使用原来的 $\mat{W}_2$：
 \begin{equation}
- \overline A=GW_2^{\mathsf T}
+ \overline{\mat{A}}=\mat{G}\mat{W}_2^{\mathrm{T}}
  =\frac12\begin{bmatrix}-a&a\\b&-b\end{bmatrix}.
 \end{equation}
-这里 $\overline A$ 恰好与 $G$ 数值相同，是本例所选权重的结果，不是一般恒等式。ReLU 的局部导数矩阵为
-$\mathbf1[Z>0]=\begin{bmatrix}1&1\\0&1\end{bmatrix}$，故
+这里 $\overline{\mat{A}}$ 恰好与 $\mat{G}$ 数值相同，是本例所选权重的结果，不是一般恒等式。ReLU 的局部导数矩阵为
+$\mathbf1[\mat{Z}>0]=\begin{bmatrix}1&1\\0&1\end{bmatrix}$，故
 \begin{equation}
- D=\overline Z=\overline A\odot\mathbf1[Z>0]
+ \mat{D}=\overline{\mat{Z}}=\overline{\mat{A}}\odot\mathbf1[\mat{Z}>0]
  =\frac12\begin{bmatrix}-a&a\\0&-b\end{bmatrix}.
 \end{equation}
 第二个样本的第一隐藏单元反向被阻断，这与其前向处于负区间相对应。
 
-继续使用式\eqref{eq:rev3-linear-backward}可得
+继续使用式\eqref{eq:tensor-linear-backward}可得
 \begin{align}
- \overline W_1=X^{\mathsf T}D
+ \overline{\mat{W}}_1=\mat{X}^{\mathrm{T}}\mat{D}
  &=\begin{bmatrix}-\frac{a}{2}&\frac{a}{2}+b\\-a&a-\frac{b}{2}\end{bmatrix}
  \approx\begin{bmatrix}-0.059601&0.107027\\-0.119203&0.095490\end{bmatrix},\\
- \overline b_1=D^{\mathsf T}\mathbf1_2
+ \overline b_1=\mat{D}^{\mathrm{T}}\mathbf1_2
  &=\begin{bmatrix}-\frac{a}{2}\\\frac{a-b}{2}\end{bmatrix}
  \approx\begin{bmatrix}-0.059601\\0.035889\end{bmatrix},\\
- \overline X=DW_1^{\mathsf T}
+ \overline{\mat{X}}=\mat{D}\mat{W}_1^{\mathrm{T}}
  &=\begin{bmatrix}-a&0\\\frac{b}{2}&-\frac{b}{2}\end{bmatrix}.
 \end{align}
-输入梯度虽然不是这里需要更新的参数，却仍有明确含义：它描述当前损失对输入特征的局部敏感度。若 $X$ 来自更早的可训练模块，这个梯度正是该模块收到的上游信息。
+输入梯度不参与本层参数更新，它有明确含义：描述当前损失对输入特征的局部敏感度。若 $\mat{X}$ 来自更早的可训练模块，这个梯度正是该模块收到的上游信息。
 
-以 $W_{1,11}$ 为例，其梯度为 $-\frac{a}{2}\approx-0.059601$。仅对这个坐标施加正扰动 $\delta$ 时，一阶损失变化约为 $-0.059601\delta$。如果所有参数沿负梯度作足够小的共同更新，则一阶变化为 $-\eta\|\nabla_\theta\mathcal L\|^2$。这只是在可微邻域中的局部判断；过大的步长可能跨过激活边界或使高阶项占据主导，因此不能从梯度符号直接推断任意步长都会降低损失。
+以 $\mat{W}_{1,11}$ 为例，其梯度为 $-\frac{a}{2}\approx-0.059601$。仅对这个坐标施加正扰动 $\delta$ 时，一阶损失变化约为 $-0.059601\delta$。如果所有参数沿负梯度作足够小的共同更新，则一阶变化为 $-\eta\|\nabla_{\vect{\theta}}\mathcal L\|^2$。这只是在可微邻域中的局部判断；过大的步长可能跨过激活边界或使高阶项占据主导，因此梯度符号保证的只是足够小步长下的局部方向。
 
 本例完成了从输入、两次仿射变换、非线性和概率归一化，到损失以及全部参数梯度的闭合计算。每个矩阵均可用形状、逐元素求导和数值扰动交叉核对，三种证据互相补充。
 \end{example}
 
-\section{广播、归约及嵌入查表}
+\section{广播、归约和嵌入查表}
 
 \subsection{广播运算的反向归约}
 广播（broadcasting）把长度为一或缺失的轴按规则扩展，使同一个参数参与多个位置的运算。广播表达参数共享，实际存储可通过索引步长实现。对 $Z_{ij}=X_{ij}+b_j$，有
@@ -424,11 +468,11 @@ $\mathbf1[Z>0]=\begin{bmatrix}1&1\\0&1\end{bmatrix}$，故
 \end{equation}
 若 $Z_{itj}=X_{itj}+b_j$，则 $b_j$ 同时沿样本轴和位置轴广播，故
 \begin{equation}
- \overline b_j=\sum_{i=1}^{B}\sum_{t=1}^{T}\overline Z_{itj}.
+ \overline b_j=\sum_{i=1}^{B}\sum_{t=1}^{\mathrm{T}}\overline Z_{itj}.
 \end{equation}
-反向后应恢复偏置原来的形状，而不是保留扩展后的每个位置一份梯度。
+反向完成后，梯度恢复为偏置原来的形状，即每个元素一份，而不是扩展后的每个位置一份。
 
-例如 $B=T=2$，某一通道的上游梯度在四个位置分别为 $1,2,3,4$，共享偏置收到的梯度是 $10$。如果前向还有一个在四个位置上取平均的损失，其 $\frac{1}{4}$ 系数应已通过上游梯度传来；不能在偏置反向时再无条件除以四。
+例如 $B=T=2$，某一通道的上游梯度在四个位置分别为 $1,2,3,4$，共享偏置收到的梯度是 $10$。如果前向还有一个在四个位置上取平均的损失，其 $\frac{1}{4}$ 系数已经通过上游梯度传来，偏置反向时无需再除以四。
 
 反过来，归约求和 $s_j=\sum_iX_{ij}$ 的反向将 $\overline s_j$ 广播回每一行；均值 $s_j=B^{-1}\sum_iX_{ij}$ 的反向还要乘以 $\frac{1}{B}$。广播与归约之所以互为对应，是因为它们分别表达共享和聚合。
 
@@ -437,61 +481,60 @@ $\mathbf1[Z>0]=\begin{bmatrix}1&1\\0&1\end{bmatrix}$，故
  \mathcal L=\frac1N\sum_{it}M_{it}\ell_{it},\qquad
  \overline U_{itj}=\frac{M_{it}}{N}(Q_{itj}-Y_{itj}).
 \end{equation}
-分母是有效位置数，而不一定是填充后张量的元素数。掩码固定时此式成立；若权重本身由可训练模块生成，分母和权重的求导需要另行处理。
+分母是有效位置数，填充后张量的元素数只在实际布局中使用。掩码固定时此式成立；权重本身由可训练模块生成时，分母和权重的求导需要另行处理。
 
 \subsection{嵌入查表的稀疏梯度}
-设词表大小为 $V$，嵌入矩阵为 $E\in\Real^{V\times d}$。编号 $k$ 的独热向量 $e_k$ 满足 $(e_k)_j=\mathbf1[j=k]$，因此
+设词表大小为 $V$，嵌入矩阵为 $\mat{E}\in\Real^{V\times d}$。编号 $k$ 的独热向量 $\vect{e}_k$ 满足 $(\vect{e}_k)_j=\mathbf1[j=k]$，因此
 \begin{equation}
- e_k^{\mathsf T}E=E_{k,:}.
+ \vect{e}_k^{\mathrm{T}}\mat{E}=\mat{E}_{k,:}.
 \end{equation}
-对一批编号 $k_1,\ldots,k_B$，令选择矩阵 $S\in\{0,1\}^{B\times V}$ 的第 $i$ 行为 $e_{k_i}^{\mathsf T}$，则嵌入输出为 $H=SE$。根据线性层的求导结果，
+对一批编号 $k_1,\ldots,k_B$，令选择矩阵 $\mat{S}\in\{0,1\}^{B\times V}$ 的第 $i$ 行为 $e_{k_i}^{\mathrm{T}}$，则嵌入输出为 $H=\mat{S}\mat{E}$。根据线性层的求导结果，
 \begin{equation}
- \overline E=S^{\mathsf T}\overline H,\qquad
- \overline E_{j,:}=\sum_{i:k_i=j}\overline H_{i,:}.
- \label{eq:rev3-embedding}
+ \overline{\mat{E}}=\mat{S}^{\mathrm{T}}\overline H,\qquad
+ \overline{\mat{E}}_{j,:}=\sum_{i:k_i=j}\overline H_{i,:}.
+ \label{eq:tensor-embedding}
 \end{equation}
 选择矩阵仅用于论证；实际计算可以直接按编号访问参数行，避免构造巨大的独热数组。
 
-设编号为 $(2,1,2)$，按本章从一开始的行编号，三个输出的梯度分别为 $(1,2)$、$(3,4)$、$(5,6)$。则第1行的梯度为 $(3,4)$，第2行为 $(6,8)$，未被选中的其他行在这条查表路径上的梯度为零。第2行必须把两次出现的贡献相加，而不是用最后一次覆盖前一次。
-\footnote{程序中的词元编号常从零开始，书中矩阵行号从一开始。转换时应整体调整编号约定，不应只修改一处索引。}
+设编号为 $(2,1,2)$，按本章从一开始的行编号，三个输出的梯度分别为 $(1,2)$、$(3,4)$、$(5,6)$。则第1行的梯度为 $(3,4)$，第2行为 $(6,8)$，未被选中的其他行在这条查表路径上的梯度为零。第2行把两次出现的贡献相加，覆盖式写入会丢失一次出现。
+\footnote{程序中的词元编号常从零开始，书中矩阵行号从一开始。转换时应整体调整编号约定，只修改一处索引会留下不一致。}
 
-查表不提供对整数编号本身的通常导数；它对被选取的连续参数可微。若嵌入表还被其他路径使用，例如同时作为输出投影的权重，那么那些路径的梯度也要累加。即使某一行的数据梯度为零，动量状态或权重衰减仍可能使优化步骤改变该行，因此不能把“本批未出现”直接等同于“参数绝不变化”。
+查表对整数编号本身没有通常导数，对被选取的连续参数可微。若嵌入表还被其他路径使用，例如同时作为输出投影的权重，那些路径的梯度也要累加。某一行的数据梯度为零时，动量状态或权重衰减仍可能使优化步骤改变该行，“本批未出现”并不保证参数不变。
 
 对长度为 $T$ 的序列，显式独热表示需要 $BTV$ 个元素，编号只需要 $BT$ 个整数；查表后的连续表示需要 $BTd$ 个元素。这种计算表示的变化不改变数学含义，却决定了大词表输入是否具有可行的存储成本。
 
-\section{有限差分及梯度核验}
+\section{有限差分与梯度核验}
 
 \subsection{中心差分的误差来源}
-将全部参数按固定顺序看作向量 $\theta$，选取单位方向 $v$，定义单变量函数 $f(t)=\mathcal L(\theta+tv)$。若该方向邻域内具有足够光滑的三阶导数，则 Taylor 展开给出
+将全部参数按固定顺序看作向量 $\vect{\theta}$，选取单位方向 $\vect{v}$，定义单变量函数 $f(t)=\mathcal L(\vect{\theta}+t\vect{v})$。若该方向邻域内具有足够光滑的三阶导数，则 Taylor 展开给出
 \begin{equation}
- \frac{\mathcal L(\theta+\varepsilon v)-\mathcal L(\theta-\varepsilon v)}{2\varepsilon}
- =v^{\mathsf T}\nabla_\theta\mathcal L+O(\varepsilon^2).
- \label{eq:rev3-finite-diff}
+ \frac{\mathcal L(\vect{\theta}+\varepsilon \vect{v})-\mathcal L(\vect{\theta}-\varepsilon \vect{v})}{2\varepsilon}
+ =\vect{v}^{\mathrm{T}}\nabla_{\vect{\theta}}\mathcal L+O(\varepsilon^2).
+ \label{eq:tensor-finite-diff}
 \end{equation}
-中心差分消去了展开中的偶次项，截断误差为二阶。但当 $\varepsilon$ 很小时，两个接近的损失值相减会放大舍入误差；若损失求值的绝对误差量级为 $uM$，差商中的该项约为 $O(\frac{uM}{\varepsilon})$，其中 $u$ 为机器精度尺度，$M$ 为求值的相关尺度。
+中心差分消去了展开中的偶次项，截断误差为二阶。但当 $\varepsilon$ 很小时，两个接近的损失值相减会放大舍入误差；若损失求值的绝对误差量级为 $u\mat{M}$，差商中的该项约为 $O(\frac{u\mat{M}}{\varepsilon})$，其中 $u$ 为机器精度尺度，$\mat{M}$ 为求值的相关尺度。
 
-因此步长不是越小越好。应使用足够精细的数值精度，在一组合理的步长上观察误差先下降、随后受舍入影响的区间。根据上述理想误差模型平衡两项时，步长呈 $u^{\frac{1}{3}}$ 的尺度关系，但实际常数还取决于参数尺度、损失尺度和三阶导数；不能将它作为对所有模型固定适用的数值。
+步长因此存在一个合适区间，过小反而放大舍入误差。取足够精细的数值精度，在一组合理的步长上观察误差先下降、随后受舍入影响的区间。根据上述理想误差模型平衡两项时，步长呈 $u^{\frac{1}{3}}$ 的尺度关系，实际常数还取决于参数尺度、损失尺度和三阶导数，该尺度关系并不给出对所有模型通用的具体取值。
 
 \begin{example}
-\label{q:ch3:example:02}
-只扰动上述两层网络中的 $W_{1,11}$，将扰动记为 $t$。当 $|t|<\frac{1}{2}$ 时，四个隐藏预激活仍保持原来的正负状态，因此 ReLU 分支不变。此时两个正确类别的分数差分别为 $2+t$ 与 $3$，损失可以直接化为
+只扰动上述两层网络中的 $\mat{W}_{1,11}$，将扰动记为 $t$。当 $|t|<\frac{1}{2}$ 时，四个隐藏预激活仍保持原来的正负状态，因此 ReLU 分支不变。此时两个正确类别的分数差分别为 $2+t$ 与 $3$，损失可以直接化为
 \begin{equation}
- f(t)=\frac12\log(1+e^{-2-t})+\frac12\log(1+e^{-3}).
+ f(t)=\frac12\log(1+\conste{}^{-2-t})+\frac12\log(1+\conste{}^{-3}).
 \end{equation}
 由这个独立的标量表达式可得
 \begin{equation}
- f'(0)=-\frac{1}{2(1+e^2)}=-0.059601461\ldots,
+ f'(0)=-\frac{1}{2(1+\conste{}^2)}=-0.059601461\ldots,
 \end{equation}
-与矩阵反向结果一致。取 $\varepsilon=10^{-4}$，式\eqref{eq:rev3-finite-diff}同样给出约 $-0.059601461$。这一核对有意义，是因为它绕过了矩阵反向程序，直接从扰动后的损失计算变化。
+与矩阵反向结果一致。取 $\varepsilon=10^{-4}$，式\eqref{eq:tensor-finite-diff}同样给出约 $-0.059601461$。这次核对绕过了矩阵反向程序，直接从扰动后的损失计算变化，因而独立于前一条推导路径。
 \end{example}
 
 \subsection{梯度一致性的判定边界}
-梯度校验应固定输入、标签、参数及随机选择，并避免扰动跨越 ReLU 折点或离散分支。若原点本身位于不可微处，中心差分可能给出左右变化率的平均值，它并不等于实现选定的次梯度。随机失活若在两次求值时使用不同掩码，差商还会混入函数本身变化造成的噪声。
+梯度校验应固定输入、标签、参数及随机选择，并避免扰动跨越 ReLU 折点或离散分支。原点本身位于不可微处时，中心差分可能给出左右变化率的平均值，与实现选定的次梯度不一致。随机失活若在两次求值时使用不同掩码，差商还会混入函数本身变化造成的噪声。
 
 比较时应同时报告绝对误差和相对尺度。例如令 $a$ 为解析方向导数，$n$ 为数值差商，可考察 $|a-n|$，并辅以
 $\frac{|a-n|}{\max(\delta,|a|+|n|)}$，其中 $\delta>0$ 避免近零分母。只比较相对误差会对接近零的导数过度敏感，只比较绝对误差又可能掩盖大尺度量上的错误。
 
-梯度校验检查局部导数与计算图的一致性，轴的含义、标签和损失定义则需要结合任务核对。例如，沿样本轴执行 Softmax 仍可得到一致的数值梯度，但它归一化的是不同样本，而非同一样本的类别分数。因此，检查应从任务与轴的定义开始，再核对分量公式和数值导数。
+梯度校验检查局部导数与计算图的一致性，轴的含义、标签和损失定义则需要结合任务核对。例如，沿样本轴执行 Softmax 仍可得到一致的数值梯度，但它归一化的是不同样本，与同一样本的类别分数是两个对象。检查因此从任务与轴的定义开始，再核对分量公式和数值导数。
 
 
 
@@ -499,4 +542,4 @@ $\frac{|a-n|}{\max(\delta,|a|+|n|)}$，其中 $\delta>0$ 避免近零分母。�
 
 
 \chapterreferences
-\end{document}
+\lfsendchapterdocument

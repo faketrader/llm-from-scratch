@@ -1,0 +1,16 @@
+/* Roles remain explicit in titles; colors only assist recognition. */
+blockquote.warning { border-left-color: #b7791f; background: #fff7e8; }
+blockquote.assumption { border-left-color: #0d9488; }
+pre code { padding: 0; background: transparent; font-size: inherit; }
+.sourceCode .kw, .sourceCode .cf { color: #005a9c; font-weight: 600; }
+.sourceCode .st, .sourceCode .ch { color: #1b6b3a; }
+.sourceCode .co { color: #52615a; }
+.sourceCode .dv, .sourceCode .fl { color: #8b4513; }
+.sourceCode .fu, .sourceCode .bu { color: #6c3483; }
+
+/* Local Highlight.js tokens use the reader's existing code palette. */
+.hljs-keyword, .hljs-selector-tag, .hljs-literal { color: #7c3aed; }
+.hljs-string, .hljs-attr { color: #166534; }
+.hljs-number, .hljs-built_in { color: #0369a1; }
+.hljs-comment { color: #64748b; }
+.hljs-title, .hljs-function { color: #9a3412; }

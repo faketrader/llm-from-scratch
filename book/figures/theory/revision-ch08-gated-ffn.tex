@@ -1,19 +1,20 @@
 \documentclass[tikz,border=8pt]{standalone}
 \usepackage{ctex,amsmath}
 \usetikzlibrary{arrows.meta,positioning}
+\usepackage{../../mymath}
 \begin{document}
 \begin{tikzpicture}[>=Latex,font=\small,node distance=9mm and 11mm,
  box/.style={draw=blue!60!black,fill=blue!4,rounded corners,align=center,minimum height=10mm,text width=25mm}]
-\node[box] (x) {$X$\\$[B,T,d]$};
-\node[box,right=of x] (up) {$XW_1$\\$[B,T,f]$};
+\node[box] (x) {$\mat{X}$\\$[B,T,d]$};
+\node[box,right=of x] (up) {$\mat{X}\mat{W}_1$\\$[B,T,f]$};
 \node[box,right=of up] (act) {$\phi(\cdot)$};
-\node[box,right=of act] (down) {$\cdot W_2$\\$[B,T,d]$};
+\node[box,right=of act] (down) {$\cdot \mat{W}_2$\\$[B,T,d]$};
 \draw[->] (x)--(up);\draw[->] (up)--(act);\draw[->] (act)--(down);
-\node[box,below=21mm of x] (gx) {$X$\\$[B,T,d]$};
-\node[box,right=of gx,yshift=9mm] (gate) {$g(XW_g)$};
-\node[box,right=of gx,yshift=-9mm] (value) {$XW_u$};
+\node[box,below=21mm of x] (gx) {$\mat{X}$\\$[B,T,d]$};
+\node[box,right=of gx,yshift=9mm] (gate) {$g(\mat{X}\mat{W}_g)$};
+\node[box,right=of gx,yshift=-9mm] (value) {$\mat{X}\mat{W}_u$};
 \node[box,right=of gx,xshift=36mm] (mul) {逐元素乘法\\$[B,T,f]$};
-\node[box,right=of mul] (gd) {$\cdot W_d$\\$[B,T,d]$};
+\node[box,right=of mul] (gd) {$\cdot \mat{W}_d$\\$[B,T,d]$};
 \draw[->] (gx.east)--++(4mm,0)|-(gate);\draw[->] (gx.east)--++(4mm,0)|-(value);
 \draw[->] (gate.east)--(mul.west);\draw[->] (value.east)--(mul.west);\draw[->] (mul)--(gd);
 \end{tikzpicture}

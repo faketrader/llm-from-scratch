@@ -1,4 +1,4 @@
-\workbookchapter{优化及泛化}
+\workbookchapter{优化与泛化}
 
 \begin{exercises}
 \begin{exercise}\optional 对 $F(u,v)=\frac{2u^2+8v^2}{2}$，求梯度下降对任意初值收敛的学习率区间，以及平衡最坏方向收缩因子的学习率。解释边界取值为何不能保证收敛。
@@ -8,10 +8,10 @@
 \end{solution}
 \end{exercise}
 
-\begin{exercise}\optional 对式\tbobject{eq:opt-spectral}，证明目标值满足 $F(\theta_k)\leq\rho^{2k}F(\theta_0)$。指出正定假设在证明中的作用。
+\begin{exercise}\optional 对式\tbobject{eq:opt-spectral}，证明目标值满足 $F(\vect{\theta}_k)\leq\rho^{2k}F(\vect{\theta}_0)$。指出正定假设在证明中的作用。
 
 \begin{solution}
-将正定矩阵正交对角化 $H=U\Lambda U^{\mathsf T}$，令 $a=U^{\mathsf T}\theta_0$。则 $F(\theta_k)=\frac12\sum_i\lambda_i(1-\eta\lambda_i)^{2k}a_i^2\le\rho^{2k}\frac12\sum_i\lambda_i a_i^2$。正定性保证各项权重为正且稳定区间内 $\rho<1$；半正定时目标仍可能下降，但零特征方向不收缩，不能推出参数趋唯一零点。
+将正定矩阵正交对角化 $\mat{H}=\mat{U}\mat{\Lambda} \mat{U}^{\mathrm{T}}$，令 $\vect{a}=\mat{U}^{\mathrm{T}}\vect{\theta}_0$。则 $F(\vect{\theta}_k)=\frac12\sum_i\lambda_i(1-\eta\lambda_i)^{2k}a_i^2\le\rho^{2k}\frac12\sum_i\lambda_i a_i^2$。正定性保证各项权重为正且稳定区间内 $\rho<1$；半正定时目标仍可能下降，但零特征方向不收缩，不能推出参数趋唯一零点。
 \end{solution}
 \end{exercise}
 

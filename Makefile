@@ -1,34 +1,62 @@
 .DEFAULT_GOAL := textbook
-CHAPTERS := $(basename $(notdir $(wildcard book/textbook/chapters/*.tex)))
-CHAPTER_XREFS := book/chapter-xrefs.generated.tex
-.PHONY: figures check-references textbook workbook books release prune chapter chapters clean web serve-web
-check-references:
-	python3 scripts/check_reference_numbering.py
-$(CHAPTER_XREFS): scripts/update_chapter_references.py book/textbook/textbook.tex $(wildcard book/textbook/chapters/*.tex)
-	python3 scripts/update_chapter_references.py
-figures:
-	python3 scripts/build_theory_figures.py --kind tikz --referenced
-textbook: figures check-references $(CHAPTER_XREFS)
-	latexmk book/textbook/textbook.tex
+TEXTBOOK_ENTRY := book/textbook/textbook.tex
+CHAPTER_FILES := $(wildcard book/textbook/chapters/*.tex)
+CHAPTERS := $(basename $(notdir $(CHAPTER_FILES)))
+CHAPTER_TARGETS := $(addprefix chapter-,$(CHAPTERS))
+FIGURE_SOURCE_DIR := book/figures/theory
+DIST_DIR := dist
+TEXTBOOK_BUILD_PDF := build/textbook/textbook.pdf
+WORKBOOK_BUILD_PDF := build/workbook/workbook.pdf
+TEXTBOOK_DIST_PDF := $(DIST_DIR)/textbook.pdf
+WORKBOOK_DIST_PDF := $(DIST_DIR)/workbook.pdf
+BOOK_TEX_SOURCES := $(shell find book -type f -name '*.tex')
+REFERENCED_FIGURES := $(sort $(basename $(notdir $(shell grep -hEo 'figures/theory/[[:alnum:]_.-]+\.pdf' $(BOOK_TEX_SOURCES)))))
+FIGURE_PDFS := $(addprefix $(FIGURE_SOURCE_DIR)/,$(addsuffix .pdf,$(REFERENCED_FIGURES)))
+.PHONY: figure figures textbook workbook books release chapter chapters clean --all web serve serve-web $(CHAPTER_TARGETS)
+figure:
+	@test -n "$(FIGURE)" || (echo 'Usage: make figure FIGURE=revision-ch08-architecture'; exit 2)
+	@test "$(FIGURE)" = "$(notdir $(FIGURE))" || (echo 'FIGURE must be a filename stem, not a path'; exit 2)
+	@test -f "$(FIGURE_SOURCE_DIR)/$(FIGURE).tex" || (echo 'Unknown TikZ figure'; exit 2)
+	@$(MAKE) --no-print-directory "$(FIGURE_SOURCE_DIR)/$(FIGURE).pdf"
+$(FIGURE_SOURCE_DIR)/%.pdf: $(FIGURE_SOURCE_DIR)/%.tex $(FIGURE_SOURCE_DIR)/diagram_styles.tex book/mymath.sty
+	@mkdir -p "build/figures/$*"
+	latexmk -xelatex -outdir="$(abspath build/figures/$*)" "$<"
+	@if grep -Eq 'Missing character:|There were undefined references|Citation .* undefined' "build/figures/$*/$*.log"; then echo '$*: figure log contains missing glyphs or unresolved references'; exit 1; fi
+	@cp "build/figures/$*/$*.pdf" "$@"
+	@echo "Built $@"
+figures: $(FIGURE_PDFS)
+textbook: figures
+	latexmk $(TEXTBOOK_ENTRY)
+	@mkdir -p "$(DIST_DIR)"
+	@if ! cmp -s "$(TEXTBOOK_BUILD_PDF)" "$(TEXTBOOK_DIST_PDF)"; then cp "$(TEXTBOOK_BUILD_PDF)" "$(TEXTBOOK_DIST_PDF)"; echo "Published $(TEXTBOOK_DIST_PDF)"; fi
 books: textbook workbook
-release: books prune
+release: books
 workbook: textbook
-	python3 scripts/update_workbook_references.py
 	latexmk book/workbook/workbook.tex
-chapter: figures check-references $(CHAPTER_XREFS)
+	@mkdir -p "$(DIST_DIR)"
+	@if ! cmp -s "$(WORKBOOK_BUILD_PDF)" "$(WORKBOOK_DIST_PDF)"; then cp "$(WORKBOOK_BUILD_PDF)" "$(WORKBOOK_DIST_PDF)"; echo "Published $(WORKBOOK_DIST_PDF)"; fi
+chapter: figures
 	@test -n "$(CHAPTER)" || (echo 'Usage: make chapter CHAPTER=14-optimization-generalization'; exit 2)
 	@test -f "book/textbook/chapters/$(CHAPTER).tex" || (echo 'Unknown chapter'; exit 2)
-	latexmk "book/textbook/chapters/$(CHAPTER).tex"
-chapters: $(CHAPTER_XREFS)
-	@set -e; for chapter in $(CHAPTERS); do $(MAKE) chapter CHAPTER=$$chapter; done
-web:
-	npm ci --prefix web --ignore-scripts --no-audit --no-fund
-	python3 scripts/build_web_book.py
-	python3 scripts/check_web_book.py
-serve-web:
-	python3 -m http.server 8765 --bind 127.0.0.1 --directory build/web
-prune:
-	@for directory in build/textbook build/workbook build/chapters; do if test -d "$$directory"; then find "$$directory" -type f ! -name '*.pdf' ! -name '*.synctex.gz' -delete; find "$$directory" -depth -type d -empty -delete; fi; done
+	@printf '%s\n' $(CHAPTERS) | grep -Fxq "$(CHAPTER)" || (echo 'Chapter is not included in book/textbook/textbook.tex'; exit 2)
+	@$(MAKE) --no-print-directory textbook
+	@$(MAKE) --no-print-directory "chapter-$(CHAPTER)"
+$(CHAPTER_TARGETS): chapter-%:
+	@mkdir -p "build/chapters/$*/.biber-tmp"
+	PAR_GLOBAL_TMPDIR="$(abspath build/chapters/$*/.biber-tmp)" latexmk "book/textbook/chapters/$*.tex"
+chapters: textbook
+	@set -e; for chapter in $(CHAPTERS); do $(MAKE) --no-print-directory chapter-$$chapter; done
+web: books web/node_modules/.lfs-installed
+	node web/build.ts
+web/node_modules/.lfs-installed: web/package.json web/pnpm-lock.yaml
+	pnpm --dir web install --frozen-lockfile --ignore-scripts
+	touch $@
+serve:
+	node web/serve.ts
+serve-web: serve
 clean:
-	python3 -c "import shutil; shutil.rmtree('build', ignore_errors=True)"
-	rm -f book/chapter-xrefs.generated.tex book/workbook/tb-numbers.generated.tex
+	rm -rf -- build
+ifneq ($(filter --all,$(MAKECMDGOALS)),)
+	rm -rf -- dist
+endif
+--all:

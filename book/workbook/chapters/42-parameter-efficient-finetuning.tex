@@ -8,52 +8,52 @@
 \end{solution}
 \end{exercise}
 
-\begin{exercise} 从迹微分完整推导 $\nabla_A\mathcal L$、$\nabla_B\mathcal L$ 与 $\nabla_X\mathcal L$，逐步核对张量形状。
+\begin{exercise} 从迹微分完整推导 $\nabla_{\mat{A}}\mathcal L$、$\nabla_{\mat{B}}\mathcal L$ 与 $\nabla_{\mat{X}}\mathcal L$，逐步核对张量形状。
 
 \begin{solution}
-$dY=s(dB)AX+sB(dA)X+(W_0+sBA)dX$，代入 $dL=\operatorname{tr}(G^\mathsf T dY)$ 并循环移位，得到 $\nabla_BL=sGX^\mathsf TA^\mathsf T$、$\nabla_AL=sB^\mathsf TGX^\mathsf T$、$\nabla_XL=(W_0+sBA)^\mathsf TG$。其形状分别 $d_o\times r,r\times d_i,d_i\times n$；冻结 $W_0$ 不删除最后一式。
+$d\mat{Y}=s(d\mat{B})\mat{A}\mat{X}+s\mat{B}(d\mat{A})\mat{X}+(\mat{W}_0+s\mat{B}\mat{A})d\mat{X}$，代入 $dL=\operatorname{tr}(\mat{G}^{\mathrm{T}} d\mat{Y})$ 并循环移位，得到 $\nabla_{\mat{B}}L=s\mat{G}\mat{X}^{\mathrm{T}}\mat{A}^{\mathrm{T}}$、$\nabla_{\mat{A}}L=s\mat{B}^{\mathrm{T}}\mat{G}\mat{X}^{\mathrm{T}}$、$\nabla_{\mat{X}}L=(\mat{W}_0+s\mat{B}\mat{A})^{\mathrm{T}}\mat{G}$。其形状分别 $d_o\times r,r\times d_i,d_i\times n$；冻结 $\mat{W}_0$ 不删除最后一式。
 \end{solution}
 \end{exercise}
 
 \begin{exercise} 在本章数值例题中继续执行第二次梯度下降，分别计算两个因子的更新。解释为什么应同时用更新前的因子求本步梯度。
 
 \begin{solution}
-第一次后 $A_1=(1,-1),B_1=(0.1,0.1)^\mathsf T$，$y-t=(0.9,0.9)$，$A_1x=-1$。故 $\nabla_B=(-0.9,-0.9)^\mathsf T$，$\nabla_A=(0.18,0.36)$。步长0.1得 $B_2=(0.19,0.19)^\mathsf T$，$A_2=(0.982,-1.036)$。$A_2x=-1.09$，输出 $(0.7929,1.7929)$，损失 $0.7929^2=0.62869041$。若先改B再计算A梯度，则不再是同一点的一次普通梯度下降。
+第一次后 $\mat{A}_1=(1,-1),\mat{B}_1=(0.1,0.1)^{\mathrm{T}}$，$\vect{y}-\vect{t}=(0.9,0.9)$，$\mat{A}_1\vect{x}=-1$。故 $\nabla_{\mat{B}}=(-0.9,-0.9)^{\mathrm{T}}$，$\nabla_{\mat{A}}=(0.18,0.36)$。步长0.1得 $\mat{B}_2=(0.19,0.19)^{\mathrm{T}}$，$\mat{A}_2=(0.982,-1.036)$。$\mat{A}_2\vect{x}=-1.09$，输出 $(0.7929,1.7929)$，损失 $0.7929^2=0.62869041$。若先改B再计算A梯度，则不再是同一点的一次普通梯度下降。
 \end{solution}
 \end{exercise}
 
-\begin{exercise}\optional 证明对可逆 $R$，$(BR)(R^{-1}A)=BA$，并讨论这对通道可解释性和因子平均的影响。
+\begin{exercise}\optional 证明对可逆 $R$，$(\mat{B}R)(R^{-1}\mat{A})=\mat{B}\mat{A}$，并讨论这对通道可解释性和因子平均的影响。
 
 \begin{solution}
-由结合律 $(BR)(R^{-1}A)=B(RR^{-1})A=BA$。R可旋转或缩放通道，故单通道不具唯一语义，乘积才不变。不同适配器因子处于不同基时直接平均没有不变意义；应先对完整增量求和或对齐后再近似。
+由结合律 $(\mat{B}R)(R^{-1}\mat{A})=\mat{B}(RR^{-1})\mat{A}=\mat{B}\mat{A}$。R可旋转或缩放通道，故单通道不具唯一语义，乘积才不变。不同适配器因子处于不同基时直接平均没有不变意义；应先对完整增量求和或对齐后再近似。
 \end{solution}
 \end{exercise}
 
-\begin{exercise}\optional 若 $A$ 固定而只训练 $B$，增量行空间受到何种限制？与同时训练两个因子相比有何差别？
+\begin{exercise}\optional 若 $\mat{A}$ 固定而只训练 $\mat{B}$，增量行空间受到何种限制？与同时训练两个因子相比有何差别？
 
 \begin{solution}
-$\Delta W=BA$的每一行是A行的线性组合，故行空间包含于固定的 $\operatorname{row}(A)$；若输入x位于A零空间，则增量对x永远为零。共同训练A/B允许改变该子空间，但仍受秩上界r限制，优化非凸并不保证找到任意期望子空间。
+$\Delta \mat{W}=\mat{B}\mat{A}$的每一行是A行的线性组合，故行空间包含于固定的 $\operatorname{row}(\mat{A})$；若输入x位于A零空间，则增量对x永远为零。共同训练A/B允许改变该子空间，但仍受秩上界r限制，优化非凸并不保证找到任意期望子空间。
 \end{solution}
 \end{exercise}
 
 \begin{exercise} 利用第一步更新公式，比较固定 $\alpha$ 与固定 $s$ 时秩变化对初始期望增量的影响，明确初始化方差是否也发生变化。
 
 \begin{solution}
-B零初始化时 $\nabla_A=0$，一步增量为 $-\eta s^2GX^\mathsf TA^\mathsf TA$。若A各元素独立零均值、方差 $\sigma^2$，则 $\mathbb E A^\mathsf TA=r\sigma^2I$。固定 $s=\frac{\alpha}{r}$ 且固定alpha/方差，期望幅度正比 $\frac{\alpha^2\sigma^2}{r}$；固定s则正比 $s^2r\sigma^2$。若初始化方差也随r变化，必须把它代入，不能只按r判断。
+B零初始化时 $\nabla_{\mat{A}}=0$，一步增量为 $-\eta s^2\mat{G}\mat{X}^{\mathrm{T}}\mat{A}^{\mathrm{T}}\mat{A}$。若A各元素独立零均值、方差 $\sigma^2$，则 $\mathbb E \mat{A}^{\mathrm{T}}\mat{A}=r\sigma^2\mat{I}$。固定 $s=\frac{\alpha}{r}$ 且固定alpha/方差，期望幅度正比 $\frac{\alpha^2\sigma^2}{r}$；固定s则正比 $s^2r\sigma^2$。若初始化方差也随r变化，必须把它代入，不能只按r判断。
 \end{solution}
 \end{exercise}
 
 \begin{exercise} 构造两个秩一适配器，使其增量之和秩为二，验证直接相加因子产生交叉项。
 
 \begin{solution}
-取 $B_1=e_1,A_1=e_1^\mathsf T$ 与 $B_2=e_2,A_2=e_2^\mathsf T$，增量和为2维单位阵、秩2。但 $(B_1+B_2)(A_1+A_2)$ 是全一矩阵、秩1，并多出 $e_1e_2^\mathsf T+e_2e_1^\mathsf T$。拼接 $[B_1,B_2]$ 和纵向堆叠A可精确表示增量和。
+取 $\mat{B}_1=\vect{e}_1,\mat{A}_1=\vect{e}_1^{\mathrm{T}}$ 与 $\mat{B}_2=\vect{e}_2,\mat{A}_2=\vect{e}_2^{\mathrm{T}}$，增量和为2维单位阵、秩2。但 $(\mat{B}_1+\mat{B}_2)(\mat{A}_1+\mat{A}_2)$ 是全一矩阵、秩1，并多出 $\vect{e}_1\vect{e}_2^{\mathrm{T}}+\vect{e}_2\vect{e}_1^{\mathrm{T}}$。拼接 $[\mat{B}_1,\mat{B}_2]$ 和纵向堆叠A可精确表示增量和。
 \end{solution}
 \end{exercise}
 
-\begin{exercise} 对 $Y=D(W_q)X+sBAX$ 说明为什么不需要对量化码值求导却仍必须计算基座输入梯度；给出错误切断计算图的后果。
+\begin{exercise} 对 $\mat{Y}=\mat{D}(\mat{W}_q)\mat{X}+s\mat{B}\mat{A}\mat{X}$ 说明为什么不需要对量化码值求导却仍必须计算基座输入梯度；给出错误切断计算图的后果。
 
 \begin{solution}
-码值固定时只把 $D(W_q)$ 看作常矩阵，无需对离散码求导；但 $\nabla_XL=[D(W_q)+sBA]^\mathsf TG$ 仍包含基座项。对整条基座分支使用无梯度执行会丢失该项，影响更早层的适配器或可训练输入，从而改变目标梯度。
+码值固定时只把 $\mat{D}(\mat{W}_q)$ 看作常矩阵，无需对离散码求导；但 $\nabla_{\mat{X}}L=[\mat{D}(\mat{W}_q)+s\mat{B}\mat{A}]^{\mathrm{T}}\mat{G}$ 仍包含基座项。对整条基座分支使用无梯度执行会丢失该项，影响更早层的适配器或可训练输入，从而改变目标梯度。
 \end{solution}
 \end{exercise}
 
@@ -67,14 +67,14 @@ B零初始化时 $\nabla_A=0$，一步增量为 $-\eta s^2GX^\mathsf TA^\mathsf 
 \begin{exercise}\optional 对瓶颈 Adapter 证明：若非线性替换为恒等且偏置固定，可以合成一个仿射映射；进一步说明何时增量才是纯线性的。保留非线性时为何一般不能如此合并？
 
 \begin{solution}
-若 $y=x+U\phi(Dx+b_d)+b_u$ 且 $\phi$ 为恒等，则 $y=(I+UD)x+(Ub_d+b_u)$，是仿射映射；只有附加偏置 $Ub_d+b_u=0$ 时才是纯线性增量。保留ReLU等非线性时雅可比随x变化，一般无法由单一常矩阵和偏置表示。固定偏置不等于偏置为零，原题已据此澄清。
+若 $\vect{y}=\vect{x}+\mat{U}\phi(\mat{D}\vect{x}+\vect{b}_d)+\vect{b}_u$ 且 $\phi$ 为恒等，则 $\vect{y}=(\mat{I}+\mat{U}\mat{D})\vect{x}+(\mat{U}\vect{b}_d+\vect{b}_u)$，是仿射映射；只有附加偏置 $\mat{U}\vect{b}_d+\vect{b}_u=0$ 时才是纯线性增量。保留ReLU等非线性时雅可比随x变化，一般无法由单一常矩阵和偏置表示。固定偏置不等于偏置为零，原题已据此澄清。
 \end{solution}
 \end{exercise}
 
 \begin{exercise}\optional 分析将键向量缩放移动到 softmax 之后是否等价，并用单查询、两个键的例子说明原因。
 
 \begin{solution}
-取q=1、键 $(0,1)$、值 $(0,1)$，原输出为 $\frac{e}{1+e}$。把键乘2后为 $\frac{e^2}{1+e^2}$；把原输出乘2则为 $\frac{2e}{1+e}$，不仅不同，后者还超过值凸包。键缩放改变概率分配，不能移到Softmax后的值缩放。
+取q=1、键 $(0,1)$、值 $(0,1)$，原输出为 $\frac{\conste}{1+\conste}$。把键乘2后为 $\frac{\conste{}^2}{1+\conste{}^2}$；把原输出乘2则为 $\frac{2\conste}{1+\conste}$，不仅不同，后者还超过值凸包。键缩放改变概率分配，不能移到Softmax后的值缩放。
 \end{solution}
 \end{exercise}
 
@@ -85,10 +85,10 @@ B零初始化时 $\nabla_A=0$，一步增量为 $-\eta s^2GX^\mathsf TA^\mathsf 
 \end{solution}
 \end{exercise}
 
-\begin{exercise} 设 $W\in\mathbb R^{d\times d}$ 满秩，LoRA 增量为 $BA$，其中 $B\in\mathbb R^{d\times r}$、$A\in\mathbb R^{r\times d}$ 且 $r<d$。证明增量秩的上界，并给出 $W+BA$ 仍满秩的具体例子。解释为何增量秩不能直接视为多层模型的能力上限，以及增大 $r$ 为何未必改善验证效果。
+\begin{exercise} 设 $\mat{W}\in\mathbb R^{d\times d}$ 满秩，LoRA 增量为 $\mat{B}\mat{A}$，其中 $\mat{B}\in\mathbb R^{d\times r}$、$\mat{A}\in\mathbb R^{r\times d}$ 且 $r<d$。证明增量秩的上界，并给出 $\mat{W}+\mat{B}\mat{A}$ 仍满秩的具体例子。解释为何增量秩不能直接视为多层模型的能力上限，以及增大 $r$ 为何未必改善验证效果。
 
 \begin{solution}
-矩阵乘积满足 $\operatorname{rank}(BA)\leq\min(\operatorname{rank}(B),\operatorname{rank}(A))\leq r$。取 $W=I_d$、$r=1$，$B=A^{\mathsf T}=e_1$，则 $W+BA=\operatorname{diag}(2,1,\ldots,1)$ 仍为满秩。低秩约束作用于特定权重的更新方向，多层非线性和多个适配位置共同决定最终函数，不能由单个增量秩直接推断整体任务能力。增大 $r$ 扩展可更新方向并增加参数与优化成本，但验证效果还受数据、目标层、正则化和优化充分程度影响，应在相同评估与资源约束下比较。
+矩阵乘积满足 $\operatorname{rank}(\mat{B}\mat{A})\leq\min(\operatorname{rank}(\mat{B}),\operatorname{rank}(\mat{A}))\leq r$。取 $\mat{W}=\mat{I}_d$、$r=1$，$\mat{B}=\mat{A}^{\mathrm{T}}=\vect{e}_1$，则 $\mat{W}+\mat{B}\mat{A}=\operatorname{diag}(2,1,\ldots,1)$ 仍为满秩。低秩约束作用于特定权重的更新方向，多层非线性和多个适配位置共同决定最终函数，不能由单个增量秩直接推断整体任务能力。增大 $r$ 扩展可更新方向并增加参数与优化成本，但验证效果还受数据、目标层、正则化和优化充分程度影响，应在相同评估与资源约束下比较。
 \end{solution}
 \end{exercise}
 

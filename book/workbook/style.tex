@@ -1,4 +1,7 @@
 % 配套册复用教材排版，新增接口使用LaTeX3。
+\ifdefined\HCode\else
+  \externaldocument[tb-]{../../build/textbook/textbook}
+\fi
 \ExplSyntaxOn
 % 同章题目与解析共同维护；题目出现时生成内部锚点，解析暂存时绑定该锚点，
 % 从而无需在章节源码中手填题序或维护题目—解析标签对。
@@ -14,17 +17,27 @@
   {
     \bool_if:NT \g_lfs_workbook_answer_pending_bool
       { \tl_gset:Nn \g_lfs_workbook_question_level_tl { optional } }
-    \lfsoptionalmark
+    \ifdefined\HCode
+      \HCode{<span~class="optional-marker"~role="note"~aria-label="选修内容"><span~aria-hidden="true">⚠</span><span>选修</span></span>}
+    \else
+      \lfsoptionalmark
+    \fi
   }
 \msg_new:nnn { lfs } { missing-workbook-answer }
   { Each~exercise~must~be~followed~by~one~solution~environment. }
 \cs_new_protected:Npn \lfs_workbook_typeset_answer:nnnn #1#2#3#4
   {
-    \par\medskip
-    \noindent\phantomsection\label{#2}
-    \hyperref[#1]{\textbf{\ref*{#1}}}\quad
-    \str_if_eq:nnT {#3} { optional } { \lfsoptionalmark }
-    \ignorespaces#4
+    \ifdefined\HCode
+      \HCode{<div~class="lfs-solution"~data-question="#1"~data-answer="#2"~data-level="#3">}
+      \par\noindent\textbf{解析}\quad\ignorespaces#4
+      \HCode{</div>}
+    \else
+      \par\medskip
+      \noindent\phantomsection\label{#2}
+      \hyperref[#1]{\textbf{\ref*{#1}}}\quad
+      \str_if_eq:nnT {#3} { optional } { \lfsoptionalmark }
+      \ignorespaces#4
+    \fi
   }
 \cs_new_protected:Npn \lfs_workbook_store_bound_answer:n #1
   {
@@ -53,6 +66,9 @@
   {
     \chapter{#1}
     \int_gincr:N \g_lfs_workbook_chapter_int
+    \ifdefined\HCode
+      \HCode{<div~class="lfs-workbook-chapter"~data-chapter="\int_use:N\g_lfs_workbook_chapter_int"></div>}
+    \fi
     \tl_gset:Nx \g_lfs_workbook_chapter_label_tl
       { lfs-workbook-chapter-\int_use:N \g_lfs_workbook_chapter_int }
     \exp_args:NV \label \g_lfs_workbook_chapter_label_tl
@@ -62,12 +78,10 @@
           { \exp_not:V \g_lfs_workbook_chapter_label_tl }
       }
   }
-\prop_new:N \g_lfs_tb_numbers_prop
-\NewDocumentCommand{\tbnumber}{mm}{\prop_gput:Nnn\g_lfs_tb_numbers_prop{#1}{#2}}
 \NewDocumentCommand{\tbobject}{m}
-  {（\prop_item:Nn\g_lfs_tb_numbers_prop{#1}）}
+  {\ifdefined\HCode\HCode{<span~class="lfs-textbook-ref"~data-label="#1">（教材对象）</span>}\else（\ref{tb-#1}）\fi}
 \NewDocumentCommand{\tbnumberref}{m}
-  {（\prop_item:Nn\g_lfs_tb_numbers_prop{#1}）}
+  {\ifdefined\HCode\HCode{<span~class="lfs-textbook-ref"~data-label="#1">（教材对象）</span>}\else（\ref{tb-#1}）\fi}
 \NewDocumentEnvironment{exercises}{}
   {\begin{enumerate}[labelwidth=3.2em,leftmargin=4em,labelsep=.6em,align=right]}
   {
@@ -88,11 +102,15 @@
     \renewcommand{\theenumi}{\thechapter.\arabic{enumi}}
     \renewcommand{\labelenumi}
       {\hyperref[\tl_use:N \g_lfs_workbook_answer_label_tl]{\theenumi.}}
-    \item\leavevmode\phantomsection
+    \item\leavevmode
+    \ifdefined\HCode
+      \HCode{<div~class="lfs-exercise"~data-exercise="\int_use:N\g_lfs_workbook_exercise_int">}
+    \fi
+    \phantomsection
     \exp_args:NV \label \g_lfs_workbook_question_label_tl
     \bool_gset_true:N \g_lfs_workbook_answer_pending_bool
   }
-  {}
+  {\ifdefined\HCode\HCode{</div>}\fi}
 \ExplSyntaxOff
 
 % 保留“篇—章”的真实结构，同时将章级目录项排成紧凑、可扫描的列表。
@@ -103,10 +121,14 @@
 
 % 参考解析正文连续排版；章号、标题和公式前缀均取自对应习题章标签。
 \RenewDocumentCommand{\answerchapter}{m}{%
-  \edef\lfsanswerchapternumber{\getrefnumber{#1}}%
-  \section*{第\lfsanswerchapternumber 章\texorpdfstring{\quad}{ }\nameref*{#1}}%
-  \phantomsection\label{ans:#1}%
-  \addcontentsline{toc}{chapter}{\protect\numberline{第\lfsanswerchapternumber 章}\nameref*{#1}}%
-  \setcounter{equation}{0}%
-  \renewcommand{\theequation}{答\lfsanswerchapternumber.\arabic{equation}}%
-  \renewcommand{\theHequation}{answer.\lfsanswerchapternumber.\arabic{equation}}}
+  \ifdefined\HCode
+    \HCode{<div~class="lfs-answer-chapter"~data-question-chapter="#1"></div>}%
+  \else
+    \edef\lfsanswerchapternumber{\getrefnumber{#1}}%
+    \section*{第\lfsanswerchapternumber 章\texorpdfstring{\quad}{ }\nameref*{#1}}%
+    \phantomsection\label{ans:#1}%
+    \addcontentsline{toc}{chapter}{\protect\numberline{第\lfsanswerchapternumber 章}\nameref*{#1}}%
+    \setcounter{equation}{0}%
+    \renewcommand{\theequation}{答\lfsanswerchapternumber.\arabic{equation}}%
+    \renewcommand{\theHequation}{answer.\lfsanswerchapternumber.\arabic{equation}}%
+  \fi}

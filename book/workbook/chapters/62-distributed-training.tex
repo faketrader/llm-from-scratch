@@ -46,7 +46,7 @@ $P_s=12,G_s=12,O_s=72$ GiB，R=4时DDP96、阶段1为42、阶段2为33、阶段3
 \begin{exercise} 为张量并行例题计算各权重片梯度，并验证拼接后与完整矩阵微分一致。
 
 \begin{solution}
-沿用上游梯度1，所有ReLU输入为正。$\nabla_{V_1}L=(1,2)^\mathsf T$，$\nabla_{V_2}L=(3,1)^\mathsf T$；$\nabla_{W_1}L=X^\mathsf T(1,2)=\begin{pmatrix}1&2\\2&4\end{pmatrix}$，$\nabla_{W_2}L=X^\mathsf T(-1,1)=\begin{pmatrix}-1&1\\-2&2\end{pmatrix}$。按原列/行布局拼接等于完整矩阵微分，输入梯度为两成员贡献 $(1,2)+(-2,0)=(-1,2)$。
+沿用上游梯度1，所有ReLU输入为正。$\nabla_{\mat{V}_1}L=(1,2)^{\mathrm{T}}$，$\nabla_{\mat{V}_2}L=(3,1)^{\mathrm{T}}$；$\nabla_{\mat{W}_1}L=\mat{X}^{\mathrm{T}}(1,2)=\begin{pmatrix}1&2\\2&4\end{pmatrix}$，$\nabla_{\mat{W}_2}L=\mat{X}^{\mathrm{T}}(-1,1)=\begin{pmatrix}-1&1\\-2&2\end{pmatrix}$。按原列/行布局拼接等于完整矩阵微分，输入梯度为两成员贡献 $(1,2)+(-2,0)=(-1,2)$。
 \end{solution}
 \end{exercise}
 
@@ -67,7 +67,7 @@ ReLU反例：$\phi(1-2)=0$，而 $\phi(1)+\phi(-2)=1$。列切分前馈层使每
 \begin{exercise}\optional 由两个块的 Softmax 合并式推导三个块的组合，并解释全掩码块的处理。
 
 \begin{solution}
-对块i保存 $(m_i,\ell_i,u_i)$，令 $m=\max_i m_i$，则 $\ell=\sum_{i=1}^3e^{m_i-m}\ell_i$、$u=\sum_{i=1}^3e^{m_i-m}u_i$，输出 $\frac{u}{\ell}$。精确算术下均等于完整指数和，故可先合并任意两块。全掩码块用空状态跳过；若三块全空则进入明确的全掩码行规则，不计算负无穷之差。
+对块i保存 $(m_i,\ell_i,u_i)$，令 $m=\max_i m_i$，则 $\ell=\sum_{i=1}^3\conste{}^{m_i-m}\ell_i$、$u=\sum_{i=1}^3\conste{}^{m_i-m}u_i$，输出 $\frac{u}{\ell}$。精确算术下均等于完整指数和，故可先合并任意两块。全掩码块用空状态跳过；若三块全空则进入明确的全掩码行规则，不计算负无穷之差。
 \end{solution}
 \end{exercise}
 

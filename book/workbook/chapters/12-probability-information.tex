@@ -40,7 +40,7 @@ H(p)=-.6\log.6-.4\log.4\approx.673012,
 \begin{exercise} 若一个模型将全部分数同时加上 $1000$，其理论概率应怎样变化？朴素实现可能发生什么数值问题？
 
 \begin{solution}
-$\frac{e^{z_j+1000}}{\sum_ke^{z_k+1000}}=\frac{e^{z_j}}{\sum_ke^{z_k}}$，理论概率不变。直接指数可能溢出，产生无穷比无穷。稳定计算先减去行最大值；对数损失使用log-sum-exp而非先求可能舍入为零的概率再取对数。
+$\frac{\conste{}^{z_j+1000}}{\sum_k\conste{}^{z_k+1000}}=\frac{\conste{}^{z_j}}{\sum_k\conste{}^{z_k}}$，理论概率不变。直接指数可能溢出，产生无穷比无穷。稳定计算先减去行最大值；对数损失使用log-sum-exp而非先求可能舍入为零的概率再取对数。
 \end{solution}
 \end{exercise}
 

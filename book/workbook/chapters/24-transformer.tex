@@ -4,7 +4,7 @@
 \begin{exercise} 证明不含激活的两层 FFN 可合并为一个仿射变换。加入 ReLU 后，写出给定激活区间内的局部雅可比，并解释为何跨区间不再是同一个仿射函数。
 
 \begin{solution}
-没有激活时 $(xW_1+b_1)W_2+b_2=x(W_1W_2)+(b_1W_2+b_2)$。在固定ReLU激活区域令 $D=\operatorname{diag}(\mathbf1[xW_1+b_1>0])$，则行向量扰动满足 $\dif F=\dif x\,W_1DW_2$，列雅可比为 $(W_1DW_2)^{\mathsf T}$。跨越折点会改变D，因此不同区域具有不同仿射参数。
+没有激活时 $(\vect{x}\mat{W}_1+\vect{b}_1)\mat{W}_2+\vect{b}_2=\vect{x}(\mat{W}_1\mat{W}_2)+(\vect{b}_1\mat{W}_2+\vect{b}_2)$。在固定ReLU激活区域令 $\mat{D}=\operatorname{diag}(\mathbf1[\vect{x}\mat{W}_1+\vect{b}_1>0])$，则行向量扰动满足 $\dif F=\dif \vect{x}\,\mat{W}_1\mat{D}\mat{W}_2$，列雅可比为 $(\mat{W}_1\mat{D}\mat{W}_2)^{\mathrm{T}}$。跨越折点会改变D，因此不同区域具有不同仿射参数。
 \end{solution}
 \end{exercise}
 
@@ -25,7 +25,7 @@
 \begin{exercise} 从 $c=Px$ 出发独立推导 LayerNorm 雅可比。验证该雅可比作用于全一向量为零，并说明这与平移不变性的关系。
 
 \begin{solution}
-令 $P=I-\frac{\mathbf1\mathbf1^{\mathsf T}}{d}$、$c=Px$、$s=\sqrt{\frac{c^{\mathsf T}c}{d}+\epsilon}$。有 $\dif c=P\dif x$、$\dif s=\frac{c^{\mathsf T}\dif x}{ds}$，故无仿射输出雅可比为 $J=\frac{P}{s}-\frac{cc^{\mathsf T}}{ds^3}$；有增益时左乘 $\operatorname{diag}(\gamma)$。因 $P\mathbf1=0$ 且 $c^{\mathsf T}\mathbf1=0$，$J\mathbf1=0$，对应整体平移不改变中心化表示。
+令 $\mat{P}=\mat{I}-\frac{\mathbf1\mathbf1^{\mathrm{T}}}{d}$、$\vect{c}=\mat{P}\vect{x}$、$s=\sqrt{\frac{\vect{c}^{\mathrm{T}}\vect{c}}{d}+\epsilon}$。有 $\dif \vect{c}=\mat{P}\dif \vect{x}$、$\dif s=\frac{\vect{c}^{\mathrm{T}}\dif \vect{x}}{ds}$，故无仿射输出雅可比为 $\mat{J}=\frac{\mat{P}}{s}-\frac{\vect{c}\vect{c}^{\mathrm{T}}}{ds^3}$；有增益时左乘 $\operatorname{diag}(\vect{\gamma})$。因 $\mat{P}\mathbf1=0$ 且 $\vect{c}^{\mathrm{T}}\mathbf1=0$，$\mat{J}\mathbf1=0$，对应整体平移不改变中心化表示。
 \end{solution}
 \end{exercise}
 
@@ -82,7 +82,7 @@
 \begin{exercise} 目标嵌入与输出头共享权重时，说明一个未出现在输入中的词元行为什么仍可能获得梯度。设计重载检验，同时覆盖共享关系、固定位置状态和生成首个词元。
 
 \begin{solution}
-若 $Z=HE^{\mathsf T}$，则 $\overline E_{\mathrm{out}}=\overline Z^{\mathsf T}H$。未作为输入的词元仍作为词表候选参与Softmax，通常有非零分数梯度，故对应E行可更新。重载应核对共享参数关系或等价共享实现、形状和词表ID、固定位置配置，在评估模式下比较同输入首步logits及确定解码首词元；不能仅检查两个矩阵初值数值相等。
+若 $\mat{Z}=\mat{H}\mat{E}^{\mathrm{T}}$，则 $\overline{\mat{E}}_{\mathrm{out}}=\overline{\mat{Z}}^{\mathrm{T}}\mat{H}$。未作为输入的词元仍作为词表候选参与Softmax，通常有非零分数梯度，故对应E行可更新。重载应核对共享参数关系或等价共享实现、形状和词表ID、固定位置配置，在评估模式下比较同输入首步logits及确定解码首词元；不能仅检查两个矩阵初值数值相等。
 \end{solution}
 \end{exercise}
 

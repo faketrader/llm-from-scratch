@@ -8,10 +8,10 @@
 \end{solution}
 \end{exercise}
 
-\begin{exercise} 从式\tbobject{eq:rev11-router-grad}证明：固定选中集合且 $k=1$ 时，选中内归一化的路由任务梯度为零。再解释保留全专家概率为何不必为零。
+\begin{exercise} 从式\tbobject{eq:moe-router-grad}证明：固定选中集合且 $k=1$ 时，选中内归一化的路由任务梯度为零。再解释保留全专家概率为何不必为零。
 
 \begin{solution}
-固定集合、选中归一化时 $y=\sum_iw_iF_i$，对选中logit的梯度为 $w_jg^{\mathsf T}(F_j-y)$。$k=1$时 $w_j=1,y=F_j$，因此为零。若保留全专家Softmax概率，$y=p_jF_j$，$p_j$ 仍受所有logit影响，故通常有非零梯度。选择边界本身不可微，局部零梯度不表示改变排名永远不改变输出。
+固定集合、选中归一化时 $\vect{y}=\sum_iw_i\vect{F}_i$，对选中logit的梯度为 $w_j\vect{g}^{\mathrm{T}}(\vect{F}_j-\vect{y})$。$k=1$时 $w_j=1,\vect{y}=\vect{F}_j$，因此为零。若保留全专家Softmax概率，$\vect{y}=p_j\vect{F}_j$，$p_j$ 仍受所有logit影响，故通常有非零梯度。选择边界本身不可微，局部零梯度不表示改变排名永远不改变输出。
 \end{solution}
 \end{exercise}
 
@@ -36,7 +36,7 @@
 \end{solution}
 \end{exercise}
 
-\begin{exercise} 推导式\tbobject{eq:rev11-balance-grad}。如果辅助统计覆盖两个大小不同的本地批次，写出正确的全局平均概率，解释局部均值直接平均的问题。
+\begin{exercise} 推导式\tbobject{eq:moe-balance-grad}。如果辅助统计覆盖两个大小不同的本地批次，写出正确的全局平均概率，解释局部均值直接平均的问题。
 
 \begin{solution}
 设 $L=E\sum_if_i\bar p_i$，$\bar p_i=N^{-1}\sum_tp_{ti}$，并对离散统计f停止梯度。由Softmax导数得 $\frac{\partial L}{\partial z_{tj}}=(\frac{E}{N})p_{tj}(f_j-\sum_if_ip_{ti})$。两个批次大小 $N_1,N_2$ 时，正确全局概率为 $\frac{N_1\bar p^{(1)}+N_2\bar p^{(2)}}{N_1+N_2}$；直接各占一半将小批次词元过度加权，路由计数也须在同一统计范围聚合。

@@ -36,10 +36,10 @@ P=16777216，四比特码8388608字节；每行32组，共131072组，元数据5
 \end{solution}
 \end{exercise}
 
-\begin{exercise}\optional 从约束二次目标推导式\tbobject{eq:ch26-gptqcomp}，说明阻尼改变了什么，以及输入完全不相关时为何不发生跨坐标补偿。
+\begin{exercise}\optional 从约束二次目标推导式\tbobject{eq:opt-gptqcomp}，说明阻尼改变了什么，以及输入完全不相关时为何不发生跨坐标补偿。
 
 \begin{solution}
-最小化 $\frac12\delta^\mathsf TH\delta$ 且 $e_i^\mathsf T\delta=d$。拉格朗日式导数 $H\delta+\lambda e_i=0$，得到 $\delta=\frac{dH^{-1}e_i}{(H^{-1})_{ii}}$，最小代价 $\frac{d^2}{[2(H^{-1})_{ii}]}$。阻尼把H换H+lambda I，改变目标及不可观测方向的代价；若H对角，各非i坐标补偿为0。实际X不相关要对应零交叉二阶矩而非口头“不同特征”。
+最小化 $\frac12\vect{\delta}^{\mathrm{T}}\mat{H}\vect{\delta}$ 且 $e_i^{\mathrm{T}}\vect{\delta}=d$。拉格朗日式导数 $\mat{H}\vect{\delta}+\lambda e_i=0$，得到 $\vect{\delta}=\frac{d\mat{H}^{-1}e_i}{(\mat{H}^{-1})_{ii}}$，最小代价 $\frac{d^2}{[2(\mat{H}^{-1})_{ii}]}$。阻尼把H换H+lambda I，改变目标及不可观测方向的代价；若H对角，各非i坐标补偿为0。实际X不相关要对应零交叉二阶矩而非口头“不同特征”。
 \end{solution}
 \end{exercise}
 
@@ -50,7 +50,7 @@ P=16777216，四比特码8388608字节；每行32组，共131072组，元数据5
 \end{solution}
 \end{exercise}
 
-\begin{exercise} 用式\tbobject{eq:ch26-scaling}说明 AWQ 与 SmoothQuant 的共同基础，再分别写出二者关注的误差对象。
+\begin{exercise} 用式\tbobject{eq:opt-scaling}说明 AWQ 与 SmoothQuant 的共同基础，再分别写出二者关注的误差对象。
 
 \begin{solution}
 对正对角D，$WX=(WD)(D^{-1}X)$，保持实数函数。AWQ主要通过激活重要性选择通道缩放来降低仅权重量化后的输出重建误差；SmoothQuant平衡激活与权重动态范围，支持二者低精度。恒等式相同不代表校准目标、搜索或执行格式相同，移动变换需保持全部共享分支一致。
@@ -78,7 +78,7 @@ E4M3为4指数3尾数，E5M2为5指数2尾数（均另有符号位）；更多�
 \end{solution}
 \end{exercise}
 
-\begin{exercise} 从式\tbobject{eq:ch26-dot}推导对称权重量化可省略的修正项，并讨论分组尺度为何改变累加组织。
+\begin{exercise} 从式\tbobject{eq:opt-dot}推导对称权重量化可省略的修正项，并讨论分组尺度为何改变累加组织。
 
 \begin{solution}
 $\sum_j s_x(q_{xj}-z_x)s_w(q_{wj}-z_w)=s_xs_w[\sum_jq_{xj}q_{wj}-z_w\sum_jq_{xj}-z_x\sum_jq_{wj}+nz_xz_w]$。对称权重$z_w=0$可去第二项和常数项，但激活非对称时仍保留 $-z_x\sum_jq_{wj}$。分组$s_w$不同，要组内累加后各乘尺度再合并，不能把一个总尺度提出全部求和。
@@ -95,7 +95,7 @@ $\sum_j s_x(q_{xj}-z_x)s_w(q_{wj}-z_w)=s_xs_w[\sum_jq_{xj}q_{wj}-z_w\sum_jq_{xj}
 \begin{exercise} 对键值量化的一阶误差式说明：为何只测值缓存的逐元素均方误差不能覆盖注意力分配变化？
 
 \begin{solution}
-$o=\mathrm{softmax}(qK^\mathsf T)V$，一阶有 $\delta o\approx J_{\mathrm{softmax}}(s)\,\delta s\,V+p\,\delta V$，其中 $\delta s$含键误差与查询的内积。只测值MSE覆盖第二项，漏掉键导致的注意力重分配及两误差相关性；不同查询/上下文还可放大相同逐元素误差。
+$\vect{o}=\mathrm{softmax}(\vect{q}\mat{K}^{\mathrm{T}})\mat{V}$，一阶有 $\delta \vect{o}\approx \mat{J}_{\mathrm{softmax}}(\vect{s})\,\delta \vect{s}\,\mat{V}+\vect{p}\,\delta \mat{V}$，其中 $\delta \vect{s}$含键误差与查询的内积。只测值MSE覆盖第二项，漏掉键导致的注意力重分配及两误差相关性；不同查询/上下文还可放大相同逐元素误差。
 \end{solution}
 \end{exercise}
 
@@ -113,7 +113,7 @@ $o=\mathrm{softmax}(qK^\mathsf T)V$，一阶有 $\delta o\approx J_{\mathrm{soft
 \end{solution}
 \end{exercise}
 
-\begin{exercise}\optional 对 $H=\begin{bmatrix}3&1\\1&2\end{bmatrix}$、$w=(1,1)^\mathsf T$，计算分别删除两个权重时的二阶补偿与代价。
+\begin{exercise}\optional 对 $H=\begin{bmatrix}3&1\\1&2\end{bmatrix}$、$w=(1,1)^{\mathrm{T}}$，计算分别删除两个权重时的二阶补偿与代价。
 
 \begin{solution}
 $H^{-1}=\frac15\begin{pmatrix}2&-1\\-1&3\end{pmatrix}$。删第一坐标d=-1，补偿 $(-1,.5)$，新权重(0,1.5)，代价 $\frac{1}{[2(\frac{2}{5})]}=1.25$。删第二坐标补偿 $(\frac{1}{3},-1)$，新权重($\frac{4}{3}$,0)，代价 $\frac{1}{[2(\frac{3}{5})]}=\frac{5}{6}$。该驻点二次目标下删第二项更便宜；非零一阶梯度需重新解。
@@ -123,7 +123,7 @@ $H^{-1}=\frac15\begin{pmatrix}2&-1\\-1&3\end{pmatrix}$。删第一坐标d=-1，�
 \begin{exercise} 写出门控前馈层删除中间通道的三个矩阵索引关系，并说明偏置和优化器状态应如何同步。
 
 \begin{solution}
-列向量约定下 $U,G\in\mathbb R^{d_f\times d}$、$D\in\mathbb R^{d\times d_f}$。保留中间集合S时取 $U[S,:],G[S,:],D[:,S]$；上投影/门控偏置取S，输出偏置维度不变。梯度、Adam矩、主权重和分片索引同步裁剪，残差输出d不改；若使用行向量实现应转置对应索引。
+列向量约定下 $\mat{U},\mat{G}\in\mathbb R^{d_f\times d}$、$\mat{D}\in\mathbb R^{d\times d_f}$。保留中间集合S时取 $\mat{U}[S,:],\mat{G}[S,:],\mat{D}[:,S]$；上投影/门控偏置取S，输出偏置维度不变。梯度、Adam矩、主权重和分片索引同步裁剪，残差输出d不改；若使用行向量实现应转置对应索引。
 \end{solution}
 \end{exercise}
 
@@ -144,7 +144,7 @@ $H^{-1}=\frac15\begin{pmatrix}2&-1\\-1&3\end{pmatrix}$。删第一坐标d=-1，�
 \begin{exercise}\optional 从列空间投影出发复现截断 SVD 的最优性证明，指出截断奇异值重合时唯一性为何可能失效。
 
 \begin{solution}
-任意秩$\le$r近似A的列空间投影P满足 $\|W-A\|_F^2\ge\|(I-P)W\|_F^2$。设 $WW^\mathsf T$特征值为 $\sigma_i^2$，秩r正交投影最多捕获前r个特征值之和，故误差至少谱尾和；取前r奇异向量即达界。若截断处 $\sigma_r=\sigma_{r+1}$，等特征子空间中可选择不同基/子空间而同样最优，矩阵近似可能不唯一。
+任意秩$\le$r近似A的列空间投影P满足 $\|\mat{W}-\mat{A}\|_F^2\ge\|(\mat{I}-\mat{P})\mat{W}\|_F^2$。设 $\mat{W}\mat{W}^{\mathrm{T}}$特征值为 $\sigma_i^2$，秩r正交投影最多捕获前r个特征值之和，故误差至少谱尾和；取前r奇异向量即达界。若截断处 $\sigma_r=\sigma_{r+1}$，等特征子空间中可选择不同基/子空间而同样最优，矩阵近似可能不唯一。
 \end{solution}
 \end{exercise}
 
@@ -165,7 +165,7 @@ $H^{-1}=\frac15\begin{pmatrix}2&-1\\-1&3\end{pmatrix}$。删第一坐标d=-1，�
 \begin{exercise} 推导温度平方缩放后的学生 logit 梯度，并说明高温近似需要中心化 logits 的原因。
 
 \begin{solution}
-$q=\mathrm{softmax}(\frac{z_S}{\tau})$，$p$为冻结教师，$\frac{\partial[\tau^2\mathrm{KL}(p\|q)]}{\partial z_S}=\tau(q-p)$。高温下 $q_i\approx\frac{1}{K}+\frac{z_i-\bar z}{K\tau}$，故梯度近似师生中心化logit差/K。共同平移logits不改变概率，未经中心化的欧氏logit差会惩罚一个不可辨识方向。
+$\vect{q}=\mathrm{softmax}(\frac{\vect{z}_S}{\tau})$，$\vect{p}$为冻结教师，$\frac{\partial[\tau^2\mathrm{KL}(\vect{p}\|\vect{q})]}{\partial \vect{z}_S}=\tau(\vect{q}-\vect{p})$。高温下 $q_i\approx\frac{1}{K}+\frac{z_i-\bar z}{K\tau}$，故梯度近似师生中心化logit差/K。共同平移logits不改变概率，未经中心化的欧氏logit差会惩罚一个不可辨识方向。
 \end{solution}
 \end{exercise}
 

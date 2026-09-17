@@ -1,0 +1,20 @@
+\documentclass[tikz,border=6pt]{standalone}
+\usepackage{ctex,amsmath}
+\usepackage{../../mymath}
+\usetikzlibrary{arrows.meta,positioning}
+\begin{document}
+\begin{tikzpicture}[>=Stealth,node distance=8mm,
+ block/.style={draw,rounded corners,align=center,font=\small,text width=32mm,minimum height=10mm}]
+ \node[block] (self) {同一序列 $\mat{X}$};
+ \node[block,below=of self] (sqkv) {$\mat{Q}=\mat{X}\mat{W}_Q$\\$\mat{K}=\mat{X}\mat{W}_K,\ \mat{V}=\mat{X}\mat{W}_V$};
+ \node[block,below=of sqkv] (so) {自注意力\\$T\times T$ 权重};
+ \draw[->] (self)--(sqkv);\draw[->] (sqkv)--(so);
+ \node[block,right=20mm of self] (target) {目标状态 $\mat{X}_q$};
+ \node[block,right=8mm of target] (memory) {源记忆 $\mat{X}_m$};
+ \node[block,below=of target] (cq) {$\mat{Q}=\mat{X}_q\mat{W}_Q$};
+ \node[block,below=of memory] (ckv) {$\mat{K}=\mat{X}_m\mat{W}_K$\\$\mat{V}=\mat{X}_m\mat{W}_V$};
+ \node[block,below=of cq,xshift=20mm] (co) {交叉注意力\\$T\times S$ 权重};
+ \draw[->] (target)--(cq);\draw[->] (memory)--(ckv);
+ \draw[->] (cq)--(co);\draw[->] (ckv)--(co);
+\end{tikzpicture}
+\end{document}

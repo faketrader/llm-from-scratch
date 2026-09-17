@@ -1,3 +1,7 @@
+\ifdefined\HCode
+  \PassOptionsToClass{fontset=none}{ctexbook}
+  \def\LFSWebBook{}
+\fi
 \documentclass[UTF8,zihao=-4,twoside,openany]{ctexbook}
 \usepackage{subfiles}
 \PassOptionsToPackage{hyperindex=false}{hyperref}
@@ -6,9 +10,11 @@
 
 \begin{document}
 
+\ifdefined\HCode\else
 \hypersetup{pageanchor=false}
 \input{frontmatter/cover.tex}
 \cleardoublepage
+\fi
 
 \frontmatter
 \hypersetup{pageanchor=true}
@@ -72,11 +78,20 @@
 \subfile{chapters/83-diffusion-probability.tex}
 \subfile{chapters/84-conditional-vision.tex}
 
-\backmatter
-\input{backmatter/term-index.tex}
-\printbibliography[heading=bibintoc,title={参考文献}]
-\clearpage
+\ifdefined\HCode
+  \par\HCode{<div class="lfs-bibliography-start"></div>}
+  \printbibliography[heading=none]
+  % 在结束钩子禁用 \clearpage 前提交参考文献末页，保证最后条目进入 HTML。
+  \newpage
+\else
+  \backmatter
+  \input{backmatter/term-index.tex}
+  \printbibliography[heading=bibintoc,title={参考文献}]
+\fi
 
-\input{backmatter/back-cover.tex}
+\ifdefined\HCode\else
+  \clearpage
+  \input{backmatter/back-cover.tex}
+\fi
 
 \end{document}

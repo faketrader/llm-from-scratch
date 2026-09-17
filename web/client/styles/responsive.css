@@ -1,0 +1,141 @@
+@media (min-width: 1500px) {
+  .layout {
+    gap: 64px;
+  }
+}
+@media (max-width: 1200px) {
+  .layout {
+    grid-template-columns: 225px minmax(0, 780px);
+    gap: 38px;
+    padding: 0 30px;
+  }
+  .reading-tools {
+    display: none;
+  }
+  .topbar {
+    padding: 0 30px;
+  }
+}
+@media (max-width: 800px) {
+  :root {
+    --body-size: 16px;
+  }
+  .topbar {
+    height: 70px;
+    padding: 0 20px;
+  }
+  .progress {
+    top: 70px;
+  }
+  .brand {
+    font-size: 14px;
+  }
+  .monogram {
+    width: 29px;
+    height: 34px;
+    font-size: 24px;
+  }
+  .brand-sub {
+    font-size: 9px;
+  }
+  .top-actions {
+    gap: 12px;
+    font-size: 11px;
+  }
+  .top-actions kbd {
+    display: none;
+  }
+  .top-actions button {
+    padding: 7px;
+    font-size: 11px;
+  }
+  .top-actions > a {
+    display: none;
+  }
+  #menu-toggle {
+    display: block;
+  }
+  .layout {
+    display: block;
+    padding: 0 23px;
+  }
+  #sidebar {
+    display: none;
+    position: fixed;
+    left: 0;
+    top: 72px;
+    width: 290px;
+    background: var(--paper);
+    z-index: 19;
+    height: calc(100dvh - 72px);
+    padding: 0 22px 25px;
+    box-shadow: 20px 0 60px #19332622;
+  }
+  #sidebar.open {
+    display: block;
+  }
+  main {
+    padding-top: 28px;
+  }
+  .breadcrumb {
+    font-size: 10px;
+  }
+  .chapter-heading {
+    padding-top: 35px;
+    margin-bottom: 25px;
+  }
+  h1 {
+    font-size: 38px;
+    letter-spacing: 2px;
+  }
+  .chapter-subtitle {
+    font-size: 21px;
+  }
+  .chapter-meta {
+    gap: 10px;
+    font-size: 10px;
+  }
+  .chapter-meta span + span::before {
+    margin-right: 10px;
+  }
+  h2 {
+    font-size: 23px;
+    margin-top: 38px;
+  }
+  h3 {
+    font-size: 18px;
+  }
+  figure {
+    padding: 20px 12px;
+  }
+  figcaption {
+    font-size: 11px;
+  }
+  blockquote {
+    padding: 15px 17px;
+  }
+  table {
+    font-size: 12px;
+  }
+  .exercise {
+    padding: 17px;
+  }
+  .reading-tools {
+    display: none;
+  }
+  footer {
+    gap: 20px;
+    font-size: 10px;
+  }
+  article .math.display {
+    font-size: 0.95em;
+  }
+  html {
+    scroll-padding-top: 88px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

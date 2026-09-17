@@ -90,10 +90,10 @@ SE'=\begin{bmatrix}1&0\\1&1\\1&0\end{bmatrix}.
 \end{solution}
 \end{exercise}
 
-\begin{exercise} 在式\tbobject{eq:rev5-tied-grad}中令 $\alpha=2$。说明为什么只有输入路径梯度显式带有该系数，而输出路径不能机械乘二。讨论 $H$ 的数值仍可能怎样随输入缩放变化。
+\begin{exercise} 在式\tbobject{eq:repr-tied-grad}中令 $\alpha=2$。说明为什么只有输入路径梯度显式带有该系数，而输出路径不能机械乘二。讨论 $H$ 的数值仍可能怎样随输入缩放变化。
 
 \begin{solution}
-若输入为 $X=\alpha SE$、输出分数 $Z=HE^{\mathsf T}$，则 $\overline E=\alpha S^{\mathsf T}\overline X+\overline Z^{\mathsf T}H$。取$\alpha=2$只在第一条链的局部导数显式出现2；输出路径局部映射没有该乘数。H本身依赖$\alpha$及整个主干，因此数值上两条梯度都可能改变；不能冻结H的推导与完整训练中的依赖混淆。
+若输入为 $\mat{X}=\alpha \mat{S}\mat{E}$、输出分数 $\mat{Z}=\mat{H}\mat{E}^{\mathrm{T}}$，则 $\overline{\mat{E}}=\alpha \mat{S}^{\mathrm{T}}\overline{\mat{X}}+\overline{\mat{Z}}^{\mathrm{T}}\mat{H}$。取$\alpha=2$只在第一条链的局部导数显式出现2；输出路径局部映射没有该乘数。H本身依赖$\alpha$及整个主干，因此数值上两条梯度都可能改变；不能冻结H的推导与完整训练中的依赖混淆。
 \end{solution}
 \end{exercise}
 

@@ -1,0 +1,64 @@
+\documentclass[tikz,border=5pt]{standalone}
+\usepackage{ctex}
+\usepackage{amsmath,amssymb}
+\usetikzlibrary{arrows.meta,positioning,fit}
+\input{diagram_styles.tex}
+
+\begin{document}
+\begin{tikzpicture}[lfs picture, >=Latex, node distance=8mm]
+
+\tikzset{
+  biasbox/.style={draw=LFSRed, fill=LFSRedSoft, rounded corners=3pt, font=\small\bfseries, align=center, inner sep=5pt, minimum width=46mm, minimum height=14mm},
+  fixbox/.style={draw=LFSGreen, fill=LFSGreenSoft, rounded corners=3pt, font=\small, align=center, inner sep=5pt, minimum width=46mm, minimum height=14mm},
+  title/.style={font=\normalsize\bfseries, text=LFSGray, align=center}
+}
+
+\node[title] (t1) at (2.3, 4.5) {大模型裁判系统性偏置 (Systematic Biases)};
+\node[title] (t2) at (7.8, 4.5) {受控校准与缓解协议 (Mitigations)};
+
+% Bias 1: Position Bias
+\node[biasbox] (b1) at (2.3, 3.2) {
+  \textbf{位置偏置 (Position Bias)}\\
+  \scriptsize 倾向于给排在前面的候选打更高分
+};
+\node[fixbox] (f1) at (7.8, 3.2) {
+  \textbf{双向位置对调 (Position Swap)}\\
+  \scriptsize 交换候选次序盲评，仅双向一致才采纳
+};
+\draw[->, draw=LFSOrange, line width=1pt] (b1) -- (f1);
+
+% Bias 2: Verbosity Bias
+\node[biasbox] (b2) at (2.3, 1.6) {
+  \textbf{冗长偏置 (Verbosity Bias)}\\
+  \scriptsize 误将篇幅长、格式花哨当做高回答质量
+};
+\node[fixbox] (f2) at (7.8, 1.6) {
+  \textbf{长度归一化与约束量表}\\
+  \scriptsize 强制按事实论断原子切分，惩罚无意义冗余
+};
+\draw[->, draw=LFSOrange, line width=1pt] (b2) -- (f2);
+
+% Bias 3: Self-enhancement Bias
+\node[biasbox] (b3) at (2.3, 0.0) {
+  \textbf{自我偏好 (Self-Enhancement)}\\
+  \scriptsize 显著偏好自身或同一模型家族生成的文风
+};
+\node[fixbox] (f3) at (7.8, 0.0) {
+  \textbf{多模型裁判委员会 (Panel of LLMs)}\\
+  \scriptsize 采用异构架构模型交叉打分与加权仲裁
+};
+\draw[->, draw=LFSOrange, line width=1pt] (b3) -- (f3);
+
+% Bias 4: Prompt Injection
+\node[biasbox] (b4) at (2.3, -1.6) {
+  \textbf{裁判提示注入 (Judge Injection)}\\
+  \scriptsize 待评测文本包含对抗指令操控裁判输出
+};
+\node[fixbox] (f4) at (7.8, -1.6) {
+  \textbf{输入结构隔离与沙箱化}\\
+  \scriptsize 候选文本放入独立变量块，格式强校验
+};
+\draw[->, draw=LFSOrange, line width=1pt] (b4) -- (f4);
+
+\end{tikzpicture}
+\end{document}

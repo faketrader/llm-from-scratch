@@ -1,0 +1,46 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex,amsmath,amssymb}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{arrows.meta}
+\input{diagram_styles.tex}
+
+\begin{document}
+\begin{tikzpicture}[lfs picture]
+\begin{axis}[
+    width=115mm,
+    height=68mm,
+    xlabel={平均词元交叉熵损失 $\mathcal{L}_{\mathrm{token}}$ (nats)},
+    ylabel={语言模型困惑度 $\mathrm{PPL} = \exp(\mathcal{L})$},
+    xmin=0.5, xmax=4.2,
+    ymin=1, ymax=60,
+    grid=both,
+    grid style={line width=.2pt, draw=gray!20},
+    major grid style={line width=.4pt, draw=gray!35},
+    axis lines=left,
+    enlargelimits=false,
+    tick label style={font=\footnotesize},
+    label style={font=\small}
+]
+
+% 困惑度主曲线
+\addplot[domain=0.5:4.09, samples=100, line width=1.4pt, color=LFSBlue] {exp(x)};
+
+% 典型参考点标注
+\addplot[only marks, mark=*, mark size=2.5pt, mark options={fill=LFSRed, draw=LFSRed}] coordinates {
+    (1.0, 2.718)
+    (1.609, 5.0)
+    (2.302, 10.0)
+    (2.996, 20.0)
+    (3.912, 50.0)
+};
+
+\node[label text, anchor=west] at (axis cs:1.05, 5.5) {$\mathcal{L}=1.0 \implies \mathrm{PPL} \approx 2.72$};
+\node[label text, anchor=west] at (axis cs:1.65, 9.5) {$\mathcal{L} \approx 1.61 \implies \mathrm{PPL} = 5.0$};
+\node[label text, anchor=west] at (axis cs:2.35, 15.0) {$\mathcal{L} \approx 2.30 \implies \mathrm{PPL} = 10.0$ (典型收敛区间)};
+\node[label text, anchor=west] at (axis cs:3.05, 27.0) {$\mathcal{L} \approx 3.00 \implies \mathrm{PPL} \approx 20.1$};
+\node[label text, anchor=east] at (axis cs:3.85, 53.0) {$\mathcal{L} \approx 3.91 \implies \mathrm{PPL} = 50.0$};
+
+\end{axis}
+\end{tikzpicture}
+\end{document}

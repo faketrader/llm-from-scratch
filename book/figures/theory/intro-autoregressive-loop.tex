@@ -1,0 +1,36 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex,amsmath,amssymb}
+\usetikzlibrary{arrows.meta,positioning,calc,shapes.geometric}
+\input{diagram_styles.tex}
+
+\begin{document}
+\begin{tikzpicture}[lfs picture, node distance=8mm and 10mm]
+
+% 核心节点
+\node[interface, text width=23mm] (input) {前缀序列\\$x_{<t}=(x_1,\dots,x_{t-1})$};
+\node[storage, text width=22mm, right=of input] (emb) {分词与嵌入\\$\mat{E} \in \mathbb{R}^{|\mathcal{V}| \times D}$};
+\node[compute, text width=26mm, right=of emb] (backbone) {因果模型主干\\提取上下文状态 $\vect{h}_{t-1}$};
+\node[compute, text width=24mm, right=of backbone] (head) {输出投影\\$\vect{z}_t = \mat{W}_U \vect{h}_{t-1}$};
+\node[interface, text width=23mm, right=of head] (sample) {条件分布与决策\\$p(x_t \mid x_{<t})$ 采样};
+
+% 判定与终止
+\node[decision, below=12mm of sample] (stop) {终止标记？\\$x_t = \text{\texttt{<eos>}}$};
+\node[interface, text width=23mm, left=12mm of stop] (concat) {更新序列前缀\\$x_{<t+1} = [x_{<t}, x_t]$};
+\node[storage, text width=20mm, right=10mm of stop] (output) {生成结束\\输出序列 $x_{1:T}$};
+
+% 前向数据流
+\draw[data arrow] (input) -- node[above, label text] {离散词元} (emb);
+\draw[data arrow] (emb) -- node[above, label text] {嵌入向量} (backbone);
+\draw[data arrow] (backbone) -- node[above, label text] {末位状态} (head);
+\draw[data arrow] (head) -- node[above, label text] {未归一对数} (sample);
+
+% 决策与分支流
+\draw[data arrow] (sample) -- (stop);
+\draw[data arrow] (stop) -- node[above, label text] {否} (concat);
+\draw[data arrow] (stop) -- node[above, label text] {是} (output);
+
+% 自回归时序反馈回路
+\draw[control arrow] (concat.west) -| node[label text, near end] {时钟步进 $t \leftarrow t+1$} (input.south);
+
+\end{tikzpicture}
+\end{document}

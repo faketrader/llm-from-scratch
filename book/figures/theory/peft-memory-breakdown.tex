@@ -1,0 +1,68 @@
+\documentclass[tikz,border=5pt]{standalone}
+\usepackage{ctex}
+\usepackage{amsmath,amssymb}
+\usetikzlibrary{arrows.meta,positioning}
+\input{diagram_styles.tex}
+
+\begin{document}
+\begin{tikzpicture}[lfs picture, >=Latex]
+
+\tikzset{
+  m_weight/.style={draw=LFSBlue, fill=LFSBlueSoft, minimum width=24mm, inner sep=3pt, font=\scriptsize, align=center},
+  m_grad/.style={draw=LFSOrange, fill=LFSOrangeSoft, minimum width=24mm, inner sep=3pt, font=\scriptsize, align=center},
+  m_opt/.style={draw=LFSRed, fill=LFSRedSoft, minimum width=24mm, inner sep=3pt, font=\scriptsize, align=center},
+  m_act/.style={draw=LFSPurple, fill=LFSPurpleSoft, minimum width=24mm, inner sep=3pt, font=\scriptsize, align=center},
+  m_lora/.style={draw=LFSGreen, fill=LFSGreenSoft, minimum width=24mm, inner sep=3pt, font=\scriptsize, align=center},
+  coltitle/.style={font=\small\bfseries, text=LFSGray, align=center}
+}
+
+% -------------------------------------------------------------
+% Stack 1: Full Parameter Fine-Tuning (FFT FP16)
+% -------------------------------------------------------------
+\begin{scope}[xshift=0cm]
+  \node[coltitle] (t1) at (1.2, 5.8) {全参数微调 (FFT)\\[1mm]\scriptsize (以 7B 模型为例)};
+
+  % Baseline memory boxes: total ~56-80GB
+  \node[m_weight, minimum height=10mm] (w1) at (1.2, 0.5) {模型权重\\14 GB (16-bit)};
+  \node[m_grad, minimum height=10mm, above=0mm of w1] (g1) {全量梯度\\14 GB (16-bit)};
+  \node[m_opt, minimum height=22mm, above=0mm of g1] (o1) {AdamW 状态\\56 GB (FP32 矩)};
+  \node[m_act, minimum height=12mm, above=0mm of o1] (a1) {中间激活与临时\\$\approx$ 16 GB};
+
+  \node[font=\footnotesize\bfseries, text=LFSRed, above=2mm of a1] {总计: $\approx$ 100 GB};
+  \node[font=\tiny, text=LFSGray, below=2mm of w1] {需多卡 A100/H100 训练};
+\end{scope}
+
+% -------------------------------------------------------------
+% Stack 2: LoRA (16-bit Base)
+% -------------------------------------------------------------
+\begin{scope}[xshift=4.2cm]
+  \node[coltitle] (t2) at (1.2, 5.8) {标准 LoRA 微调\\[1mm]\scriptsize (冻结基座 16-bit)};
+
+  \node[m_weight, minimum height=10mm] (w2) at (1.2, 0.5) {冻结基座权重\\14 GB (16-bit)};
+  \node[m_lora, minimum height=4mm, above=0mm of w2] (lo2) {LoRA 参数\\0.1 GB};
+  \node[m_lora, minimum height=4mm, above=0mm of lo2] (lg2) {LoRA 梯度\\0.1 GB};
+  \node[m_lora, minimum height=6mm, above=0mm of lg2] (lo_opt2) {LoRA 优化器\\0.4 GB};
+  \node[m_act, minimum height=12mm, above=0mm of lo_opt2] (a2) {中间激活与临时\\$\approx$ 16 GB};
+
+  \node[font=\footnotesize\bfseries, text=LFSOrange, above=2mm of a2] {总计: $\approx$ 31 GB};
+  \node[font=\tiny, text=LFSGray, below=2mm of w2] {单卡 A10/A100 (40GB) 可训};
+\end{scope}
+
+% -------------------------------------------------------------
+% Stack 3: QLoRA (4-bit NF4 Base)
+% -------------------------------------------------------------
+\begin{scope}[xshift=8.4cm]
+  \node[coltitle] (t3) at (1.2, 5.8) {QLoRA 微调\\[1mm]\scriptsize (NF4 量化基座)};
+
+  \node[m_weight, minimum height=4mm] (w3) at (1.2, 0.2) {NF4 量化权重\\3.5 GB (4-bit)};
+  \node[m_lora, minimum height=4mm, above=0mm of w3] (lo3) {LoRA 参数\\0.1 GB};
+  \node[m_lora, minimum height=4mm, above=0mm of lo3] (lg3) {LoRA 梯度\\0.1 GB};
+  \node[m_lora, minimum height=6mm, above=0mm of lg3] (lo_opt3) {分页优化器状态\\0.4 GB};
+  \node[m_act, minimum height=8mm, above=0mm of lo_opt3] (a3) {激活重计算\\$\approx$ 4 GB};
+
+  \node[font=\footnotesize\bfseries, text=LFSGreen, above=2mm of a3] {总计: $\approx$ 8.5 GB};
+  \node[font=\tiny, text=LFSGray, below=2mm of w3] {消费级单卡 (如 RTX 4090) 即可运行};
+\end{scope}
+
+\end{tikzpicture}
+\end{document}

@@ -1,0 +1,25 @@
+\documentclass[tikz,border=6pt]{standalone}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning}
+\begin{document}
+\begin{tikzpicture}[
+  >=Latex,
+  font=\small,
+  node distance=6mm,
+  box/.style={draw,rounded corners,align=center,text width=25mm,minimum height=12mm}
+]
+\node[box] (in) {带噪潜变量\\高分辨率};
+\node[box,right=of in] (down) {下采样\\多尺度特征};
+\node[box,right=of down] (mid) {瓶颈\\条件注意力};
+\node[box,below=of mid] (up) {上采样\\跳跃融合};
+\node[box,left=of up] (out) {噪声或速度\\与潜变量同形};
+\node[box,above=of down] (cond) {时间与文本\\调制及键值};
+\draw[->] (in)--(down);
+\draw[->] (down)--(mid);
+\draw[->] (mid)--(up);
+\draw[->] (up)--(out);
+\draw[->,dashed] (in.south) |- (up.south);
+\draw[->] (cond)--(down);
+\draw[->] (cond)-|(mid);
+\end{tikzpicture}
+\end{document}

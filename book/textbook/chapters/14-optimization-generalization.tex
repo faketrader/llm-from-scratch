@@ -1,64 +1,69 @@
+\ifdefined\LFSWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
-\bookchapter{优化及泛化}{ch:optimization-generalization}
+\fi
+\bookchapter{优化与泛化}{ch:optimization-generalization}
 
-反向传播回答了“当前参数怎样影响损失”，优化算法则必须进一步决定沿什么方向、以多大幅度改变参数。即使梯度完全正确，训练仍可能因学习率不合适而振荡，因初始化尺度不当而失去有效信号，或在训练集上持续改善的同时损害对新样本的预测。优化及泛化因此是两个相互联系而不能相互替代的问题：前者研究如何降低既定目标，后者研究从有限数据获得的预测规律能否适用于未参与拟合的数据。
+反向传播回答了“当前参数怎样影响损失”，优化算法则要决定沿什么方向、以多大幅度改变参数。即使梯度完全正确，训练仍可能因学习率不合适而振荡，因初始化尺度不当而失去有效信号，或在训练集上持续改善的同时损害对新样本的预测。优化与泛化是两个相互联系的问题：前者研究如何降低既定目标，后者研究从有限数据获得的预测规律能否适用于未参与拟合的数据。
 
-二次函数提供了分析梯度下降稳定性的起点。随机梯度和小批量计算进一步引入采样噪声，初始化与正则化则分别影响信号传播和解的选择。泛化分析还需要考虑偏差、方差、数据划分与分布漂移。
+二次函数提供了分析梯度下降稳定性的起点。随机梯度和小批量计算进一步引入采样噪声，初始化与正则化则分别影响信号传播和解的选择。泛化分析还要考虑偏差、方差、数据划分与分布漂移。
 
-\section{训练目标及统计目标}
+\section{训练目标与统计目标}
 
-\subsection{总体风险、经验风险及正则化目标}
-设观测 $z=(x,y)$ 来自联合分布 $P$，训练集为 $S=\{(x_i,y_i)\}_{i=1}^{n}$。参数 $\theta\in\Real^p$ 确定预测函数 $f_\theta$，损失 $\ell(f_\theta(x),y)$ 衡量预测与目标之间的差异。定义
+\subsection{总体风险、经验风险与正则化目标}
+设观测 $z=(x,y)$ 来自联合分布 $P$，训练集为 $S=\{(x_i,y_i)\}_{i=1}^{n}$。参数 $\vect{\theta}\in\Real^p$ 确定预测函数 $f_{\vect{\theta}}$，损失 $\ell(f_{\vect{\theta}}(x),y)$ 衡量预测与目标之间的差异。定义
 \begin{align}
- R_P(\theta)&=\mathbb E_{(x,y)\sim P}\bigl[\ell(f_\theta(x),y)\bigr],\label{eq:opt-population}\\
- \widehat R_S(\theta)&=\frac1n\sum_{i=1}^{n}\ell(f_\theta(x_i),y_i),\label{eq:opt-empirical}\\
- F_S(\theta)&=\widehat R_S(\theta)+\lambda\Omega(\theta),\qquad\lambda\geq0.\label{eq:opt-regularized}
+ R_P(\vect{\theta})&=\mathbb E_{(x,y)\sim P}\bigl[\ell(f_{\vect{\theta}}(x),y)\bigr],\label{eq:opt-population}\\
+ \widehat R_S(\vect{\theta})&=\frac1n\sum_{i=1}^{n}\ell(f_{\vect{\theta}}(x_i),y_i),\label{eq:opt-empirical}\\
+ F_S(\vect{\theta})&=\widehat R_S(\vect{\theta})+\lambda\Omega(\vect{\theta}),\qquad\lambda\geq0.\label{eq:opt-regularized}
 \end{align}
-总体风险 $R_P$ 是希望降低的统计量，经验风险 $\widehat R_S$ 是有限样本上的可计算估计，正则化目标 $F_S$ 是实际交给优化算法的函数。三者可能具有不同的最小点。正则化项 $\Omega$ 并非测试误差的一部分；它通过改变训练时偏好的解，间接影响总体风险。
+总体风险 $R_P$ 是希望降低的统计量，经验风险 $\widehat R_S$ 是有限样本上的可计算估计，正则化目标 $F_S$ 是实际交给优化算法的函数。三者可能具有不同的最小点。正则化项 $\Omega$ 不进入测试误差，它通过改变训练时偏好的解，间接影响总体风险。
 
-若训练样本独立同分布，而且参数 $\theta$ 在抽取 $S$ 之前已经固定，则 $\mathbb E_S\widehat R_S(\theta)=R_P(\theta)$。但是训练得到的 $\widehat\theta(S)$ 依赖同一批样本，不能把这个固定参数下的无偏性直接代入数据选择后的参数。一个足以记忆标签的模型可以使训练误差接近零，同时在新样本上没有预测能力。这一差别是必须保留独立评估数据的根本原因。\footnote{“独立”指评估信息没有通过参数拟合、特征选择、超参数搜索或人工筛选等路径进入模型选择，并不只是文件存放在另一个目录。}
+若训练样本独立同分布，而且参数 $\vect{\theta}$ 在抽取 $S$ 之前已经固定，则 $\mathbb E_S\widehat R_S(\vect{\theta})=R_P(\vect{\theta})$。训练得到的 $\widehat{\vect{\theta}}(S)$ 依赖同一批样本，固定参数下的无偏性在这一步不再适用。一个足以记忆标签的模型可以使训练误差接近零，同时在新样本上没有预测能力。独立评估数据的存在正是为了避免这一失效模式。\footnote{“独立”指评估信息没有通过参数拟合、特征选择、超参数搜索或人工筛选等路径进入模型选择，并不只是文件存放在另一个目录。}
 
-\begin{center}
+\begin{table}[htbp]
+\centering
+\caption{优化与泛化核心符号与记号约定}
+\label{tab:rev-opt-symbols}
 \begin{tabularx}{\linewidth}{lX}
 \toprule
 符号 & 含义与范围\\\midrule
 $n,B,p$ & 训练样本数、批量大小、参数维数，均为正整数。\\
-$\theta_k,g_k,\eta_k$ & 第 $k$ 步参数、梯度估计和学习率；前两者属于 $\Real^p$，$\eta_k>0$。\\
-$H,L,\mu$ & 对称 Hessian 矩阵，以及最大、最小曲率；正定情形满足 $0<\mu\leq L$。\\
+$\vect{\theta}_k,g_k,\eta_k$ & 第 $k$ 步参数、梯度估计和学习率；前两者属于 $\Real^p$，$\eta_k>0$。\\
+$\mat{H},L,\mu$ & 对称 Hessian 矩阵，以及最大、最小曲率；正定情形满足 $0<\mu\leq L$。\\
 $\Sigma,\lambda,q$ & 单样本梯度的协方差矩阵、正则强度、Dropout 保留概率；$0<q\leq1$。\\
 $n_{\mathrm{in}},n_{\mathrm{out}}$ & 线性层的输入、输出宽度。\\
 \bottomrule
 \end{tabularx}
-\end{center}
-这里的 $L$ 表示梯度变化的尺度或最大曲率，不表示序列长度。后文按局部问题说明符号，避免把参数维数、样本数与批量大小混为一谈。
+\end{table}
+这里的 $L$ 表示梯度变化的尺度或最大曲率，与序列长度无关。后文按局部问题说明符号，参数维数、样本数与批量大小分别标记。
 
-\subsection{优化误差及统计误差}
-在本小节暂取 $\lambda=0$。设 $\widehat\theta$ 是经验风险的一个全局最小点，$\theta^*$ 是同一参数集合内总体风险的最小点，$\theta_K$ 是执行 $K$ 次更新后实际得到的参数。插入并减去经验风险可得
+\subsection{优化误差与统计误差}
+在本小节暂取 $\lambda=0$。设 $\widehat{\vect{\theta}}$ 是经验风险的一个全局最小点，$\vect{\theta}^*$ 是同一参数集合内总体风险的最小点，$\vect{\theta}_K$ 是执行 $K$ 次更新后实际得到的参数。插入并减去经验风险可得
 \begin{align}
- R_P(\theta_K)-R_P(\theta^*)
- ={}&[R_P(\theta_K)-\widehat R_S(\theta_K)]\notag\\
- &+[\widehat R_S(\theta_K)-\widehat R_S(\widehat\theta)]\notag\\
- &+[\widehat R_S(\widehat\theta)-\widehat R_S(\theta^*)]\notag\\
- &+[\widehat R_S(\theta^*)-R_P(\theta^*)].\label{eq:opt-error-split}
+ R_P(\vect{\theta}_K)-R_P(\vect{\theta}^*)
+ ={}&[R_P(\vect{\theta}_K)-\widehat R_S(\vect{\theta}_K)]\notag\\
+ &+[\widehat R_S(\vect{\theta}_K)-\widehat R_S(\widehat{\vect{\theta}})]\notag\\
+ &+[\widehat R_S(\widehat{\vect{\theta}})-\widehat R_S(\vect{\theta}^*)]\notag\\
+ &+[\widehat R_S(\vect{\theta}^*)-R_P(\vect{\theta}^*)].\label{eq:opt-error-split}
 \end{align}
 第二项是非负的优化误差；第三项因经验最优性而非正。若能够在整个参数集合上控制
-$\Delta_S=\sup_\theta|R_P(\theta)-\widehat R_S(\theta)|$，则
+$\Delta_S=\sup_{\vect{\theta}}|R_P(\vect{\theta})-\widehat R_S(\vect{\theta})|$，则
 \begin{equation}
- R_P(\theta_K)-R_P(\theta^*)
- \leq 2\Delta_S+\widehat R_S(\theta_K)-\widehat R_S(\widehat\theta).
+ R_P(\vect{\theta}_K)-R_P(\vect{\theta}^*)
+ \leq 2\Delta_S+\widehat R_S(\vect{\theta}_K)-\widehat R_S(\widehat{\vect{\theta}}).
 \end{equation}
-上界将总体风险的差距分为统计估计误差与优化误差。延长训练主要减小后者，而统计估计误差取决于数据、模型集合与采样条件。若参数集合本身不能表达最优预测规律，还要在总体最优值之外考虑模型的近似误差。
+上界将总体风险的差距分为统计估计误差与优化误差。延长训练主要减小后者，统计估计误差则由数据、模型集合与采样条件决定。参数集合本身不能表达最优预测规律时，总体最优值之外还要计入模型的近似误差。
 
-\section{梯度下降及曲率}
+\section{梯度下降与曲率}
 
 \subsection{负梯度的下降性质}
-对可微目标 $F$，在当前位置 $\theta$ 附近有
+对可微目标 $F$，在当前位置 $\vect{\theta}$ 附近有
 \begin{equation}
- F(\theta+\delta)=F(\theta)+\nabla F(\theta)^\mathsf T\delta+o(\|\delta\|_2).
+ F(\vect{\theta}+\vect{\delta})=F(\vect{\theta})+\nabla F(\vect{\theta})^{\mathrm{T}}\vect{\delta}+o(\|\vect{\delta}\|_2).
 \end{equation}
-在固定步长 $\|\delta\|_2=r$ 下，柯西--施瓦茨不等式给出
-$\nabla F(\theta)^\mathsf T\delta\geq-r\|\nabla F(\theta)\|_2$，等号在 $\delta$ 沿负梯度方向时成立。因此欧氏距离下最陡的一阶下降方向是 $-\nabla F(\theta)$。这并未给出可以任意增大的步长，因为较大的 $\delta$ 会使曲率项无法忽略。
+在固定步长 $\|\vect{\delta}\|_2=r$ 下，柯西--施瓦茨不等式给出
+$\nabla F(\vect{\theta})^{\mathrm{T}}\vect{\delta}\geq-r\|\nabla F(\vect{\theta})\|_2$，等号在 $\vect{\delta}$ 沿负梯度方向时成立。因此欧氏距离下最陡的一阶下降方向是 $-\nabla F(\vect{\theta})$。步长仍有上界，较大的 $\vect{\delta}$ 会使曲率项无法忽略。
 
 \begin{proposition}[光滑目标的下降界]
 设 $F$ 在包含更新线段的凸区域上可微，且梯度满足 $L$-Lipschitz 条件，$L>0$。则梯度下降更新满足式\eqref{eq:opt-descent}；当 $0<\eta<\frac{2}{L}$ 且梯度非零时，目标值严格下降。
@@ -67,30 +72,30 @@ $\nabla F(\theta)^\mathsf T\delta\geq-r\|\nabla F(\theta)\|_2$，等号在 $\del
 梯度的 $L$-Lipschitz 条件为
 $\|\nabla F(u)-\nabla F(v)\|_2\leq L\|u-v\|_2$，沿线段积分可得
 \begin{align}
- F(\theta+\delta)-F(\theta)
- &=\int_0^1\nabla F(\theta+t\delta)^\mathsf T\delta\,\dif t\notag\\
- &\leq\nabla F(\theta)^\mathsf T\delta+\frac L2\|\delta\|_2^2.
+ F(\vect{\theta}+\vect{\delta})-F(\vect{\theta})
+ &=\int_0^1\nabla F(\vect{\theta}+t\vect{\delta})^{\mathrm{T}}\vect{\delta}\,\dif t\notag\\
+ &\leq\nabla F(\vect{\theta})^{\mathrm{T}}\vect{\delta}+\frac L2\|\vect{\delta}\|_2^2.
 \end{align}
-代入 $\delta=-\eta\nabla F(\theta)$ 后，
+代入 $\vect{\delta}=-\eta\nabla F(\vect{\theta})$ 后，
 \begin{equation}
- F(\theta-\eta\nabla F(\theta))
- \leq F(\theta)-\eta\left(1-\frac{L\eta}{2}\right)\|\nabla F(\theta)\|_2^2.\label{eq:opt-descent}
+ F(\vect{\theta}-\eta\nabla F(\vect{\theta}))
+ \leq F(\vect{\theta})-\eta\left(1-\frac{L\eta}{2}\right)\|\nabla F(\vect{\theta})\|_2^2.\label{eq:opt-descent}
 \end{equation}
 因此 $0<\eta<\frac{2}{L}$ 能保证非零梯度处的下降。
 \end{proof}
-对非凸目标，这一结论只控制函数值，不保证到达全局最小点；驻点可能是局部最小点、鞍点或退化的平坦区域。含 ReLU 的网络在折点处不可微，需要另行分析这些位置的更新。
+对非凸目标，这一结论只控制函数值，到达的可能是局部最小点、鞍点或退化的平坦区域。含 ReLU 的网络在折点处不可微，这些位置的更新需要另行分析。
 
 \subsection{二次目标稳定域}
 考虑正定二次目标
 \begin{equation}
- F(\theta)=\frac12(\theta-\theta^*)^\mathsf T H(\theta-\theta^*),
- \quad H=H^\mathsf T\succ0.
+ F(\vect{\theta})=\frac12(\vect{\theta}-\vect{\theta}^*)^{\mathrm{T}} \mat{H}(\vect{\theta}-\vect{\theta}^*),
+ \quad \mat{H}=\mat{H}^{\mathrm{T}}\succ0.
 \end{equation}
-令误差 $e_k=\theta_k-\theta^*$，梯度为 $He_k$。固定学习率的更新满足
+令误差 $\vect{e}_k=\vect{\theta}_k-\vect{\theta}^*$，梯度为 $\mat{H}\vect{e}_k$。固定学习率的更新满足
 \begin{equation}
- e_{k+1}=(I-\eta H)e_k.
+ \vect{e}_{k+1}=(\mat{I}-\eta \mat{H})\vect{e}_k.
 \end{equation}
-对称矩阵可作正交特征分解 $H=Q\Lambda Q^\mathsf T$，其中 $Q^\mathsf TQ=I$、$\Lambda=\operatorname{diag}(\lambda_1,\ldots,\lambda_p)$。转到特征坐标 $a_k=Q^\mathsf Te_k$ 后，各方向独立递推：
+对称矩阵可作正交特征分解 $\mat{H}=\mat{Q}\mat{\Lambda} \mat{Q}^{\mathrm{T}}$，其中 $\mat{Q}^{\mathrm{T}}\mat{Q}=\mat{I}$、$\mat{\Lambda}=\operatorname{diag}(\lambda_1,\ldots,\lambda_p)$。转到特征坐标 $\vect{a}_k=\mat{Q}^{\mathrm{T}}\vect{e}_k$ 后，各方向独立递推：
 \begin{equation}
  a_{k+1,j}=(1-\eta\lambda_j)a_{k,j},\qquad
  a_{k,j}=(1-\eta\lambda_j)^k a_{0,j}.\label{eq:opt-spectral}
@@ -107,9 +112,9 @@ $\|\nabla F(u)-\nabla F(v)\|_2\leq L\|u-v\|_2$，沿线段积分可得
 \end{equation}
 若 $0<\eta\lambda_j<1$，误差不变号地衰减；若 $1<\eta\lambda_j<2$，误差交替变号而幅值衰减；在 $\eta\lambda_j=2$ 处，非零初始误差保持等幅振荡；超过二则沿该方向发散。$\eta\lambda_j=1$ 则在一步内消去该方向的误差。
 
-如果 $H$ 仅半正定，零特征值方向不改变，算法只能收敛到由初值决定的最小点；若出现负特征值，对应因子 $1-\eta\lambda_j>1$，负曲率方向会放大扰动。这些情况不能沿用正定情形“收敛到唯一最优参数”的表述。
+如果 $\mat{H}$ 仅半正定，零特征值方向不改变，算法收敛到由初值决定的最小点；出现负特征值时，对应因子 $1-\eta\lambda_j>1$，负曲率方向会放大扰动。这些情况下最优参数不唯一，正定情形的收敛表述不再适用。
 
-\subsection{条件数及特征尺度}
+\subsection{条件数与特征尺度}
 令 $\mu=\min_j\lambda_j>0$。最坏方向的收缩因子为
 $\rho(\eta)=\max_j|1-\eta\lambda_j|$。在 $[\mu,L]$ 上平衡两端幅值，即令 $1-\eta\mu=-(1-\eta L)$，得到
 \begin{equation}
@@ -117,13 +122,15 @@ $\rho(\eta)=\max_j|1-\eta\lambda_j|$。在 $[\mu,L]$ 上平衡两端幅值，即
  \rho(\eta_{\mathrm{bal}})=\frac{L-\mu}{L+\mu}
  =\frac{\kappa-1}{\kappa+1},\qquad\kappa=\frac L\mu.
 \end{equation}
-$\kappa$ 称为条件数。它很大时，陡峭方向限制学习率，而平缓方向前进缓慢。标准化输入可改善某些由单位差异引起的条件问题，却不保证消除特征相关性。对最小二乘 $F=\frac{\|X\theta-y\|_2^2}{2n}$，Hessian 为 $\frac{X^\mathsf TX}{n}$；标准化主要调整对角尺度，高度相关的列仍可能使最小特征值接近零。
+$\kappa$ 称为条件数。它很大时，陡峭方向限制学习率，平缓方向前进缓慢。标准化输入可改善某些由单位差异引起的条件问题，特征相关性并不因此消除。对最小二乘 $F=\frac{\|\mat{X}\vect{\theta}-\vect{y}\|_2^2}{2n}$，Hessian 为 $\frac{\mat{X}^{\mathrm{T}}\mat{X}}{n}$；标准化主要调整对角尺度，高度相关的列仍可能使最小特征值接近零。
 
-\subsection{下降、振荡及发散}
+\subsection{下降、振荡与发散}
 \begin{example}
-\label{q:ch4:example:01}
-取 $F(u,v)=\frac{u^2+9v^2}{2}$，初值 $(u_0,v_0)=(1,1)$。此时 $L=9$、$\mu=1$，稳定区间为 $0<\eta<\frac{2}{9}$。由式\eqref{eq:opt-spectral}直接计算得到下表。
-\begin{center}
+取 $F(u,v)=\frac{u^2+9v^2}{2}$，初值 $(u_0,v_0)=(1,1)$。此时 $L=9$、$\mu=1$，稳定区间为 $0<\eta<\frac{2}{9}$。由式\eqref{eq:opt-spectral}直接计算得到表\ref{tab:rev-opt-quadratic-steps}。
+\begin{table}[htbp]
+\centering
+\caption{二次目标梯度下降在不同步长下的前两步演化}
+\label{tab:rev-opt-quadratic-steps}
 \begin{tabular}{ccccc}
 \toprule
 $\eta$ & $u_1$ & $v_1$ & $F(u_1,v_1)$ & $F(u_2,v_2)$\\\midrule
@@ -132,11 +139,11 @@ $0.20$ & $0.8$ & $-0.8$ & $3.2$ & $2.048$\\
 $0.25$ & $0.75$ & $-1.25$ & $7.3125$ & $11.14453125$\\
 \bottomrule
 \end{tabular}
-\end{center}
-初始目标值为 $5$。第二行虽然发生变号，仍稳定下降；第三行在陡峭方向的误差放大因子为 $-1.25$，因而发散。不能仅凭参数或梯度的正负交替判断失败，也不能把较大的学习率简单理解为较快的有效学习。
+\end{table}
+初始目标值为 $5$。第二行虽然发生变号，仍稳定下降；第三行在陡峭方向的误差放大因子为 $-1.25$，因而发散。参数或梯度的正负交替本身不足以判定失败，较大的学习率也不等于更快的有效学习，演化轨迹如图\ref{fig:opt-stable-unstable}所示。
 
-
-\begin{center}
+\begin{figure}[htbp]
+\centering
 \begin{tikzpicture}[x=1.35cm,y=.7cm,>=Stealth]
  \draw[->] (-.15,0)--(4.55,0) node[right] {$k$};
  \draw[->] (0,-2.35)--(0,2.85) node[above] {$v_k$};
@@ -147,59 +154,59 @@ $0.25$ & $0.75$ & $-1.25$ & $7.3125$ & $11.14453125$\\
  \node[anchor=west,font=\small] at (4.15,.7) {$\eta=0.20$};
  \node[anchor=west,font=\small] at (4.15,2.4) {$\eta=0.25$};
 \end{tikzpicture}
-\captionof{figure}{二次例题的陡峭方向：实线振荡收敛，虚线振荡发散。点由 $v_k=(1-9\eta)^k$ 精确计算，连线仅用于识别离散更新顺序。}
+\caption{二次例题的陡峭方向：实线振荡收敛，虚线振荡发散。点由 $v_k=(1-9\eta)^k$ 精确计算，连线仅用于识别离散更新顺序。}
 \label{fig:opt-stable-unstable}
-\end{center}
+\end{figure}
 \end{example}
 
-\section{随机梯度及批量大小}
+\section{随机梯度与批量大小}
 
 \subsection{无偏抽样条件}
-记 $h_i(\theta)=\nabla_\theta\ell(f_\theta(x_i),y_i)$。固定数据集和当前参数，从 $\{1,\ldots,n\}$ 独立均匀有放回抽取 $B$ 个索引 $I_1,\ldots,I_B$，构造
+记 $\vect{h}_i(\vect{\theta})=\nabla_{\vect{\theta}}\ell(f_{\vect{\theta}}(x_i),y_i)$。固定数据集和当前参数，从 $\{1,\ldots,n\}$ 独立均匀有放回抽取 $B$ 个索引 $\mat{I}_1,\ldots,\mat{I}_B$，构造
 \begin{equation}
- g(\theta)=\frac1B\sum_{b=1}^B h_{I_b}(\theta),\qquad
- \mathbb E[g(\theta)\mid S,\theta]=\frac1n\sum_i h_i(\theta)=\nabla\widehat R_S(\theta).
+ \vect{g}(\vect{\theta})=\frac1B\sum_{b=1}^B \vect{h}_{I_b}(\vect{\theta}),\qquad
+ \mathbb E[\vect{g}(\vect{\theta})\mid S,\vect{\theta}]=\frac1n\sum_i \vect{h}_i(\vect{\theta})=\nabla\widehat R_S(\vect{\theta}).
 \end{equation}
-若每步使用的新随机索引独立于给定训练历史后的参数状态，则这个等式也是条件于训练历史的无偏性。它估计的是当前训练集的经验梯度，并不自动等于总体梯度。在总体抽样模型下，要写成 $\nabla R_P=\mathbb E\nabla\ell$，还需要足够的可微性、可积性等条件，允许交换求导与期望。
+若每步使用的新随机索引独立于给定训练历史后的参数状态，则这个等式也是条件于训练历史的无偏性。它估计的是当前训练集的经验梯度，只有在足够的可微性、可积性等条件下才等于总体梯度 $\nabla R_P=\mathbb E\nabla\ell$，这些条件用于允许交换求导与期望。
 
-非均匀采样时，若抽样概率为 $\pi_i>0$，直接平均 $h_{I_b}$ 的期望变为 $\sum_i\pi_i h_i$，对应另一个加权目标。要保留原等权目标，可以使用
+非均匀采样时，若抽样概率为 $\pi_i>0$，直接平均 $\vect{h}_{I_b}$ 的期望变为 $\sum_i\pi_i \vect{h}_i$，对应另一个加权目标。要保留原等权目标，可以使用
 \begin{equation}
- g(\theta)=\frac1B\sum_b\frac{h_{I_b}(\theta)}{n\pi_{I_b}}.
+ \vect{g}(\vect{\theta})=\frac1B\sum_b\frac{\vect{h}_{I_b}(\vect{\theta})}{n\pi_{I_b}}.
 \end{equation}
-其无偏性由 $\sum_i\frac{\pi_i h_i}{n\pi_i}=n^{-1}\sum_i h_i$ 得到，但极小的 $\pi_i$ 可能造成很大的方差。因此重采样、类别权重和重要性校正既影响数据分布，也影响更新稳定性。
+其无偏性由 $\sum_i\frac{\pi_i \vect{h}_i}{n\pi_i}=n^{-1}\sum_i \vect{h}_i$ 得到，极小的 $\pi_i$ 会带来很大的方差。重采样、类别权重和重要性校正因此同时影响数据分布和更新稳定性。
 
-\subsection{梯度方差及有限总体修正}
-设 $\bar h=n^{-1}\sum_i h_i$，定义有限训练集上的协方差
+\subsection{梯度方差与有限总体修正}
+设 $\bar{\vect{h}}=n^{-1}\sum_i \vect{h}_i$，定义有限训练集上的协方差
 \begin{equation}
- \Sigma=\frac1n\sum_i(h_i-\bar h)(h_i-\bar h)^\mathsf T.
+ \mat{\Sigma}=\frac1n\sum_i(\vect{h}_i-\bar{\vect{h}})(\vect{h}_i-\bar{\vect{h}})^{\mathrm{T}}.
 \end{equation}
 有放回独立抽样使交叉协方差为零，所以
 \begin{equation}
- \operatorname{Cov}(g\mid S,\theta)=\frac{\Sigma}{B},\qquad
- \mathbb E\|g-\bar h\|_2^2=\frac{\operatorname{tr}\Sigma}{B}.\label{eq:opt-sgd-var}
+ \operatorname{Cov}(\vect{g}\mid S,\vect{\theta})=\frac{\mat{\Sigma}}{B},\qquad
+ \mathbb E\|\vect{g}-\bar{\vect{h}}\|_2^2=\frac{\operatorname{tr}\mat{\Sigma}}{B}.\label{eq:opt-sgd-var}
 \end{equation}
-当 $n>1$ 时，对均匀无放回批量，两个不同抽样位置的协方差为 $-\frac{\Sigma}{n-1}$。把 $B$ 个方差项和 $B(B-1)$ 个交叉项相加，得到
+当 $n>1$ 时，对均匀无放回批量，两个不同抽样位置的协方差为 $-\frac{\mat{\Sigma}}{n-1}$。把 $B$ 个方差项和 $B(B-1)$ 个交叉项相加，得到
 \begin{equation}
- \operatorname{Cov}(g)=\frac1{B^2}\left(B\Sigma-\frac{B(B-1)}{n-1}\Sigma\right)
- =\frac{n-B}{B(n-1)}\Sigma.\label{eq:opt-fpc}
+ \operatorname{Cov}(\vect{g})=\frac1{B^2}\left(B\mat{\Sigma}-\frac{B(B-1)}{n-1}\mat{\Sigma}\right)
+ =\frac{n-B}{B(n-1)}\mat{\Sigma}.\label{eq:opt-fpc}
 \end{equation}
-当 $B=n$ 时协方差为零，当 $B\ll n$ 时接近 $\frac{\Sigma}{B}$。这里比较的是同一个固定参数处随机选取一个批量的分布。逐轮随机打乱后依次消费批量时，参数已经依赖之前消费的样本，剩余样本上的梯度一般不再条件无偏于全训练集梯度。不能将单次无放回抽样公式无条件推广为整条训练轨迹上的独立噪声模型。
+当 $B=n$ 时协方差为零，当 $B\ll n$ 时接近 $\frac{\mat{\Sigma}}{B}$。这里比较的是同一个固定参数处随机选取一个批量的分布。逐轮随机打乱后依次消费批量时，参数已经依赖之前消费的样本，剩余样本上的梯度一般不再条件无偏于全训练集梯度。单次无放回抽样公式并不适用于整条训练轨迹上的独立噪声模型。
 
 若样本存在相关性，更一般的表达是
 \begin{equation}
- \operatorname{Cov}(g)=\frac1{B^2}\sum_{b,c}\operatorname{Cov}(h_{I_b},h_{I_c}).
+ \operatorname{Cov}(\vect{g})=\frac1{B^2}\sum_{b,c}\operatorname{Cov}(\vect{h}_{I_b},\vect{h}_{I_c}).
 \end{equation}
-同一文档的相邻片段、同一用户的重复记录可能具有正相关性，增加名义批量并不产生同等数量的独立信息。语言模型中还必须说明批量按序列、有效词元还是文档计算。
+同一文档的相邻片段、同一用户的重复记录可能具有正相关性，增加名义批量并不产生同等数量的独立信息。语言模型中还要说明批量按序列、有效词元还是文档计算。
 
 \subsection{随机梯度下降条件}
-设条件期望 $\mathbb E[g_k]=\nabla F(\theta_k)$，条件方差满足 $\mathbb E\|g_k-\nabla F(\theta_k)\|_2^2\leq\frac{\sigma^2}{B}$。将随机更新代入光滑上界，并使用
-$\mathbb E\|g_k\|_2^2=\|\nabla F(\theta_k)\|_2^2+\mathbb E\|g_k-\nabla F(\theta_k)\|_2^2$，可得
+设条件期望 $\mathbb E[\vect{g}_k]=\nabla F(\vect{\theta}_k)$，条件方差满足 $\mathbb E\|\vect{g}_k-\nabla F(\vect{\theta}_k)\|_2^2\leq\frac{\sigma^2}{B}$。将随机更新代入光滑上界，并使用
+$\mathbb E\|\vect{g}_k\|_2^2=\|\nabla F(\vect{\theta}_k)\|_2^2+\mathbb E\|\vect{g}_k-\nabla F(\vect{\theta}_k)\|_2^2$，可得
 \begin{equation}
- \mathbb E[F(\theta_{k+1})\mid\theta_k]
- \leq F(\theta_k)-\eta\left(1-\frac{L\eta}2\right)\|\nabla F(\theta_k)\|_2^2
+ \mathbb E[F(\vect{\theta}_{k+1})\mid\vect{\theta}_k]
+ \leq F(\vect{\theta}_k)-\eta\left(1-\frac{L\eta}2\right)\|\nabla F(\vect{\theta}_k)\|_2^2
  +\frac{L\eta^2\sigma^2}{2B}.\label{eq:opt-noisy-descent}
 \end{equation}
-最后一项说明单步可能上升。靠近驻点时梯度信号减弱，固定学习率下的噪声仍持续作用；降低学习率或增加批量能减小该项，但也改变了计算开销与单位预算下的更新次数。
+最后一项说明单步可能上升。靠近驻点时梯度信号减弱，固定学习率下的噪声仍持续作用；降低学习率或增加批量能减小该项，代价是改变了计算开销与单位预算下的更新次数。
 
 在一维二次函数 $F(e)=\frac{he^2}{2}$ 上，若 $g_k=he_k+\xi_k$，$\xi_k$ 独立、零均值、方差为 $\frac{s^2}{B}$，则
 \begin{equation}
@@ -211,34 +218,49 @@ $\mathbb E\|g_k\|_2^2=\|\nabla F(\theta_k)\|_2^2+\mathbb E\|g_k-\nabla F(\theta_
  =\frac{\frac{\eta^2s^2}{B}}{1-(1-\eta h)^2}
  =\frac{\eta s^2}{Bh(2-\eta h)}.\label{eq:opt-noise-floor}
 \end{equation}
-这一噪声稳态表明：较大的学习率使快速移动与较大的稳态波动相伴；当学习率接近稳定边界时，即使噪声很小，波动也可能很大。
+这一噪声稳态表明：较大的学习率使快速移动与较大的稳态波动相伴；学习率接近稳定边界时，即使噪声很小，波动也可能很大。
 
-\subsection{批量、步数及有效监督量}
+\subsection{批量、步数与有效监督量}
 \begin{example}
-\label{q:ch4:example:02}
 某固定参数处四个标量样本梯度为 $1,3,5,7$，均值为 $4$、总体方差为 $5$。有放回抽取两个样本，均值梯度方差为 $\frac{5}{2}$；无放回抽取两个样本，则为 $\frac{5(4-2)}{2\cdot3}=\frac{5}{3}$。两种批量的均值相同，随机性不同。
 
-再设训练集含 $\num{1024}$ 个样本，完整遍历一轮且不丢尾批。批量 $32$ 对应 $32$ 次参数更新，批量 $128$ 仅对应 $8$ 次。若固定更新次数，则后者消费更多样本；若固定 epoch 数，则后者更新更少；若固定墙钟时间，还会受到设备利用率与通信影响。三种比较回答不同问题，不能互相替代。
+再设训练集含 $\num{1024}$ 个样本，完整遍历一轮且不丢尾批。批量 $32$ 对应 $32$ 次参数更新，批量 $128$ 仅对应 $8$ 次。固定更新次数时后者消费更多样本；固定 epoch 数时后者更新更少；固定墙钟时间时还要计入设备利用率与通信。三种比较回答不同问题。
 
-梯度累积只有在各微批梯度于同一参数处计算、按真实样本数或有效词元数加权、期间不更新参数，并保持等价的计算状态时，才可与相应大批量梯度比较。含批量统计的层、不同随机掩码及不均匀有效长度会使简单的“微批均值再平均”偏离目标。具体训练状态与分布式归约将在训练章节展开。
+梯度累积的可比性有明确前提：各微批梯度于同一参数处计算、按真实样本数或有效词元数加权、期间不更新参数，并保持等价的计算状态。含批量统计的层、不同随机掩码及不均匀有效长度会使简单的“微批均值再平均”偏离目标。具体训练状态与分布式归约将在训练章节展开。
 
-动量通过累计过去梯度减弱方向的短时变化，自适应优化器进一步按坐标调节更新尺度。它们改变上述标量学习率的动力学，不能直接套用 $\frac{2}{L}$ 作为完整稳定界。本章建立的目标、条件期望与曲率分析仍是解释其行为的基础；Adam、AdamW 的矩估计、偏差修正和恢复状态在训练过程一章推导。
+动量通过累计过去梯度减弱方向的短时变化，自适应优化器进一步按坐标调节更新尺度。它们改变上述标量学习率的动力学，$\frac{2}{L}$ 不再构成完整稳定界。本章建立的目标、条件期望与曲率分析仍是解释其行为的基础；主流优化算法更新机制与状态显存开销如表\ref{tab:rev-opt-algorithms}所示，Adam、AdamW 的矩估计、偏差修正和恢复状态在训练过程一章推导。
+
+\begin{table}[htbp]
+\centering
+\caption{主流深度学习优化算法更新机制与状态开销对比}
+\label{tab:rev-opt-algorithms}
+\begin{tabularx}{\linewidth}{lXXXX}
+\toprule
+优化算法 & 一阶矩（动量） & 二阶矩（尺度自适应） & 核心参数更新式 & 显存状态开销\\\midrule
+SGD & 无 & 无 & $\vect{\theta}_{k+1} = \vect{\theta}_k - \eta_k \vect{g}_k$ & $0$\,B/参数\\
+Momentum & $\vect{m}_k = \beta \vect{m}_{k-1} + \vect{g}_k$ & 无 & $\vect{\theta}_{k+1} = \vect{\theta}_k - \eta_k \vect{m}_k$ & $4$\,B/参数（$\vect{m}$）\\
+RMSProp & 无 & $\vect{v}_k = \beta \vect{v}_{k-1} + (1-\beta)\vect{g}_k^2$ & $\vect{\theta}_{k+1} = \vect{\theta}_k - \frac{\eta_k}{\sqrt{\vect{v}_k} + \epsilon} \odot \vect{g}_k$ & $4$\,B/参数（$\vect{v}$）\\
+Adam & $\vect{m}_k = \beta_1 \vect{m}_{k-1} + (1-\beta_1)\vect{g}_k$ & $\vect{v}_k = \beta_2 \vect{v}_{k-1} + (1-\beta_2)\vect{g}_k^2$ & $\vect{\theta}_{k+1} = \vect{\theta}_k - \frac{\eta_k}{\sqrt{\widehat{\vect{v}}_k} + \epsilon} \odot \widehat{\vect{m}}_k$ & $8$\,B/参数（$\vect{m}, \vect{v}$）\\
+AdamW & $\vect{m}_k = \beta_1 \vect{m}_{k-1} + (1-\beta_1)\vect{g}_k$ & $\vect{v}_k = \beta_2 \vect{v}_{k-1} + (1-\beta_2)\vect{g}_k^2$ & $\vect{\theta}_{k+1} = (1-\eta_k \lambda)\vect{\theta}_k - \frac{\eta_k}{\sqrt{\widehat{\vect{v}}_k} + \epsilon} \odot \widehat{\vect{m}}_k$ & $8$\,B/参数（$\vect{m}, \vect{v}$）\\
+\bottomrule
+\end{tabularx}
+\end{table}
 \end{example}
 
 \begin{algorithm}[带验证集早停的小批量梯度下降]
 \label{alg:opt-sgd}
 \textbf{输入：}相互隔离的训练集和验证集、可微损失、学习率序列、批量大小、最大步数 $K$、验证间隔 $r$、耐心窗口 $M$、正则强度 $\lambda\ge0$ 和最小改善量 $\delta_{\min}\ge0$；验证损失越小越好。\textbf{输出：}验证指标最优的已保存参数。
-\begin{algorithmic}[1]
+\begin{lfsalgorithmic}[1]
 \State 检查正整数验证间隔 $r$、耐心窗口 $M$ 及非负最大步数 $K$
-\State 初始化 $\theta_0$；在固定评估模式下计算初始验证损失 $v_0$
-\State 保存 $\theta_0$；$v_{\min}\gets v_0$，$v_{\mathrm{pat}}\gets v_0$，$h\gets0$
+\State 初始化 $\vect{\theta}_0$；在固定评估模式下计算初始验证损失 $v_0$
+\State 保存 $\vect{\theta}_0$；$v_{\min}\gets v_0$，$v_{\mathrm{pat}}\gets v_0$，$h\gets0$
 \For{$k=0,\ldots,K-1$}
-  \State 按明确抽样规则取训练批量，在 $\theta_k$ 处求平均数据梯度 $g_k$
-  \State $\theta_{k+1}\gets\theta_k-\eta_k(g_k+\lambda\theta_k)$，正则项只计一次
+  \State 按明确抽样规则取训练批量，在 $\vect{\theta}_k$ 处求平均数据梯度 $\vect{g}_k$
+  \State $\vect{\theta}_{k+1}\gets\vect{\theta}_k-\eta_k(\vect{g}_k+\lambda\vect{\theta}_k)$，正则项只计一次
   \If{$k+1$ 是 $r$ 的倍数，或 $k+1=K$}
     \State 按固定口径计算验证数据损失 $v$，验证过程不反向、不更新预处理状态
     \If{$v<v_{\min}$}
-      \State 保存 $\theta_{k+1}$；$v_{\min}\gets v$
+      \State 保存 $\vect{\theta}_{k+1}$；$v_{\min}\gets v$
     \EndIf
     \If{$v_{\mathrm{pat}}-v>\delta_{\min}$}
       \State $v_{\mathrm{pat}}\gets v$，$h\gets0$
@@ -251,23 +273,23 @@ $\mathbb E\|g_k\|_2^2=\|\nabla F(\theta_k)\|_2^2+\mathbb E\|g_k-\nabla F(\theta_
   \EndIf
 \EndFor
 \State \Return 已保存的最优参数；配置冻结后才使用封存测试集
-\end{algorithmic}
-批量损失的求导遵循\bookxref{ch:rev-tensors}[中的反向传播规则]。恢复后继续训练还必须保存随机状态、数据位置和优化器状态，不能只保存用于预测的参数。
+\end{lfsalgorithmic}
+批量损失的求导遵循\bookxref{ch:rev-tensors}[中的反向传播规则]。恢复后继续训练还必须保存随机状态、数据位置和优化器状态，仅保存用于预测的参数并不足以续训。
 \end{algorithm}
 
-\section{初始化及信号传播}
+\section{初始化与信号传播}
 
-\subsection{打破对称性及控制尺度}
+\subsection{打破对称性与控制尺度}
 若同一隐藏层的神经元具有相同输入权重、偏置及后续连接，并经过相同运算，则它们产生相同激活和梯度，更新后仍保持对称。这使多个神经元难以学习不同特征。随机初始化使神经元获得不同的初始参数，从而打破对称性。
 
 初始化尺度影响激活与梯度的传播。考虑线性层
-$z_j=\sum_{i=1}^{n_{\mathrm{in}}}W_{ij}a_i$，其中 $W\in\Real^{n_{\mathrm{in}}\times n_{\mathrm{out}}}$。设权重独立、零均值、方差为 $s_W^2$，与输入独立；输入分量具有相同二阶矩 $q_a=\mathbb E[a_i^2]$。对权重和输入共同取期望，交叉项因独立零均值权重消失：
+$z_j=\sum_{i=1}^{n_{\mathrm{in}}}W_{ij}a_i$，其中 $\mat{W}\in\Real^{n_{\mathrm{in}}\times n_{\mathrm{out}}}$。设权重独立、零均值、方差为 $s_W^2$，与输入独立；输入分量具有相同二阶矩 $q_a=\mathbb E[a_i^2]$。对权重和输入共同取期望，交叉项因独立零均值权重消失：
 \begin{equation}
  \mathbb E[z_j]=0,\qquad
  \mathbb E[z_j^2]=\sum_i\mathbb E[W_{ij}^2]\mathbb E[a_i^2]
  =n_{\mathrm{in}}s_W^2q_a.\label{eq:opt-forward-moment}
 \end{equation}
-这里即使输入均值不为零，公式仍使用二阶矩 $q_a$，不能擅自替换成输入方差。
+这里即使输入均值不为零，公式使用的仍是二阶矩 $q_a$，它在均值非零时与输入方差不同。
 
 \subsection{Xavier 初始化的前后向平衡}
 在线性或激活近似线性的区域，保持前向二阶矩要求 $n_{\mathrm{in}}s_W^2\approx1$。反向传播给出
@@ -280,12 +302,12 @@ $\delta a_i=\sum_{j=1}^{n_{\mathrm{out}}}W_{ij}\delta z_j$；在梯度与权重�
  W_{ij}\sim\mathcal U\!\left[-\sqrt{\frac6{n_{\mathrm{in}}+n_{\mathrm{out}}}},
  \sqrt{\frac6{n_{\mathrm{in}}+n_{\mathrm{out}}}}\right].
 \end{equation}
-该推导关注初始尺度；反向梯度与权重的独立性通常是近似分析，不是训练全过程都成立的事实。激活进入饱和区域、参数更新导致相关性增强后，初始矩匹配不再足以保证梯度稳定。
+该推导关注初始尺度，反向梯度与权重的独立性只是一项近似，训练全过程未必保持。激活进入饱和区域、参数更新导致相关性增强后，初始矩匹配不再足以保证梯度稳定。
 
 \subsection{He 初始化方差}
-对关于零对称的预激活 $z$，令 $a=\max(0,z)$。由于正负半轴对 $z^2$ 的贡献相等，
+对关于零对称的预激活 $z$，令 $\vect{a}=\max(0,z)$。由于正负半轴对 $z^2$ 的贡献相等，
 \begin{equation}
- \mathbb E[a^2]=\mathbb E[z^2\mathbf1_{z>0}]=\frac12\mathbb E[z^2].
+ \mathbb E[\vect{a}^2]=\mathbb E[z^2\mathbf1_{z>0}]=\frac12\mathbb E[z^2].
 \end{equation}
 将其代入式\eqref{eq:opt-forward-moment}，相邻层预激活的二阶矩满足
 \begin{equation}
@@ -296,77 +318,77 @@ $\delta a_i=\sum_{j=1}^{n_{\mathrm{out}}}W_{ij}\delta z_j$；在梯度与权重�
  s_W^2=\frac2{n_{\mathrm{in}}},
  \qquad W_{ij}\sim\mathcal N\!\left(0,\frac2{n_{\mathrm{in}}}\right),
 \end{equation}
-这就是面向 ReLU 的 He 初始化尺度\cite{he2015rectifiers}。若改用均匀分布，对应半宽为 $\sqrt{\frac{6}{n_{\mathrm{in}}}}$。对于负半轴斜率为 $a$ 的分段线性激活，同样的对称性给出 $\mathbb E[\phi(z)^2]=\frac{(1+a^2)\mathbb E[z^2]}{2}$，所以尺度改为 $\frac{2}{[(1+a^2)n_{\mathrm{in}}]}$。
+这就是面向 ReLU 的 He 初始化尺度\cite{he2015rectifiers}。若改用均匀分布，对应半宽为 $\sqrt{\frac{6}{n_{\mathrm{in}}}}$。对于负半轴斜率为 $\vect{a}$ 的分段线性激活，同样的对称性给出 $\mathbb E[\phi(z)^2]=\frac{(1+\vect{a}^2)\mathbb E[z^2]}{2}$，所以尺度改为 $\frac{2}{[(1+\vect{a}^2)n_{\mathrm{in}}]}$。
 
 ReLU 输出的均值通常为正；若 $z\sim\mathcal N(0,v)$，则
 \begin{equation}
- \mathbb E[\operatorname{ReLU}(z)]=\sqrt{\frac v{2\pi}},\qquad
- \operatorname{Var}(\operatorname{ReLU}(z))=v\left(\frac12-\frac1{2\pi}\right).
+ \mathbb E[\operatorname{ReLU}(z)]=\sqrt{\frac v{2\constpi{}}},\qquad
+ \operatorname{Var}(\operatorname{ReLU}(z))=v\left(\frac12-\frac1{2\constpi{}}\right).
 \end{equation}
-He 初始化保持的是预激活方差与相应激活二阶矩的层间尺度；ReLU 输出方差还受其非零均值影响。\footnote{文献和实现中常将这类方法统称为方差缩放初始化。阅读具体公式时仍须区分中心化方差 $\mathbb E[(X-\mathbb EX)^2]$ 与二阶矩 $\mathbb E[X^2]$。}
+He 初始化保持的是预激活方差与相应激活二阶矩的层间尺度，ReLU 输出方差还受其非零均值影响。\footnote{文献和实现中常将这类方法统称为方差缩放初始化。阅读具体公式时仍须区分中心化方差 $\mathbb E[(\mat{X}-\mathbb E\mat{X})^2]$ 与二阶矩 $\mathbb E[\mat{X}^2]$。}
 
-\subsection{数值尺度及结构边界}
+\subsection{数值尺度与结构边界}
 设一层输入宽度为 $512$、输出宽度为 $2048$。Xavier 正态尺度的标准差为
-$\sqrt{\frac{2}{2560}}\approx0.02795$，He 前向尺度的标准差为 $\sqrt{\frac{2}{512}}=0.0625$。两者差异来自宽度和激活假设，不能依据名称任选其一。
+$\sqrt{\frac{2}{2560}}\approx0.02795$，He 前向尺度的标准差为 $\sqrt{\frac{2}{512}}=0.0625$。两者差异来自宽度和激活假设，选择依据是具体结构而非方法名称。
 
-残差分支将多个信号相加，注意力引入输入相关的混合权重，门控前馈层包含乘法，归一化改变激活分布。这些结构均会改变简单链式网络的矩传播。初始化应结合完整结构分析，并观察分层激活、梯度及实际更新量；一个全局梯度范数可能掩盖少数层异常。归一化和残差连接可以改善信号传播条件，但不替代合理初始化或数值稳定的损失计算。
+残差分支将多个信号相加，注意力引入输入相关的混合权重，门控前馈层包含乘法，归一化改变激活分布。这些结构均会改变简单链式网络的矩传播。初始化应结合完整结构分析，并观察分层激活、梯度及实际更新量；一个全局梯度范数可能掩盖少数层异常。归一化和残差连接可以改善信号传播条件，合理初始化与数值稳定的损失计算仍各自独立。
 
 \section{正则化及其作用机制}
 
-\subsection{二次惩罚及权重衰减}
-取 $\Omega(\theta)=\frac{\|\theta\|_2^2}{2}$，则 $\nabla\Omega(\theta)=\theta$。普通梯度下降变为
+\subsection{二次惩罚与权重衰减}
+取 $\Omega(\vect{\theta})=\frac{\|\vect{\theta}\|_2^2}{2}$，则 $\nabla\Omega(\vect{\theta})=\vect{\theta}$。普通梯度下降变为
 \begin{equation}
- \theta_{k+1}=\theta_k-\eta\bigl(\nabla\widehat R_S(\theta_k)+\lambda\theta_k\bigr)
- =(1-\eta\lambda)\theta_k-\eta\nabla\widehat R_S(\theta_k).
+ \vect{\theta}_{k+1}=\vect{\theta}_k-\eta\bigl(\nabla\widehat R_S(\vect{\theta}_k)+\lambda\vect{\theta}_k\bigr)
+ =(1-\eta\lambda)\vect{\theta}_k-\eta\nabla\widehat R_S(\vect{\theta}_k).
 \end{equation}
-在这个特定更新规则中，目标中的二次惩罚等价于每步乘性权重衰减。若先用一个自适应对角矩阵 $D_k$ 缩放梯度，则惩罚项变为 $\lambda D_k\theta_k$，不再等价于统一的 $\lambda\theta_k$ 衰减。二次正则化与解耦权重衰减的区别由此产生。
+在这个特定更新规则中，目标中的二次惩罚等价于每步乘性权重衰减。若先用一个自适应对角矩阵 $\mat{D}_k$ 缩放梯度，则惩罚项变为 $\lambda \mat{D}_k\vect{\theta}_k$，与统一的 $\lambda\vect{\theta}_k$ 衰减取值不同。二次正则化与解耦权重衰减的区别由此产生。
 
 在线性回归中，正则目标为
 \begin{equation}
- F(\theta)=\frac1{2n}\|X\theta-y\|_2^2+\frac\lambda2\|\theta\|_2^2.
+ F(\vect{\theta})=\frac1{2n}\|\mat{X}\vect{\theta}-y\|_2^2+\frac\lambda2\|\vect{\theta}\|_2^2.
 \end{equation}
 令梯度为零，得到
 \begin{equation}
- \left(\frac{X^\mathsf TX}{n}+\lambda I\right)\widehat\theta_\lambda
- =\frac{X^\mathsf Ty}{n}.
+ \left(\frac{\mat{X}^{\mathrm{T}}\mat{X}}{n}+\lambda \mat{I}\right)\widehat{\vect{\theta}}_\lambda
+ =\frac{\mat{X}^{\mathrm{T}}y}{n}.
 \end{equation}
-$\lambda>0$ 使原来可能奇异的正规方程变为正定系统。对 $\frac{X}{\sqrt n}=U\operatorname{diag}(s_j)V^\mathsf T$ 作奇异值分解，参数在第 $j$ 个右奇异方向的系数为
+$\lambda>0$ 使原来可能奇异的正规方程变为正定系统。对 $\frac{\mat{X}}{\sqrt n}=U\operatorname{diag}(s_j)V^{\mathrm{T}}$ 作奇异值分解，参数在第 $j$ 个右奇异方向的系数为
 \begin{equation}
- (V^\mathsf T\widehat\theta_\lambda)_j
- =\frac{s_j}{s_j^2+\lambda}\left(U^\mathsf T\frac y{\sqrt n}\right)_j.
+ (V^{\mathrm{T}}\widehat{\vect{\theta}}_\lambda)_j
+ =\frac{s_j}{s_j^2+\lambda}\left(U^{\mathrm{T}}\frac y{\sqrt n}\right)_j.
 \end{equation}
-相对于无正则解 $\frac{1}{s_j}$ 的放大，弱约束方向受到更强抑制，这能降低对噪声的敏感性，同时引入系统性收缩偏差。正则化强度还依赖特征尺度与损失归一化：将平均损失改成总和而保持 $\lambda$ 不变，会改变两项的相对权重。
+相对于无正则解 $\frac{1}{s_j}$ 的放大，弱约束方向受到更强抑制，这能降低对噪声的敏感性，同时引入系统性收缩偏差。正则化强度还依赖特征尺度与损失归一化：将平均损失改成总和而保持 $\lambda$ 不变，两项的相对权重随之改变。
 
-\subsection{Dropout 的期望及方差}
-\term{随机失活}{Dropout}{}在训练时随机屏蔽部分激活\cite{srivastava2014dropout}。设确定激活向量为 $a$，各分量独立抽取 $m_j\sim\operatorname{Bernoulli}(q)$，$q$ 是保留概率。采用反向缩放形式
+\subsection{Dropout 的期望与方差}
+\term{随机失活}{Dropout}{}在训练时随机屏蔽部分激活\cite{srivastava2014dropout}。设确定激活向量为 $\vect{a}$，各分量独立抽取 $m_j\sim\operatorname{Bernoulli}(q)$，$q$ 是保留概率。采用反向缩放形式
 \begin{equation}
  \widetilde a_j=\frac{m_j}{q}a_j,
 \end{equation}
 可得
 \begin{align}
- \mathbb E[\widetilde a_j\mid a]&=a_j,\\
- \operatorname{Var}(\widetilde a_j\mid a)
- &=\mathbb E[\widetilde a_j^2\mid a]-a_j^2
+ \mathbb E[\widetilde a_j\mid \vect{a}]&=a_j,\\
+ \operatorname{Var}(\widetilde a_j\mid \vect{a})
+ &=\mathbb E[\widetilde a_j^2\mid \vect{a}]-a_j^2
  =\frac{1-q}{q}a_j^2.
 \end{align}
-对于下一层线性输出 $s=w^\mathsf T\widetilde a$，独立掩码使交叉协方差为零，因而
+对于下一层线性输出 $s=\vect{w}^{\mathrm{T}}\widetilde{\vect{a}}$，独立掩码使交叉协方差为零，因而
 \begin{equation}
- \mathbb E[s\mid a]=w^\mathsf Ta,\qquad
- \operatorname{Var}(s\mid a)=\frac{1-q}{q}\sum_jw_j^2a_j^2.
+ \mathbb E[s\mid \vect{a}]=\vect{w}^{\mathrm{T}}\vect{a},\qquad
+ \operatorname{Var}(s\mid \vect{a})=\frac{1-q}{q}\sum_jw_j^2a_j^2.
 \end{equation}
 若目标为标量 $y$、使用平方损失，则恒等式 $\mathbb E[(s-y)^2]=(\mathbb Es-y)^2+\operatorname{Var}(s)$ 给出
 \begin{equation}
- \mathbb E_m[(w^\mathsf T\widetilde a-y)^2]
- =(w^\mathsf Ta-y)^2+\frac{1-q}{q}\sum_jw_j^2a_j^2.\label{eq:opt-dropout-reg}
+ \mathbb E_m[(\vect{w}^{\mathrm{T}}\widetilde{\vect{a}}-y)^2]
+ =(\vect{w}^{\mathrm{T}}\vect{a}-y)^2+\frac{1-q}{q}\sum_jw_j^2a_j^2.\label{eq:opt-dropout-reg}
 \end{equation}
-在这一特定线性读出问题中，随机屏蔽等效于与激活尺度相关的二次惩罚。一般深层非线性网络和交叉熵目标不能直接套用该等式，但仍可看出掩码噪声为何惩罚过度依赖少数激活的拟合方式。
+在这一特定线性读出问题中，随机屏蔽等效于与激活尺度相关的二次惩罚。一般深层非线性网络和交叉熵目标没有对应的等式，掩码噪声惩罚过度依赖少数激活的拟合方式这一机制仍然成立。
 
-推理时关闭随机屏蔽并使用原激活，保持了该层输入的期望尺度。不过一般有 $\mathbb E[\phi(s)]\ne\phi(\mathbb E[s])$，所以确定性推理不等于所有随机子网络输出的精确平均。训练模式与推理模式必须显式区分，改变模式也不能代替关闭梯度记录。
+推理时关闭随机屏蔽并使用原激活，保持该层输入的期望尺度。一般有 $\mathbb E[\phi(s)]\ne\phi(\mathbb E[s])$，确定性推理因而不是所有随机子网络输出的精确平均。训练模式与推理模式要显式区分，改变模式与关闭梯度记录是两项独立设置。
 
-例如 $a=(2,-1)$、$w=(1,2)$、$q=\frac{1}{2}$，原线性输出为零。四种等概率掩码产生 $s=0,4,-4,0$，均值为零、方差为 $8$，与公式 $[\frac{1-q}{q}](4+4)=8$ 一致。若 $y=0$，原平方误差为零，而期望随机损失为 $8$，直接展示了随机失活对脆弱抵消关系的惩罚。
+例如 $\vect{a}=(2,-1)$、$\vect{w}=(1,2)$、$q=\frac{1}{2}$，原线性输出为零。四种等概率掩码产生 $s=0,4,-4,0$，均值为零、方差为 $8$，与公式 $[\frac{1-q}{q}](4+4)=8$ 一致。若 $y=0$，原平方误差为零，而期望随机损失为 $8$，随机失活对脆弱抵消关系的惩罚由此显现。
 
 \subsection{早停作为受控的模型选择}
-早停在一系列参数 $\theta_0,\ldots,\theta_K$ 中，依据验证集选择停止位置。它通过限制优化过程影响最终解，不是向训练目标显式加入一个固定惩罚项。在线性最小二乘且从零初始化的情形，令 $H=\frac{X^\mathsf TX}{n}$、$b=\frac{X^\mathsf Ty}{n}$，某个正特征值方向满足
+早停在一系列参数 $\vect{\theta}_0,\ldots,\vect{\theta}_K$ 中，依据验证集选择停止位置。它通过限制优化过程影响最终解，与向训练目标显式加入固定惩罚项的作用方式不同。在线性最小二乘且从零初始化的情形，令 $\mat{H}=\frac{\mat{X}^{\mathrm{T}}\mat{X}}{n}$、$b=\frac{\mat{X}^{\mathrm{T}}y}{n}$，某个正特征值方向满足
 \begin{equation}
  a_{k+1,j}=(1-\eta\lambda_j)a_{k,j}+\eta b_j.
 \end{equation}
@@ -374,14 +396,30 @@ $\lambda>0$ 使原来可能奇异的正规方程变为正定系统。对 $\frac{
 \begin{equation}
  a_{K,j}=\frac{1-(1-\eta\lambda_j)^K}{\lambda_j}b_j.
 \end{equation}
-当 $0<\eta\leq\frac{1}{L}$ 时，$1-(1-\eta\lambda_j)^K$ 从零逐渐增大，低曲率方向在有限步内尚未完全拟合。这说明早停具有谱方向上的过滤作用。其过滤因子与岭回归的 $\frac{\lambda_j}{\lambda_j+\lambda}$ 不同，二者并非一般等价。
+当 $0<\eta\leq\frac{1}{L}$ 时，$1-(1-\eta\lambda_j)^K$ 从零逐渐增大，低曲率方向在有限步内尚未完全拟合。早停因此具有谱方向上的过滤作用。其过滤因子与岭回归的 $\frac{\lambda_j}{\lambda_j+\lambda}$ 形似而不同，二者的解一般不相等。
 
-实际选择停止时刻需要预先明确验证指标、评估频率、最小改善幅度和耐心窗口，并保存被选中的参数状态。测试集不能承担这一角色。对验证集反复增添候选配置，会逐渐把验证集的信息吸收到选择结果中，因此仍需要封存的最终测试或外层评估。
+实际选择停止时刻需要预先明确验证指标、评估频率、最小改善幅度和耐心窗口，并保存被选中的参数状态。测试集不参与这一选择。对验证集反复增添候选配置，会逐渐把验证集的信息吸收到选择结果中，最终评估仍要依靠封存的测试集或外层流程。主流泛化与正则化技术作用机制与选型对比如表\ref{tab:rev-opt-regularization}所示。
 
-\section{偏差、方差及泛化}
+\begin{table}[htbp]
+\centering
+\caption{主流泛化与正则化技术作用机制与选型对比}
+\label{tab:rev-opt-regularization}
+\begin{tabularx}{\linewidth}{lXXX}
+\toprule
+正则化技术 & 形式与数学机理 & 作用阶段与开销 & 大模型训练适配特性\\\midrule
+权重衰减（$L_2$ 正则） & 目标添加 $\frac{\lambda}{2}\|\vect{\theta}\|_2^2$ 或解耦衰减 & 训练每步更新，零额外显存 & 预训练标准标配（配合 AdamW），抑制权重范数发散\\
+随机失活（Dropout） & 激活分量以 $1-q$ 概率置零并乘以 $\frac{1}{q}$ & 前向反向随机掩码，计算开销极低 & 现代千亿大模型预训练通常弃用以保证吞吐，部分微调保留\\
+梯度裁剪（Gradient Clipping） & $\vect{g} \gets \vect{g} \cdot \min(1, \frac{C}{\|\vect{g}\|_2})$ & 反向后、参数更新前，全卡规约 & 核心工程机制，防止损失尖刺与低精度下数值溢出\\
+早停（Early Stopping） & 监控留出验证集指标，触发耐心窗口终止 & 周期性独立推理验证，无训练状态开销 & 用于监督微调（SFT）防过拟合；大规模预训练通常单轮不早停\\
+标签平滑（Label Smoothing） & 目标分布变为 $(1-\alpha)\vect{y} + \frac{\alpha}{V}\vect{1}$ & 交叉熵损失计算阶段，无显存开销 & 抑制自回归 Logits 过度自信，部分任务用于提高校准度\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{偏差、方差与泛化}
 
 \subsection{平方损失下的偏差--方差分解}
-令真实回归函数为 $f^*(x)=\mathbb E[Y\mid X=x]$，观测满足 $Y=f^*(x)+\varepsilon$，其中 $\mathbb E[\varepsilon\mid x]=0$、$\operatorname{Var}(\varepsilon\mid x)=\sigma_\varepsilon^2(x)$。训练集 $S$ 以及算法随机性共同产生预测 $\widehat f_S(x)$。测试噪声与训练过程条件独立，且各变量二阶矩有限。固定 $x$，定义 $\bar f(x)=\mathbb E_S\widehat f_S(x)$，则
+令真实回归函数为 $f^*(x)=\mathbb E[Y\mid \mat{X}=x]$，观测满足 $Y=f^*(x)+\varepsilon$，其中 $\mathbb E[\varepsilon\mid x]=0$、$\operatorname{Var}(\varepsilon\mid x)=\sigma_\varepsilon^2(x)$。训练集 $S$ 以及算法随机性共同产生预测 $\widehat f_S(x)$。测试噪声与训练过程条件独立，且各变量二阶矩有限。固定 $x$，定义 $\bar f(x)=\mathbb E_S\widehat f_S(x)$，则
 \begin{align}
  Y-\widehat f_S(x)
  =\varepsilon+[f^*(x)-\bar f(x)]+[\bar f(x)-\widehat f_S(x)].
@@ -393,19 +431,18 @@ $\lambda>0$ 使原来可能奇异的正规方程变为正定系统。对 $\frac{
  +\underbrace{\mathbb E_S[(\widehat f_S(x)-\bar f(x))^2]}_{\text{预测方差}}
  +\underbrace{\sigma_\varepsilon^2(x)}_{\text{观测噪声}}.\label{eq:opt-biasvariance}
 \end{equation}
-再对 $X$ 积分即可得到总体平方风险。偏差衡量平均预测偏离真实条件均值的程度，方差衡量训练样本与训练随机性改变时预测波动的程度。这里的预测方差不同于前文单步梯度估计的方差，二者不能直接相加或互相替代。
+再对 $\mat{X}$ 积分即可得到总体平方风险。偏差衡量平均预测偏离真实条件均值的程度，方差衡量训练样本与训练随机性改变时预测波动的程度。这里的预测方差与前文单步梯度估计的方差是两个不同对象。
 
-这一加法分解依赖平方损失及条件均值目标，不能原样用于准确率或交叉熵。深度网络的测试表现也不必随参数量呈简单的 U 形关系；数据规模、结构、优化过程和正则化共同决定预测函数的分布。预测方差因而需要结合这些条件分析。
+这一加法分解依赖平方损失及条件均值目标，用于准确率或交叉熵时形式不再成立。深度网络的测试表现也不随参数量呈简单的 U 形关系；数据规模、结构、优化过程和正则化共同决定预测函数的分布，预测方差的分析要结合这些条件。
 
 \subsection{收缩估计的取舍}
 \begin{example}
-\label{q:ch4:example:03}
 考虑无输入的回归问题 $Y=\mu+\varepsilon$，训练样本独立且噪声方差为 $\sigma^2$。样本均值 $\bar Y$ 满足 $\mathbb E\bar Y=\mu$、$\operatorname{Var}(\bar Y)=\frac{\sigma^2}{n}$。令预测器为 $\widehat\mu_a=a\bar Y$，$0\leq a\leq1$，则
 \begin{equation}
  \operatorname{Bias}^2=(1-a)^2\mu^2,\qquad
  \operatorname{Var}(\widehat\mu_a)=a^2\frac{\sigma^2}{n}.
 \end{equation}
-取 $\mu=1$、$\sigma^2=4$、$n=4$。不收缩时 $a=1$，偏差平方为零、预测方差为 $1$，对新观测的均方误差为 $5$。取 $a=\frac{1}{2}$ 时，偏差平方与预测方差各为 $\frac{1}{4}$，总误差为 $4.5$。牺牲无偏性可以降低总风险，但这组最合适的收缩程度依赖未知分布，实际仍需由独立验证选择。
+取 $\mu=1$、$\sigma^2=4$、$n=4$。不收缩时 $a=1$，偏差平方为零、预测方差为 $1$，对新观测的均方误差为 $5$。取 $a=\frac{1}{2}$ 时，偏差平方与预测方差各为 $\frac{1}{4}$，总误差为 $4.5$。牺牲无偏性换来了更低的总风险，而这组最优收缩程度依赖未知分布，实际取值仍由独立验证选择。
 \end{example}
 
 \subsection{独立评估的判定范围}
@@ -414,18 +451,19 @@ $\lambda>0$ 使原来可能奇异的正规方程变为正定系统。对 $\frac{
  \Pr\!\left(|\widehat R_{\mathrm{test}}-R_P|\geq\epsilon\right)
  \leq2\exp(-2n_{\mathrm{test}}\epsilon^2).
 \end{equation}
-这是有界独立样本条件下的概率控制，不能直接套在无界交叉熵或强相关文档片段上。若在同一测试集上挑选表现最好的模型，预测器便不再独立于测试数据，固定预测器的保证失去适用前提。
+这是有界独立样本条件下的概率控制，无界交叉熵或强相关文档片段不满足其前提。若在同一测试集上挑选表现最好的模型，预测器便不再独立于测试数据，固定预测器的保证随之失效。
 
-报告均值时应说明划分单位、样本量、指标定义与随机性来源。多个训练随机种子主要测量优化随机性，多个独立数据划分还反映数据抽样的不确定性；两者不能混为同一种重复试验。严重类别不平衡时，准确率较高也可能对应少数类识别失败，须结合召回率、精确率及错误代价理解结果。指标与决策阈值的统计细节将在评估篇展开。
+报告均值时应说明划分单位、样本量、指标定义与随机性来源。多个训练随机种子主要测量优化随机性，多个独立数据划分还反映数据抽样的不确定性，两者属于不同的重复试验。严重类别不平衡时，准确率较高也可能对应少数类识别失败，结果要结合召回率、精确率及错误代价理解。指标与决策阈值的统计细节将在评估篇展开。
 
-\section{数据隔离及分布漂移}
+\section{数据隔离与分布漂移}
 
 \subsection{目标应用划分}
-训练集用于拟合参数与预处理状态，验证集用于选择配置，测试集用于配置冻结后的估计。随机逐行划分隐含“未来面对的是同一总体中的新独立样本”这一假设。如果目标是对新用户、新设备或未来时间段泛化，划分方式必须反映这个外推单位。
+训练集用于拟合参数与预处理状态，验证集用于选择配置，测试集用于配置冻结后的估计。随机逐行划分隐含“未来面对的是同一总体中的新独立样本”这一假设。目标是对新用户、新设备或未来时间段泛化时，划分方式必须反映这个外推单位。
 
-同一患者的多次记录应按患者分组，同一文档的切片应按文档或近重复簇分组，同一会话的多个轮次应按会话分组。时间预测应遵守观测时点，仅使用预测发生前能够得到的信息。分层抽样可保持类别比例，却不能替代实体隔离；先切片后随机划分尤其容易让几乎相同的上下文同时进入训练与测试。
+同一患者的多次记录应按患者分组，同一文档的切片应按文档或近重复簇分组，同一会话的多个轮次应按会话分组。时间预测应遵守观测时点，只使用预测发生前能够得到的信息。分层抽样可保持类别比例，实体隔离仍要单独保证；先切片后随机划分尤其容易让几乎相同的上下文同时进入训练与测试。信息边界如图\ref{fig:opt-data-boundary}所示。
 
-\begin{center}
+\begin{figure}[htbp]
+\centering
 \begin{tikzpicture}[>=Stealth,node distance=9mm,
  box/.style={draw,rounded corners,align=center,text width=35mm,minimum height=12mm,font=\small}]
  \node[box] (raw) {确定预测时点\\与独立实体};
@@ -441,24 +479,24 @@ $\lambda>0$ 使原来可能奇异的正规方程变为正定系统。对 $\frac{
  \draw[->] (freeze)--(test);
  \draw[->,dashed] (valid.east) -- ++(7mm,0) |- (train.east);
 \end{tikzpicture}
-\captionof{figure}{学习与评估的信息边界。虚线表示允许依据验证结果重新训练；最终测试结果不回流到本轮配置选择。}
+\caption{学习与评估的信息边界。虚线表示允许依据验证结果重新训练；最终测试结果不回流到本轮配置选择。}
 \label{fig:opt-data-boundary}
-\end{center}
+\end{figure}
 
-\subsection{预处理泄漏及选择泄漏}
+\subsection{预处理泄漏与选择泄漏}
 对第 $j$ 个特征，训练集估计的标准化状态为
 \begin{equation}
  \widehat\mu_j=\frac1n\sum_{i\in S_{\mathrm{train}}}x_{ij},\qquad
  \widehat s_j^2=\frac1n\sum_{i\in S_{\mathrm{train}}}(x_{ij}-\widehat\mu_j)^2.
 \end{equation}
-验证和测试数据均使用相同变换 $\frac{x_j-\widehat\mu_j}{\widehat s_j}$，零方差特征需制定明确处理规则。若先在全部数据上估计均值、缺失值填充值或特征排序，再划分数据，就让评估样本改变了预测函数的构造。交叉验证时也必须在每个训练折内重新拟合这些状态，而不是复用全数据上的预处理器。
+验证和测试数据均使用相同变换 $\frac{x_j-\widehat\mu_j}{\widehat s_j}$，零方差特征需制定明确处理规则。若先在全部数据上估计均值、缺失值填充值或特征排序，再划分数据，评估样本就参与了预测函数的构造。交叉验证时也要在每个训练折内重新拟合这些状态；复用全数据上的预处理器会把评估样本的信息带进训练。
 
-泄漏还可能发生在目标定义和样本选择中。例如使用诊断完成后才形成的字段预测诊断结果，或根据测试错误逐一修改规则。这些行为可能显著改善测试数字，却并未改善模型在真实预测时点的能力。语言模型的评估污染还包含测试题、解析或近重复文本进入预训练和微调语料；文本去重必须考虑这一来源边界，而不只是减少存储量。
+泄漏还可能发生在目标定义和样本选择中。例如使用诊断完成后才形成的字段预测诊断结果，或根据测试错误逐一修改规则。这些行为可能显著改善测试数字，模型在真实预测时点的能力并未随之改变。语言模型的评估污染还包含测试题、解析或近重复文本进入预训练和微调语料；文本去重必须考虑这一来源边界，而不只是减少存储量。
 
-一次发布的预测器包含模型权重、预处理参数、类别映射、提示模板及决策阈值。仅冻结权重而继续修改这些组件，也意味着继续进行模型选择。数据隔离与制品重载共同保证统计预测函数的一致性。
+一次发布的预测器包含模型权重、预处理参数、类别映射、提示模板及决策阈值。仅冻结权重而继续修改这些组件，模型选择仍在进行。数据隔离与制品重载共同保证统计预测函数的一致性。
 
-\subsection{训练分布及部署分布不一致}
-设训练分布为 $P$、部署分布为 $Q$。即使 $R_P(\theta)$ 已得到准确估计，也未必等于 $R_Q(\theta)$。常见变化包括：协变量漂移，即 $P(X)\ne Q(X)$ 而 $P(Y\mid X)=Q(Y\mid X)$；标签比例变化，即类别先验改变而类条件输入分布近似不变；概念漂移，即 $P(Y\mid X)$ 本身发生改变。现实中多种变化可以同时出现，不能只凭输入均值变化就断定某一种机制。
+\subsection{训练分布与部署分布不一致}
+设训练分布为 $P$、部署分布为 $Q$。即使 $R_P(\theta)$ 已得到准确估计，它一般也不等于 $R_Q(\theta)$。常见变化包括：协变量漂移，即 $P(X)\ne Q(X)$ 而 $P(Y\mid X)=Q(Y\mid X)$；标签比例变化，即类别先验改变而类条件输入分布近似不变；概念漂移，即 $P(Y\mid X)$ 本身发生改变。现实中多种变化可以同时出现，输入均值的变化不足以区分它们。
 
 在协变量漂移假设成立、且 $Q_X$ 相对于 $P_X$ 绝对连续时，可把部署风险写为
 \begin{align}
@@ -466,17 +504,20 @@ $\lambda>0$ 使原来可能奇异的正规方程变为正定系统。对 $\frac{
  &=\int \ell(f_\theta(x),y)Q(y\mid x)Q(x)\,\dif x\,\dif y\notag\\
  &=\mathbb E_{(x,y)\sim P}\left[\frac{Q(x)}{P(x)}\ell(f_\theta(x),y)\right].
 \end{align}
-这给出重要性加权的理论依据，但密度比估计困难，大权重会放大方差，训练分布完全未覆盖的区域也无法用有限权重修复。若条件规律已经变化，上式的替换前提不成立，重加权输入分布不足以恢复正确风险。
+这给出重要性加权的理论依据，而密度比本身估计困难：大权重会放大方差，训练分布完全未覆盖的区域也无法用有限权重修复。条件规律变化时，上式的替换前提不再成立，重加权输入分布无法恢复正确风险。
 
-部署后的观测应同时覆盖输入、预测、延迟获得的真实标签和分组质量。输入分布改变不必然导致性能下降，反之总体输入统计看似稳定也可能掩盖少数群体或任务的退化。是否再训练应由与目标应用一致的评估决定，并保留数据版本和独立回归集。
+部署后的观测应同时覆盖输入、预测、延迟获得的真实标签和分组质量。输入分布改变不一定导致性能下降，总体输入统计看似稳定也可能掩盖少数群体或任务的退化。是否再训练由与目标应用一致的评估决定，并保留数据版本和独立回归集。
 
-\section{优化失败及过拟合诊断}
+\section{优化失败与过拟合诊断}
 
-训练损失高、验证损失也高，只是一种现象，可能由模型表达不足、有效信息不足、标注噪声、优化未完成或实现错误引起。将它直接命名为“欠拟合”并增大模型，会跳过必要诊断。首先应在固定参数与固定数据上核对损失定义、目标形状及梯度；随后检查各层激活和梯度是否有限、实际更新是否发生，以及学习率与输入尺度是否相容。
+训练损失高、验证损失也高只是一种现象，可能由模型表达不足、有效信息不足、标注噪声、优化未完成或实现错误引起。直接把它命名为“欠拟合”并增大模型，会跳过必要诊断。诊断先固定参数与数据，核对损失定义、目标形状及梯度；再检查各层激活和梯度是否有限、实际更新是否发生，以及学习率与输入尺度是否相容。
 
-训练损失降低而验证损失上升，是过拟合的常见证据，但比较前必须统一计算口径。训练时含 Dropout、数据增强或正则惩罚，而验证时关闭随机扰动并只计算数据损失，两条曲线并非同一统计量；训练日志又可能只是滚动小批量均值，验证则是完整留出集均值。更严格的诊断是在相同评估模式下分别计算训练和验证的数据损失，必要时按有效词元总数加权。
+训练损失降低而验证损失上升，是过拟合的常见证据，比较前仍要统一计算口径。训练时含 Dropout、数据增强或正则惩罚，而验证时关闭随机扰动并只计算数据损失，两条曲线并非同一统计量；训练日志又可能只是滚动小批量均值，验证则是完整留出集均值。更严格的诊断是在相同评估模式下分别计算训练和验证的数据损失，必要时按有效词元总数加权。失效现象与排查对照如表\ref{tab:rev-opt-failure-diagnosis}所示。
 
-\begin{center}
+\begin{table}[htbp]
+\centering
+\caption{训练与泛化失效模式归因与诊断对照}
+\label{tab:rev-opt-failure-diagnosis}
 \begin{tabularx}{\linewidth}{p{31mm}XX}
 \toprule
 观察 & 需要区分的原因 & 有针对性的检查\\\midrule
@@ -486,9 +527,9 @@ $\lambda>0$ 使原来可能奇异的正规方程变为正定系统。对 $\frac{
 离线质量高而部署退化 & 泄漏、漂移或输入协议变化 & 时间可用性、实体隔离、预处理与模板版本。\\
 \bottomrule
 \end{tabularx}
-\end{center}
-有限差分能检查局部梯度，确定性小批量拟合能检查更新链路，独立验证能检查留出分布上的预测，部署监控能检查运行后的变化。这些证据各自回答不同问题。梯度范数很小既可能意味着接近驻点，也可能是激活饱和或信号消失；梯度裁剪限制梯度幅度，目标函数和数据划分则需要单独核对。
+\end{table}
+有限差分能检查局部梯度，确定性小批量拟合能检查更新链路，独立验证能检查留出分布上的预测，部署监控能检查运行后的变化，各类证据回答不同问题。梯度范数很小既可能意味着接近驻点，也可能是激活饱和或信号消失；梯度裁剪限制的是梯度幅度，目标函数和数据划分要分别核对。
 
 
 \chapterreferences
-\end{document}
+\lfsendchapterdocument

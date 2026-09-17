@@ -1,0 +1,17 @@
+\documentclass[tikz,border=6pt]{standalone}
+\usepackage{ctex,amsmath}
+\usepackage{../../mymath}
+\usetikzlibrary{arrows.meta,positioning}
+\begin{document}
+\begin{tikzpicture}[>=Stealth,node distance=9mm,
+ block/.style={draw,rounded corners,align=center,font=\small,text width=28mm,minimum height=10mm}]
+ \node[block] (in) {查询输入 $\mat{X}_q$\\记忆输入 $\mat{X}_m$};
+ \node[block,right=of in,yshift=15mm] (h1) {头1投影与注意力\\$\mat{O}^{(1)}$};
+ \node[block,right=of in,yshift=-15mm] (h2) {头2投影与注意力\\$\mat{O}^{(2)}$};
+ \node[block,right=14mm of h1,yshift=-15mm] (cat) {特征轴拼接\\$\mat{C}$};
+ \node[block,right=of cat] (out) {输出投影 $\mat{W}_O$\\$Y$};
+ \draw[->] (in.east)--(h1.west);\draw[->] (in.east)--(h2.west);
+ \draw[->] (h1.east)--(cat.west);\draw[->] (h2.east)--(cat.west);
+ \draw[->] (cat)--(out);
+\end{tikzpicture}
+\end{document}

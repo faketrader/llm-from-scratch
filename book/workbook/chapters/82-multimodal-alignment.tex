@@ -18,21 +18,21 @@
 \begin{exercise} 从按行、按列交叉熵分别推导式\tbobject{eq:mm-logit-grad}，说明 $R$ 和 $C$ 一般不相同。
 
 \begin{solution}
-行损失$\mathcal L_r=B^{-1}\sum_i[-S_{ii}+\log\sum_j e^{S_{ij}}]$导数为$\frac{R_{ij}-\delta_{ij}}{B}$。列损失同理为$\frac{C_{ij}-\delta_{ij}}{B}$；两者平均得$G_{ij}=\frac{R_{ij}+C_{ij}-2\delta_{ij}}{2B}$。行、列分母分别归一同图不同文与同文不同图，除特殊对称数据外不相同。
+行损失$\mathcal L_r=B^{-1}\sum_i[-S_{ii}+\log\sum_j \conste{}^{S_{ij}}]$导数为$\frac{R_{ij}-\delta_{ij}}{B}$。列损失同理为$\frac{C_{ij}-\delta_{ij}}{B}$；两者平均得$G_{ij}=\frac{R_{ij}+C_{ij}-2\delta_{ij}}{2B}$。行、列分母分别归一同图不同文与同文不同图，除特殊对称数据外不相同。
 \end{solution}
 \end{exercise}
 
 \begin{exercise} 将双样本例题温度改为0.5，重新计算损失、逻辑值梯度和对数缩放梯度；比较温度对概率和梯度链的影响。
 
 \begin{solution}
-$\tau=0.5$时S对角为2，$p=\frac{e^2}{1+e^2}\approx0.880797$。平均损失$\log(1+e^{-2})\approx0.126928$，逻辑值梯度对角$-\frac{1-p}{2}\approx-0.0596015$、非对角为正0.0596015。若对数缩放$a=\log(\frac{1}{\tau})$，$\frac{\partial\mathcal L}{\partial a}=\sum G_{ij}S_{ij}=-0.238406$。表示梯度还乘$\frac{1}{\tau}=2$；降低温度同时改变概率与链式缩放，不是把原梯度简单翻倍。
+$\tau=0.5$时S对角为2，$p=\frac{\conste{}^2}{1+\conste{}^2}\approx0.880797$。平均损失$\log(1+\conste{}^{-2})\approx0.126928$，逻辑值梯度对角$-\frac{1-p}{2}\approx-0.0596015$、非对角为正0.0596015。若对数缩放$a=\log(\frac{1}{\tau})$，$\frac{\partial\mathcal L}{\partial a}=\sum G_{ij}S_{ij}=-0.238406$。表示梯度还乘$\frac{1}{\tau}=2$；降低温度同时改变概率与链式缩放，不是把原梯度简单翻倍。
 \end{solution}
 \end{exercise}
 
 \begin{exercise} 推导向量归一化雅可比，验证其输出与单位向量正交，说明零向量处为何需要另行约定。
 
 \begin{solution}
-非零向量a，$u=\frac{a}{r},r=\|a\|$，微分$du=\frac{da}{r}-\frac{a(a^Tda)}{r^3}$，故$J=\frac{I-uu^T}{r}$。$u^TJ=0$，输出梯度在球面切空间，径向变化被去除。零向量处方向未定义，需明确带epsilon的归一化实现及其真实导数；不能继续使用$r=0$的该式。
+非零向量a，$\vect{u}=\frac{\vect{a}}{r},r=\|\vect{a}\|$，微分$d\vect{u}=\frac{d\vect{a}}{r}-\frac{\vect{a}(\vect{a}^{\mathrm{T}}d\vect{a})}{r^3}$，故$\mat{J}=\frac{\mat{I}-\vect{u}\vect{u}^{\mathrm{T}}}{r}$。$\vect{u}^{\mathrm{T}}\mat{J}=0$，输出梯度在球面切空间，径向变化被去除。零向量处方向未定义，需明确带epsilon的归一化实现及其真实导数；不能继续使用$r=0$的该式。
 \end{solution}
 \end{exercise}
 
@@ -46,14 +46,14 @@ $\tau=0.5$时S对角为2，$p=\frac{e^2}{1+e^2}\approx0.880797$。平均损失$\
 \begin{exercise} 在重采样例题中将查询改为0，计算输出及值梯度，并解释此时为何表现为平均但一般重采样并非平均。
 
 \begin{solution}
-Q为0时两个逻辑值均0，A为$(\frac{1}{2},\frac{1}{2})$，输出$Z=(1,2)$。一般值梯度$D_V=A^TD_Z$，即每行$\frac{D_Z}{2}$；本题沿用目标$Z^*=(1,2)$，因此$D_Z=0$，值及其余梯度全零。平均来自此次相同逻辑值，不是任意查询与键下重采样的固定行为。
+Q为0时两个逻辑值均0，A为$(\frac{1}{2},\frac{1}{2})$，输出$\mat{Z}=(1,2)$。一般值梯度$\mat{D}_V=\mat{A}^{\mathrm{T}}\mat{D}_Z$，即每行$\frac{\mat{D}_Z}{2}$；本题沿用目标$\mat{Z}^*=(1,2)$，因此$\mat{D}_Z=0$，值及其余梯度全零。平均来自此次相同逻辑值，不是任意查询与键下重采样的固定行为。
 \end{solution}
 \end{exercise}
 
 \begin{exercise}\optional 对 $M<N_v$ 的固定注意力矩阵构造一个非零零空间扰动，说明固定映射的信息损失与非线性重采样器整体能力的区别。
 
 \begin{solution}
-取固定$A=(\frac{1}{2},\frac{1}{2})$，$M=1<N_v=2$，任意非零向量v使扰动$\Delta V=(v,-v)^T$满足$A\Delta V=0$。一般A的秩至多M，故每值通道有至少$N_v-M$维核。真实注意力A可能随输入变化，该固定核扰动不一定保持A；结论只证明局部固定线性值映射有信息压缩，不证明整个非线性网络对所有此类扰动均不敏感。
+取固定$\mat{A}=(\frac{1}{2},\frac{1}{2})$，$M=1<N_v=2$，任意非零向量v使扰动$\Delta \mat{V}=(\vect{v},-\vect{v})^{\mathrm{T}}$满足$\mat{A}\Delta \mat{V}=0$。一般A的秩至多M，故每值通道有至少$N_v-M$维核。真实注意力A可能随输入变化，该固定核扰动不一定保持A；结论只证明局部固定线性值映射有信息压缩，不证明整个非线性网络对所有此类扰动均不敏感。
 \end{solution}
 \end{exercise}
 

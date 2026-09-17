@@ -1,9 +1,0 @@
-flowchart TD
-    B{"主要瓶颈是什么？"}
-    B -->|"数据准备或 Padding 浪费"| D["Packing、Dynamic Padding<br/>异步预取、数据分片"]
-    B -->|"矩阵计算或显存带宽"| C["BF16 / FP16 / FP8<br/>融合算子、编译、通信重叠"]
-    B -->|"Activation 显存"| A["减小 Micro-batch<br/>Gradient Checkpointing<br/>Sequence / Context Parallel"]
-    B -->|"Optimizer / Gradient / Parameter 状态"| Z["DeepSpeed ZeRO<br/>PyTorch FSDP"]
-    B -->|"单层或整个模型放不下"| M["Tensor Parallel<br/>Pipeline Parallel"]
-    B -->|"MoE Experts 放不下"| E["Expert Parallel"]
-    B -->|"只需任务适配"| P["LoRA / QLoRA / IA³ 等 PEFT"]

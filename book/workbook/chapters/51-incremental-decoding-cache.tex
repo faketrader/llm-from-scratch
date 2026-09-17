@@ -46,7 +46,7 @@
 \begin{exercise}\optional 推导式\tbobject{eq:cache-absorb-key}，并用维度说明 $U_K$ 不能与任意位置旋转交换。
 
 \begin{solution}
-若 $k_j=U_Kc_j$，则 $q_t^\mathsf Tk_j=q_t^\mathsf TU_Kc_j=(U_K^\mathsf Tq_t)^\mathsf Tc_j$。$U_K\in\mathbb R^{d_k\times r_c}$，矩形矩阵不能与任意 $d_k\times d_k$旋转交换；例如 $R_jU_K$ 与 $U_KR_j$ 后者甚至维度不合法。即使方阵也一般不交换，位置旋转须保持其真实分工。
+若 $k_j=\mat{U}_Kc_j$，则 $\vect{q}_t^{\mathrm{T}}k_j=\vect{q}_t^{\mathrm{T}}\mat{U}_Kc_j=(\mat{U}_K^{\mathrm{T}}\vect{q}_t)^{\mathrm{T}}c_j$。$\mat{U}_K\in\mathbb R^{d_k\times r_c}$，矩形矩阵不能与任意 $d_k\times d_k$旋转交换；例如 $\mat{R}_j\mat{U}_K$ 与 $\mat{U}_K\mat{R}_j$ 后者甚至维度不合法。即使方阵也一般不交换，位置旋转须保持其真实分工。
 \end{solution}
 \end{exercise}
 

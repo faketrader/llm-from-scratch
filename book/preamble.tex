@@ -1,14 +1,25 @@
 \usepackage{\subfix{../mymath}}
 \usepackage{\subfix{../mybook}}
-\input{\subfix{../chapter-xrefs.generated.tex}}
+\ifSubfilesClassLoaded{%
+  \externaldocument[lfs-textbook-]{../../../build/textbook/textbook}%
+}{}
 \usepackage{\subfix{../termindex}}
 
 \addbibresource{\subfix{../references.bib}}
 \newcommand*{\bookauthor}{韩威}
+% 主版本号从 0 起计，出版版次从 1 起计：0.x 为第一版，1.x 为第二版。
+\newcommand*{\bookversionmajor}{0}
+\newcommand*{\bookversionminor}{1}
+\newcommand*{\bookversionpatch}{0}
+\newcommand*{\bookversionnumber}{\bookversionmajor.\bookversionminor.\bookversionpatch}
+\newcommand*{\bookversiondate}{20260917}
+\newcommand*{\bookversion}{\bookversionnumber-\bookversiondate}
+\newcommand*{\bookedition}{第\zhnumber{\number\numexpr\bookversionmajor+1\relax}版}
 \hypersetup{
-  pdftitle={LLM from Scratch: Zero to Hero},
-  pdfauthor={\bookauthor}
+  pdftitle={大语言模型：从理论到实践},
+  pdfauthor={\bookauthor},
+  pdfsubject={版本 \bookversion}
 }
 \title{\Large 大语言模型：从理论到实践}
 \author{\bookauthor}
-\date{持续修订版}
+\date{\bookversion}

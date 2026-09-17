@@ -1,0 +1,213 @@
+.reading-tools {
+  position: sticky;
+  top: 145px;
+  align-self: start;
+  padding-top: 8px;
+}
+.size-controls {
+  display: flex;
+  gap: 8px;
+  margin: 16px 0 24px;
+}
+.size-controls button {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  width: 38px;
+  height: 34px;
+  font-size: 13px;
+}
+.reading-tools #reading-status {
+  font-size: 11px;
+  color: #768170;
+}
+.reading-tools > a {
+  font-size: 11px;
+}
+.exercise-section,
+.references-section {
+  border-top: 1px solid var(--line);
+  margin-top: 65px;
+  padding-top: 35px;
+}
+.exercise-section h2,
+.references-section h2 {
+  margin-top: 6px;
+}
+.section-note {
+  font-size: 13px;
+  color: var(--muted);
+}
+.exercise {
+  border: 1px solid var(--line);
+  padding: 22px 25px;
+  margin: 20px 0;
+  border-radius: 7px;
+}
+.exercise-heading {
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 650;
+  letter-spacing: 1px;
+}
+.optional {
+  font-size: 10px;
+  margin-left: 12px;
+  padding: 3px 7px;
+  background: #f0ecd9;
+  color: #8b783b;
+  border-radius: 3px;
+}
+.exercise p {
+  margin: 12px 0;
+  font-size: 0.94em;
+}
+.exercise details {
+  border-top: 1px solid var(--line);
+  margin-top: 18px;
+  padding-top: 14px;
+}
+.exercise summary {
+  font-size: 12px;
+  color: var(--accent);
+  cursor: pointer;
+}
+.answer {
+  color: #52604f;
+}
+.references-section {
+  font-size: 13px;
+  line-height: 1.9;
+}
+#references dl.thebibliography,
+#refs dl.thebibliography {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 15px 12px;
+  margin: 15px 0;
+  align-items: baseline;
+}
+#references dt.thebibliography,
+#references dd.thebibliography,
+#refs dt.thebibliography,
+#refs dd.thebibliography {
+  margin: 0;
+  min-width: 0;
+}
+#references dd.thebibliography,
+#refs dd.thebibliography {
+  overflow-wrap: anywhere;
+}
+#references dd.thebibliography p,
+#refs dd.thebibliography p {
+  margin: 0;
+}
+footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #959d91;
+  border-top: 1px solid var(--line);
+  margin-top: 65px;
+  padding: 30px 0 45px;
+}
+dialog {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 25px;
+  background: var(--paper);
+  color: var(--ink);
+  max-height: 80vh;
+  max-width: calc(100vw - 28px);
+  width: 620px;
+  box-shadow: 0 25px 100px #102b2333;
+}
+dialog::backdrop {
+  background: #15282066;
+  backdrop-filter: blur(3px);
+}
+.dialog-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.dialog-top h2 {
+  margin: 0 0 15px;
+  padding: 0;
+  font-size: 19px;
+}
+.dialog-top button,
+#figure-close {
+  border: 0;
+  background: transparent;
+  padding: 8px;
+  font-size: 20px;
+}
+#search-input {
+  width: 100%;
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  font-size: 14px;
+}
+#search-count {
+  font-size: 12px;
+  color: var(--muted);
+}
+#search-results {
+  max-height: 50vh;
+  overflow: auto;
+}
+#search-results a {
+  display: block;
+  padding: 14px 8px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 1.8;
+}
+#search-results a:hover {
+  background: #f2f4ed;
+  text-decoration: none;
+}
+#figure-dialog {
+  width: 1050px;
+  text-align: center;
+}
+#figure-large {
+  display: block;
+  width: 100%;
+  max-height: 65vh;
+  object-fit: contain;
+}
+#figure-close {
+  display: block;
+  margin-left: auto;
+  font-size: 13px;
+}
+#figure-caption {
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+#menu-toggle {
+  display: none;
+}
+.skip {
+  position: absolute;
+  top: -100px;
+  left: 20px;
+  z-index: 40;
+  padding: 12px;
+  background: #fff;
+}
+.skip:focus {
+  top: 10px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}

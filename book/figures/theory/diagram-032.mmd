@@ -1,8 +1,0 @@
-flowchart LR
-    P["当前已接受前缀"] --> D["Draft Model<br/>提出 k 个 token"]
-    D --> T["Target Model<br/>一次并行验证"]
-    T --> A{"接受多少个连续候选？"}
-    A -->|"全部或部分接受"| U["更新输出与 KV Cache"]
-    A -->|"出现拒绝"| C["按正确接受规则修正 token"]
-    C --> U
-    U --> P

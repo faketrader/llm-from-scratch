@@ -1,5 +1,7 @@
+\ifdefined\LFSWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
+\fi
 \bookchapter{数学基础}{ch:rev-probability}
 
 向量承载特征，矩阵实现批量线性变换，梯度描述目标函数对参数的局部变化，概率规定语言模型输出的含义。这些数学对象共同构成语言建模的基础，并用于推导\term{最大似然估计}{Maximum Likelihood Estimation}{MLE}、\term{熵}{Entropy}{}、\term{交叉熵}{Cross-Entropy}{CE}和\term{库尔贝克—莱布勒散度}{Kullback--Leibler Divergence}{KL}。
@@ -8,50 +10,50 @@
 词表取有限集合；除明确讨论连续情形外，概率均为离散质量。涉及条件概率的条件事件具有正概率；需要有限对数损失时，预测分布在目标支持集上严格为正。涉及统计估计的推导分别给出采样假设。
 \end{assumption}
 
-\section{向量、矩阵及线性变换}
+\section{向量、矩阵和线性变换}
 
-\subsection{向量的方向及尺度}
+\subsection{向量的方向与尺度}
 向量可以看作一组有顺序的数，也可以看作空间中的点或方向。设
-$x={(x_1,\ldots,x_d)}^{\mathsf T}\in\Real^d$，其欧氏长度和两个向量的内积分别为
+$\vect{x}={(x_1,\ldots,x_d)}^{\mathrm{T}}\in\Real^d$，其欧氏长度和两个向量的内积分别为
 \begin{equation}
- \lVert x\rVert_2=\sqrt{\sum_{i=1}^{d}x_i^2},\qquad
- x^{\mathsf T}y=\sum_{i=1}^{d}x_i y_i.
+ \lVert \vect{x}\rVert_2=\sqrt{\sum_{i=1}^{d}x_i^2},\qquad
+ \vect{x}^{\mathrm{T}}\vect{y}=\sum_{i=1}^{d}x_i y_i.
 \end{equation}
 内积同时包含长度与夹角信息。余弦相似度
-$\frac{x^{\mathsf T}y}{\lVert x\rVert_2\lVert y\rVert_2}$
+$\frac{\vect{x}^{\mathrm{T}}\vect{y}}{\lVert \vect{x}\rVert_2\lVert \vect{y}\rVert_2}$
 去除了长度影响，但只有在向量非零时才有定义。在语言模型中，一个向量常表示某个词元或位置的特征；坐标本身通常没有独立的固定语义，向量之间的关系才是模型使用的信息。
 
-向量相加要求维数相同。标量乘法改变长度并可能改变方向。逐元素乘法 $x\odot y$ 与内积不同：前者仍是向量，后者将公共索引求和后得到标量。看到一个公式时，先写出输入和输出形状，往往比先代数化简更容易发现错误。
+向量相加要求维数相同。标量乘法改变长度并可能改变方向。逐元素乘法 $\vect{x}\odot \vect{y}$ 与内积不同：前者仍是向量，后者将公共索引求和后得到标量。看到一个公式时，先写出输入和输出形状，往往比先代数化简更容易发现错误。
 
 \subsection{矩阵表示批量数据和线性映射}
-矩阵 $A\in\Real^{m\times n}$ 有 $m$ 行、$n$ 列。矩阵乘法
+矩阵 $\mat{A}\in\Real^{m\times n}$ 有 $m$ 行、$n$ 列。矩阵乘法
 \begin{equation}
- y=Ax,\qquad y_i=\sum_{j=1}^{n}A_{ij}x_j
+ \vect{y}=\mat{A}\vect{x},\qquad y_i=\sum_{j=1}^{n}A_{ij}x_j
 \end{equation}
-把 $n$ 维输入映射到 $m$ 维输出。乘法成立的条件是相邻的公共维数相同；公共维被求和，外侧维被保留。若一批样本按行组成 $X\in\Real^{B\times n}$，常将同一变换写为 $Y=XW$，其中 $W\in\Real^{n\times m}$。这只是批处理约定不同，并不改变每个样本执行同一映射的事实。
+把 $n$ 维输入映射到 $m$ 维输出。乘法成立的条件是相邻的公共维数相同；公共维被求和，外侧维被保留。若一批样本按行组成 $\mat{X}\in\Real^{B\times n}$，常将同一变换写为 $\mat{Y}=\mat{X}\mat{W}$，其中 $\mat{W}\in\Real^{n\times m}$。这只改变批处理的书写方式，每个样本执行的映射相同。
 
-线性变换满足 $f(ax+by)=af(x)+bf(y)$。神经网络常用的“线性层”实际计算
+线性变换满足 $f(a\vect{x}+b\vect{y})=af(\vect{x})+bf(\vect{y})$。神经网络常用的“线性层”实际计算
 \begin{equation}
- z=Wx+b,
+ \vect{z}=\mat{W}\vect{x}+\vect{b},
 \end{equation}
-含偏置 $b$ 时严格说是\term{仿射变换}{Affine Transformation}{}。连续堆叠多个仿射变换仍可合并为一个仿射变换，因此网络需要激活函数引入非线性。转置 $A^{\mathsf T}$ 交换行列；逆矩阵只对可逆方阵存在。深度学习中通常直接计算线性方程或矩阵乘积，不应为了形式方便显式求逆。
+含偏置 $\vect{b}$ 时严格说是\term{仿射变换}{Affine Transformation}{}。连续堆叠多个仿射变换仍可合并为一个仿射变换，因此网络需要激活函数引入非线性。转置 $\mat{A}^{\mathrm{T}}$ 交换行列；逆矩阵只对可逆方阵存在。数值实践中通常直接计算线性方程或矩阵乘积；显式求逆在计算代价和数值稳定性上都不划算。
 
-\section{导数、梯度及链式法则}
+\section{导数、梯度和链式法则}
 
 一元导数描述函数在某一点附近的变化率。多元标量函数 $f:\Real^d\to\Real$ 的梯度为
 \begin{equation}
- \nabla_x f={\left(
+ \nabla_{\vect{x}} f={\left(
  \frac{\partial f}{\partial x_1},\ldots,
  \frac{\partial f}{\partial x_d}
- \right)}^{\mathsf T}.
+ \right)}^{\mathrm{T}}.
 \end{equation}
 梯度与输入同形，并指向欧氏空间中函数上升最快的局部方向；负梯度因此是局部下降方向。梯度为零只说明一阶变化消失，不保证该点是全局最小值。
 
-复合函数通过链式法则求导。若 $z=g(x)$、$f=h(z)$，则
+复合函数通过链式法则求导。若 $\vect{z}=g(\vect{x})$、$f=h(\vect{z})$，则
 \begin{equation}
- \frac{\partial f}{\partial x}
- =\frac{\partial z}{\partial x}^{\mathsf T}
-  \frac{\partial f}{\partial z}.
+ \frac{\partial f}{\partial \vect{x}}
+ =\frac{\partial \vect{z}}{\partial \vect{x}}^{\mathrm{T}}
+  \frac{\partial f}{\partial \vect{z}}.
 \end{equation}
 计算图中的反向传播就是从标量损失出发，沿依赖关系反向应用这条规则。同一变量经多条路径影响损失时，各路径贡献必须相加。矩阵求导、广播和自动微分的具体规则将在\bookxref{ch:rev-tensors}继续说明。
 
@@ -64,26 +66,28 @@ $\frac{x^{\mathsf T}y}{\lVert x\rVert_2\lVert y\rVert_2}$
 条件概率 $p(x\mid y)$ 表示已知 $y$ 后对 $x$ 的重新分配；它与联合概率的关系为
 $p(x,y)=p(x\mid y)p(y)$。语言模型正是反复估计“给定已有文本，下一个词元如何分布”。期望是按概率加权的平均，方差衡量随机变量围绕期望的离散程度。后续各节将在这些基本概念上展开最大似然、交叉熵和序列概率。
 
-\section{随机变量及分布}
+\section{随机变量与分布}
 
 \subsection{概率质量函数}
 \term{随机变量}{Random Variable}{} $X$ 是对不确定结果的数值或符号表示。大写 $X$ 表示随机变量，小写 $x$ 表示其一个可能取值。若 $X$ 取值于有限集合 $\mathcal X$，\term{概率质量函数}{Probability Mass Function}{PMF}写为
 \begin{equation}
  p_X(x)=P(X=x),\qquad p_X(x)\ge0,\qquad\sum_{x\in\mathcal X}p_X(x)=1.
 \end{equation}
-在不会混淆对象时，下标 $X$ 可以省略。模型中的一个词元编号是一次取值，而词表上的概率向量描述所有候选取值的不确定性。不能把某个编号的大小解释为该词元的概率。
+在不会混淆对象时，下标 $X$ 可以省略。模型中的一个词元编号是一次取值，而词表上的概率向量描述所有候选取值的不确定性。编号的大小与词元的概率无关。
 
-例如，若 $\mathcal X=\{a,b,c\}$ 且概率为 $(0.5,0.3,0.2)$，事件 $X\in\{a,c\}$ 的概率是 $0.7$。概率具有可加性，是因为这些离散取值对应互斥事件。两个并非互斥的事件则不能直接将概率相加，否则交集会被重复计算。
+例如，若 $\mathcal X=\{a,b,c\}$ 且概率为 $(0.5,0.3,0.2)$，事件 $X\in\{a,c\}$ 的概率是 $0.7$。概率具有可加性，是因为这些离散取值对应互斥事件。两个事件若非互斥，直接相加会把交集重复计算一次。
 
 本章主要使用有限分布，以便将概念直接连接到词表预测。连续随机变量用\term{概率密度函数}{Probability Density Function}{PDF} $f_X$ 描述区间概率：
 \begin{equation}
  P(a\le X\le b)=\int_a^b f_X(x)\dif x,\qquad\int_{-\infty}^{\infty}f_X(x)\dif x=1.
 \end{equation}
-密度值可以大于一，因为概率由区间积分而非单点密度给出。对具有密度的变量，单点事件的概率为零；这与离散词元概率不同。
+密度值可以大于一，因为概率来自区间积分。连续变量取到任一单点的概率为零，离散词元的概率则可直接读出。
 
-\subsection{记号及支持集}
-\begin{center}
-\begin{tabularx}{\linewidth}{lX}
+\subsection{记号和支持集}
+\begin{table}[htbp]
+\centering
+\caption{概率与信息论基础记号约定。}\label{tab:rev-prob-notations}
+\begin{tabularx}{\linewidth}{@{}lX@{}}
 \toprule 符号 & 含义\\\midrule
 $X,Y$；$x,y$ & 随机变量及其取值。\\
 $p(x,y)$；$p(y\mid x)$ & 联合概率及给定 $x$ 后的条件概率。\\
@@ -95,12 +99,12 @@ $H(p)$；$H(p,q)$ & 熵；以 $p$ 为目标、$q$ 为预测的交叉熵。\\
 $D_{\mathrm{KL}}(p\|q)$ & 从目标分布 $p$ 到分布 $q$ 的 KL 散度。\\
 \bottomrule
 \end{tabularx}
-\end{center}
-\term{支持集}{Support}{}是分布赋予正概率的取值集合，记为 $\operatorname{supp}(p)=\{x:p(x)>0\}$。涉及 $\log q(x)$ 的期望若在某个 $p(x)>0$ 的位置遇到 $q(x)=0$，就可能为无穷。这个边界不是公式上的小细节：一个模型若对真实可能出现的结果给出零概率，该结果一旦发生就会产生无穷大的负对数损失。
+\end{table}
+\term{支持集}{Support}{}是分布赋予正概率的取值集合，记为 $\operatorname{supp}(p)=\{x:p(x)>0\}$。涉及 $\log q(x)$ 的期望若在某个 $p(x)>0$ 的位置遇到 $q(x)=0$，就可能为无穷。这个边界对损失有直接后果：模型若对真实可能出现的结果给出零概率，该结果一旦发生就会产生无穷大的负对数损失。
 
-除特别说明外，本章使用自然对数，信息量单位为 nat。\footnote{改用以二为底的对数时，单位为 bit。两种记法相差常数 $\log 2$；数值比较应保持底数一致。密度的对数还与坐标及计量单位有关，离散熵的全部性质不能不加条件地移到微分熵。}
+除特别说明外，本章使用自然对数，信息量单位为 nat。\footnote{改用以二为底的对数时，单位为 bit。两种记法相差常数 $\log 2$；数值比较应保持底数一致。密度的对数还与坐标及计量单位有关，微分熵只继承离散熵的部分性质，需要逐条核对成立条件。}
 
-\section{联合概率、条件概率及链式分解}
+\section{联合概率、条件概率和链式分解}
 
 \subsection{条件分布}
 若 $p_X(x)>0$，条件概率定义为
@@ -108,7 +112,7 @@ $D_{\mathrm{KL}}(p\|q)$ & 从目标分布 $p$ 到分布 $q$ 的 KL 散度。\\
  p(y\mid x)=\frac{p(x,y)}{p_X(x)},\qquad
  p_X(x)=\sum_y p(x,y).
 \end{equation}
-条件化把样本空间限制到已知条件，并重新归一化。它不是删除条件变量，也不是默认条件与结果具有因果关系。网页内容与某个答案同时出现，描述统计相关；因果关系还需机制与干预等依据。
+条件化把样本空间限制到已知条件，并重新归一化。条件变量保留在表达式中，条件关系本身只描述统计相关。网页内容与某个答案同时出现，说明的是共现；断言因果关系还需要机制与干预等依据。
 
 将式\eqref{eq:rev-conditional}两边乘以 $p_X(x)$，得到乘法规则
 \begin{equation}
@@ -121,7 +125,6 @@ $D_{\mathrm{KL}}(p\|q)$ & 从目标分布 $p$ 到分布 $q$ 的 KL 散度。\\
 要求分母 $p_Y(y)>0$。分子衡量取值 $x$ 与观测 $y$ 的共同可能性，分母汇总全部候选解释，使结果归一化。
 
 \begin{example}[验证器通过后的正确率]
-\label{q:ch2:example:01}
 设一个验证器判断生成答案是否正确。候选答案的先验正确率为 $0.2$；正确答案有 $0.9$ 的概率通过，错误答案有 $0.1$ 的概率误通过。记正确事件为 $C$，通过事件为 $A$。联合概率为
 \begin{align}
  P(C\cap A)&=0.2\times0.9=0.18,\\
@@ -132,7 +135,7 @@ $D_{\mathrm{KL}}(p\|q)$ & 从目标分布 $p$ 到分布 $q$ 的 KL 散度。\\
 \begin{equation}
  P(C\mid A)=\frac{0.18}{0.26}=\frac9{13}\approx0.6923.
 \end{equation}
-通过后的正确率高于原来的 $0.2$，却并非 $0.9$。$P(A\mid C)$ 表示正确答案被接受的概率，$P(C\mid A)$ 表示接受结果中正确答案的比例，条件方向不同。基础正确率较低时，错误答案数量较多，即使误通过率较低也会形成不可忽略的污染。
+通过后的正确率高于原来的 $0.2$，但仍远低于 $0.9$ 这个通过率本身。$P(A\mid C)$ 表示正确答案被接受的概率，$P(C\mid A)$ 表示接受结果中正确答案的比例，条件方向不同。基础正确率较低时，错误答案数量较多，即使误通过率较低也会形成不可忽略的污染。
 
 实际系统可从样本中估计这些条件概率；验证器与候选生成器的相关性以及分布变化会影响估计结果。
 \end{example}
@@ -148,7 +151,7 @@ $D_{\mathrm{KL}}(p\|q)$ & 从目标分布 $p$ 到分布 $q$ 的 KL 散度。\\
 \begin{equation}\label{eq:rev-prob-chain}
  p(x_{1:T})=\prod_{t=1}^T p(x_t\mid x_{<t}).
 \end{equation}
-这个分解没有假定各位置独立。相反，右端保留了完整前缀条件。只有进一步假定 $p(x_t\mid x_{<t})=p(x_t)$，才会退化为独立取值乘积。以固定窗口替代完整前缀同样是一项额外限制。
+这个分解对位置间独立性不作要求，右端保留了完整前缀条件。只有进一步假定 $p(x_t\mid x_{<t})=p(x_t)$，才退化为独立取值乘积。以固定窗口替代完整前缀同样是一项额外限制。
 
 \begin{proposition}[序列分布的归一化]
 对于固定长度 $T$ 的离散序列，若每个前缀条件下的词元分布均归一化，则式\eqref{eq:rev-prob-chain}定义的联合分布也归一化。
@@ -162,9 +165,9 @@ $D_{\mathrm{KL}}(p\|q)$ & 从目标分布 $p$ 到分布 $q$ 的 KL 散度。\\
  &=\cdots=\sum_{x_1}p(x_1)=1.
 \end{align}
 \end{proof}
-这解释了为何逐位置的词表分布能够定义完整序列概率。零概率前缀上的条件分布可以任意补成归一化分布，而不改变联合概率；除法定义只需用于具有正概率的前缀。
+这解释了为何逐位置的词表分布能够定义完整序列概率。零概率前缀上的条件分布可以任意补成归一化分布，联合概率不受影响；除法定义只需用于具有正概率的前缀。
 
-\section{期望、方差及经验分布}
+\section{期望、方差和经验分布}
 
 \subsection{期望的概率加权}
 对有限分布，函数 $g(X)$ 的期望为
@@ -183,7 +186,7 @@ $\mathbb E[aU+bV]=a\mathbb E[U]+b\mathbb E[V]$，无须假定 $U,V$ 独立。
  \operatorname{Var}(U+V)=\operatorname{Var}(U)+\operatorname{Var}(V)
  +2\operatorname{Cov}(U,V),
 \end{equation}
-其中 $\operatorname{Cov}(U,V)=\mathbb E[(U-\mathbb E U)(V-\mathbb E V)]$。忽略协方差可能严重低估误差，例如同一文档的多个近重复片段并非新的独立证据。
+其中 $\operatorname{Cov}(U,V)=\mathbb E[(U-\mathbb E U)(V-\mathbb E V)]$。忽略协方差可能严重低估误差，例如同一文档的多个近重复片段提供的是同一份证据。
 
 \subsection{有限样本估计}
 设 $X_1,\ldots,X_n$ 独立同分布，均值为 $\mu$、有限方差为 $\sigma^2$。样本均值 $\overline X=n^{-1}\sum_iX_i$ 满足
@@ -191,7 +194,7 @@ $\mathbb E[aU+bV]=a\mathbb E[U]+b\mathbb E[V]$，无须假定 $U,V$ 独立。
  \mathbb E[\overline X]=\mu,\qquad
  \operatorname{Var}(\overline X)=\frac1{n^2}\sum_i\operatorname{Var}(X_i)=\frac{\sigma^2}{n}.
 \end{equation}
-第一式来自线性性，第二式还使用了不同样本间协方差为零。标准差随 $n^{-\frac{1}{2}}$ 缩小，而不是随 $n^{-1}$ 缩小。将记录复制十次不会产生十倍独立信息。
+第一式来自线性性，第二式还使用了不同样本间协方差为零。标准差按 $n^{-\frac{1}{2}}$ 缩小。将记录复制十次，独立信息并不会随之增加十倍。
 
 对离散取值，经验分布为
 \begin{equation}
@@ -204,25 +207,24 @@ $\mathbb E[aU+bV]=a\mathbb E[U]+b\mathbb E[V]$，无须假定 $U,V$ 独立。
 \end{equation}
 经验平均可以严格写成经验分布下的期望。经验分布由有限样本形成，未观察到的取值在总体中仍可能有正概率。后续的训练目标正是由这个可计算的经验平均构成。
 
-\section{最大似然及负对数损失}
+\section{最大似然与负对数损失}
 
-\subsection{似然及概率的对象不同}
+\subsection{似然和概率的对象不同}
 假设观测 $x^{(1)},\ldots,x^{(n)}$ 在给定参数后独立，模型给数据的似然为
 \begin{equation}
  \operatorname{Lik}(\theta;D)=\prod_{i=1}^n p_\theta(x^{(i)}).
 \end{equation}
-数据固定时，这个表达式被视为参数 $\theta$ 的函数，称为似然。它一般不在参数空间上积分为一，因此不应直接解释为“参数为真的概率”。参数后验还需要先验和相应归一化。
+数据固定时，这个表达式被视为参数 $\theta$ 的函数，称为似然。似然一般不在参数空间上积分为一，它的数值表示各参数取值的相对支持程度。得到参数后验还需要先验和相应归一化。
 
 由于对数严格单调，最大化似然与最大化对数似然具有相同的最优解。再乘以负号，得到最小化问题
 \begin{equation}
  \theta^*\in\argmin_\theta \mathcal L_n(\theta),\qquad
  \mathcal L_n(\theta)=-\frac1n\sum_{i=1}^n\log p_\theta(x^{(i)}).
 \end{equation}
-对数将连乘转为求和，既便于分析，也避免大量小概率连乘导致的数值下溢。除以固定的 $n$ 不改变最优解，但改变梯度尺度；优化时仍需与学习率等设置共同考虑。
+对数将连乘转为求和，既便于分析，也避免大量小概率连乘导致的数值下溢。除以固定的 $n$ 不改变最优解，但改变梯度尺度，优化时要与学习率等设置共同确定。
 
 \subsection{伯努利参数估计}
 \begin{example}
-\label{q:ch2:example:02}
 设 $X\in\{0,1\}$，$p_\theta(X=1)=\theta$，$0<\theta<1$。在 $n$ 次独立观测中出现 $k$ 次一，负对数似然为
 \begin{equation}
  J(\theta)=-k\log\theta-(n-k)\log(1-\theta).
@@ -232,34 +234,34 @@ $\mathbb E[aU+bV]=a\mathbb E[U]+b\mathbb E[V]$，无须假定 $U,V$ 独立。
  J'(\theta)=-\frac{k}{\theta}+\frac{n-k}{1-\theta}=0
  \quad\Longrightarrow\quad \widehat\theta=\frac{k}{n}.
 \end{equation}
-且 $J''(\theta)=\frac{k}{\theta^2}+\frac{n-k}{(1-\theta)^2}>0$，所以该驻点是唯一最小值。例如十次中六次为一，估计值为 $0.6$。当 $k=0$ 或 $k=n$ 时，若参数域包含端点，最优解分别位于 $0$ 或 $1$；不能在这些情形机械套用内部驻点条件。
+且 $J''(\theta)=\frac{k}{\theta^2}+\frac{n-k}{(1-\theta)^2}>0$，所以该驻点是唯一最小值。例如十次中六次为一，估计值为 $0.6$。当 $k=0$ 或 $k=n$ 时，若参数域包含端点，最优解分别位于 $0$ 或 $1$，内部驻点条件在这些情形不再给出最优解。
 
-端点解也说明经验估计的局限。训练样本没有某个结果时，最大似然可能将其概率设为零。引入先验、平滑或更强的共享结构可以改变这一行为，但这些操作也改变了估计问题，需明确说明。
+端点解也说明经验估计的局限。训练样本没有某个结果时，最大似然会将其概率设为零。引入先验、平滑或更强的共享结构可以改变这一行为，同时改变了估计问题，需要明确说明。
 \end{example}
 
-\subsection{条件监督、回归及多标签}
-在分类任务中，通常给定输入 $x_i$，拟合 $p_\theta(y_i\mid x_i)$。二分类令 $p=\sigma(z)=(1+e^{-z})^{-1}$，则伯努利负对数似然为
+\subsection{条件监督、回归与多标签}
+在分类任务中，通常给定输入 $x_i$，拟合 $p_\theta(y_i\mid x_i)$。二分类令 $p=\sigma(z)=(1+\conste{}^{-z})^{-1}$，则伯努利负对数似然为
 \begin{align}
  \ell(z,y)&=-y\log p-(1-y)\log(1-p)\\
- &=\log(1+e^z)-yz\\
- &=\max(z,0)-yz+\log(1+e^{-|z|}).\label{eq:rev-stable-bce}
+ &=\log(1+\conste{}^z)-yz\\
+ &=\max(z,0)-yz+\log(1+\conste{}^{-|z|}).\label{eq:rev-stable-bce}
 \end{align}
 第二行来自代入 Sigmoid，第三行分别对 $z\ge0$ 与 $z<0$ 提取指数中的较大项。最后一式中指数不大于一，避免了很大的正指数。这是损失稳定计算的数学依据。
 
-例如 $z=2$、$y=1$ 时，$p\approx0.8808$，损失为 $\log(1+e^{-2})\approx0.1269$；若标签改为零，损失为 $2+\log(1+e^{-2})\approx2.1269$。同一预测对不同真值应受到不同惩罚。\footnote{对 $y\in[0,1]$ 的软标签，同一式子仍定义两个类别间的交叉熵；此时 $y$ 不再表示一次伯努利取值，而表示目标概率或平均监督。}
+例如 $z=2$、$y=1$ 时，$p\approx0.8808$，损失为 $\log(1+\conste{}^{-2})\approx0.1269$；若标签改为零，损失为 $2+\log(1+\conste{}^{-2})\approx2.1269$。同一预测对不同真值应受到不同惩罚。\footnote{对 $y\in[0,1]$ 的软标签，同一式子仍定义两个类别间的交叉熵；此时 $y$ 不再表示一次伯努利取值，而表示目标概率或平均监督。}
 
 对连续目标，若假定 $Y\mid x\sim\mathcal N(f_\theta(x),\sigma^2)$ 且方差固定，则
 \begin{equation}
- -\log p_\theta(y\mid x)=\frac12\log(2\pi\sigma^2)
+ -\log p_\theta(y\mid x)=\frac12\log(2\constpi{}\sigma^2)
  +\frac{(y-f_\theta(x))^2}{2\sigma^2}.
 \end{equation}
-去掉与参数无关的项，最小化负对数似然等价于最小化平方误差。若方差也需要学习，第一项便不能删除；离群值和异方差也可能要求不同的分布模型。
+去掉与参数无关的项，最小化负对数似然等价于最小化平方误差。若方差也需要学习，第一项就留在目标里；离群值和异方差也可能要求不同的分布模型。
 
-互斥多分类用一个总和为一的类别分布，多标签则允许多个标签同时成立。若将各标签建模为\term{条件独立}{Conditional Independence}{}的伯努利变量，其联合似然为各标签似然的乘积，损失为各自二元交叉熵之和。条件独立是所采用的分布结构，并非多标签数据天然满足的性质。
+互斥多分类用一个总和为一的类别分布，多标签则允许多个标签同时成立。若将各标签建模为\term{条件独立}{Conditional Independence}{}的伯努利变量，其联合似然为各标签似然的乘积，损失为各自二元交叉熵之和。条件独立是一项建模假设，多标签数据本身并不满足这一性质。
 
-类别不平衡时，若仅把正类损失乘以 $w>0$，总体条件目标变为 $-wp_*\log q-(1-p_*)\log(1-q)$，其中 $p_*=P(Y=1\mid x)$。求导并令其为零，得到最优输出 $q^*=\frac{wp_*}{wp_*+1-p_*}$。除 $w=1$ 或退化端点外，$q^*$ 不再等于原始条件概率。加权目标改变了拟合对象，不能将其输出直接解释为已校准概率；决策阈值也应在独立验证中按错误代价选择。
+类别不平衡时，若仅把正类损失乘以 $w>0$，总体条件目标变为 $-wp_*\log q-(1-p_*)\log(1-q)$，其中 $p_*=P(Y=1\mid x)$。求导并令其为零，得到最优输出 $q^*=\frac{wp_*}{wp_*+1-p_*}$。除 $w=1$ 或退化端点外，$q^*$ 偏离原始条件概率。加权目标实际上拟合的是新的分布，其输出需要重新校准才能当作概率使用；决策阈值也应在独立验证中按错误代价选择。
 
-\section{熵、交叉熵及 KL 散度}
+\section{熵、交叉熵和 KL 散度}
 
 \subsection{熵衡量分布内部的不确定性}
 \term{信息熵}{Information Entropy}{}源于对概率不确定性的定量研究\cite{shannon1948communication}。以下用有限分布推导其性质，信息不确定性与文本语义价值须区分。
@@ -270,9 +272,9 @@ $\mathbb E[aU+bV]=a\mathbb E[U]+b\mathbb E[V]$，无须假定 $U,V$ 独立。
 \end{equation}
 取 $0\log0=0$，这与 $u\log u$ 在 $u\to0^+$ 时的极限一致。离散概率不大于一，故 $H(p)\ge0$；确定性分布的熵为零。
 
-熵描述一个分布自身的不确定性，并不评价模型是否正确。一个模型把错误答案的概率集中到接近一，也可以具有很低的预测熵。低熵表示确信，确信是否合理还需要与目标分布或观测结果比较。
+熵描述一个分布自身的不确定性。一个模型把错误答案的概率集中到接近一，可以具有很低的预测熵。低熵表示确信，确信是否合理要与目标分布或观测结果比较。
 
-\subsection{交叉熵及散度的分解}
+\subsection{交叉熵与散度的分解}
 设目标分布为 $p$，模型或编码分布为 $q$，交叉熵定义为
 \begin{equation}
  H(p,q)=-\sum_xp(x)\log q(x).
@@ -283,6 +285,28 @@ $\mathbb E[aU+bV]=a\mathbb E[U]+b\mathbb E[V]$，无须假定 $U,V$ 独立。
  &=H(p)+D_{\mathrm{KL}}(p\|q).\label{eq:rev-cross-entropy-kl}
 \end{align}
 第一项不随模型 $q$ 改变，第二项衡量预测分布偏离目标分布所带来的额外平均对数损失。因此，对固定目标分布最小化交叉熵，等价于最小化这个方向的 KL 散度。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=.92\linewidth]{\subfix{../../figures/theory/math-information-venn.pdf}}
+\caption{信息论核心测度维恩几何关系与交叉熵分解。左图展示边缘熵、条件熵与互信息的包含关系；右图展示总交叉熵损失分解为目标分布固有熵与预测相对熵。}\label{fig:math-information-venn}
+\end{figure}
+
+\begin{table}[htbp]
+\centering
+\caption{信息论核心测度定义、性质与建模含义对照。}\label{tab:rev-math-measures}
+\begin{tabularx}{\linewidth}{@{}p{22mm}p{40mm}lX@{}}
+\toprule
+测度名称 & 离散数学定义 & 下界与对称性 & 语言建模物理含义 \\\midrule
+自信息 $I(x)$ & $-\log p(x)$ & $\ge 0$，无对称 & 单个词元发生带来的信息增益／意外程度。 \\
+香农熵 $H(p)$ & $-\sum_x p(x) \log p(x)$ & $\ge 0$，无对称 & 概率分布自身的不确定性与不可压缩极限。 \\
+条件熵 $H(Y\mid X)$ & $-\sum_{x,y} p(x,y)\log p(y\mid x)$ & $\ge 0$，不对称 & 给定历史上下文时后续词元残留的不确定性。 \\
+互信息 $I(X;Y)$ & $\sum_{x,y} p(x,y)\log \frac{p(x,y)}{p(x)p(y)}$ & $\ge 0$，对称 & 上下文与目标词元共享的信息量（相关程度）。 \\
+交叉熵 $H(p,q)$ & $-\sum_x p(x)\log q(x)$ & $\ge H(p)$，不对称 & 使用模型分布 $q$ 编码真实数据 $p$ 的平均编码长度。 \\
+KL 散度 $D_{\mathrm{KL}}(p\|q)$ & $\sum_x p(x)\log \frac{p(x)}{q(x)}$ & $\ge 0$，不对称 & 模型预测分布偏离真实分布的相对额外代价。 \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
 \begin{proposition}[KL 散度非负性]
 对同一有限集合上的概率分布 $p$ 和 $q$，$D_{\mathrm{KL}}(p\|q)\ge0$，且等号成立当且仅当 $p=q$。当 $p(x)>0$ 而 $q(x)=0$ 时，散度取正无穷。
@@ -302,7 +326,6 @@ $\mathbb E[aU+bV]=a\mathbb E[U]+b\mathbb E[V]$，无须假定 $U,V$ 独立。
 
 \subsection{KL 散度方向性}
 \begin{example}
-\label{q:ch2:example:03}
 令 $p=(0.75,0.25)$，$q=(0.5,0.5)$，逐项计算得到
 \begin{align}
  H(p)&=-0.75\log0.75-0.25\log0.25\approx0.5623,\\
@@ -314,33 +337,34 @@ $\mathbb E[aU+bV]=a\mathbb E[U]+b\mathbb E[V]$，无须假定 $U,V$ 独立。
  D_{\mathrm{KL}}(q\|p)=0.5\log\frac{0.5}{0.75}+0.5\log\frac{0.5}{0.25}
  \approx0.1438.
 \end{equation}
-二者不同，说明 KL 散度一般不对称。它也不满足三角不等式，因而不是通常意义的距离。训练和蒸馏中的 KL 项必须说明哪个分布提供采样权重；改变方向便改变了目标。
+两个方向的取值不同，说明 KL 散度一般不对称；它也不满足三角不等式，与通常意义的距离有本质区别。训练和蒸馏中的 KL 项必须说明哪个分布提供采样权重，改变方向便改变了目标。
 
-\begin{center}
+\begin{figure}[htbp]
+\centering
 \includegraphics[width=.92\linewidth]{\subfix{../../figures/theory/revision-likelihood-objective.pdf}}
-\captionof{figure}{观测数据与模型通过负对数概率形成经验交叉熵。真实分布提供总体目标，有限样本只提供其估计；二者之间的差异不能由训练损失自动消除。}
-\end{center}
+\caption{观测数据与模型通过负对数概率形成经验交叉熵。真实分布提供总体目标，有限样本只提供其估计；二者之间的差异留在训练损失之外。}\label{fig:rev-likelihood-objective}
+\end{figure}
 \end{example}
 
 \section{序列损失}
 
-\subsection{独热目标及 Softmax}
-互斥 $C$ 分类的目标类别为 $y$，独热向量为 $e_y$。对预测分布 $q$，
+\subsection{独热目标与 Softmax}
+互斥 $C$ 分类的目标类别为 $y$，独热向量为 $\vect{e}_y$。对预测分布 $\vect{q}$，
 \begin{equation}
- H(e_y,q)=-\sum_{j=1}^C\mathbf1[j=y]\log q_j=-\log q_y.
+ H(\vect{e}_y,\vect{q})=-\sum_{j=1}^C\mathbf1[j=y]\log q_j=-\log q_y.
 \end{equation}
-因此用整数类别编号索引正确类别，与显式构造独热向量再求交叉熵，在数学上给出同一标量。前者不需要分配整个独热数组。软标签则有多个非零权重，不能再简化为只读取一个类别。
+因此用整数类别编号索引正确类别，与显式构造独热向量再求交叉熵，给出同一个标量。前者不需要分配整个独热数组。软标签则有多个非零权重，需要完整参与求和。
 
-令网络产生实数分数 $z\in\Real^C$，\term{归一化指数函数}{Softmax}{}将其映射到概率单纯形：
+令网络产生实数分数 $\vect{z}\in\Real^C$，\term{归一化指数函数}{Softmax}{}将其映射到概率单纯形：
 \begin{equation}
- q_j=\frac{e^{z_j}}{\sum_ke^{z_k}},\qquad
- \ell(z,y)=-z_y+\log\sum_ke^{z_k}.
+ q_j=\frac{\conste{}^{z_j}}{\sum_k\conste{}^{z_k}},\qquad
+ \ell(\vect{z},y)=-z_y+\log\sum_k\conste{}^{z_k}.
 \end{equation}
 对全部分数减去相同常数不会改变概率。令 $a=\max_kz_k$，有
 \begin{equation}
- \log\sum_ke^{z_k}=a+\log\sum_ke^{z_k-a}.
+ \log\sum_k\conste{}^{z_k}=a+\log\sum_k\conste{}^{z_k-a}.
 \end{equation}
-右端指数都不大于一。稳定实现应计算这种形式，而不是先计算可能溢出的指数再求对数。分数的绝对平移不可识别，真正决定概率的是分数差。具体梯度将在张量与自动微分章推导。
+右端指数都不大于一。稳定实现按这种形式计算，可以避免先算出溢出值再取对数。分数的绝对平移不可识别，决定概率的是分数差。具体梯度将在张量与自动微分章推导。
 
 \subsection{条件生成的最大似然}
 给定上下文 $c$，长度为 $T$ 的目标 $y_{1:T}$ 满足
@@ -348,29 +372,49 @@ $\mathbb E[aU+bV]=a\mathbb E[U]+b\mathbb E[V]$，无须假定 $U,V$ 独立。
  p_\theta(y_{1:T}\mid c)=\prod_{t=1}^T p_\theta(y_t\mid c,y_{<t}),\qquad
  -\log p_\theta(y_{1:T}\mid c)=-\sum_{t=1}^T\log p_\theta(y_t\mid c,y_{<t}).
 \end{equation}
-这里先按固定长度讨论；可变长度的完整生成事件还需包含终止词元，其概率处理见\bookxref{ch:rev-autoregressive}。分类是目标仅含一个类别的特例；翻译、问答和指令回答则把类别预测重复到整个目标序列。条件 $c$ 可以进入每一步计算，却不一定属于损失监督区域。仅屏蔽条件位置的损失，并不会删除模型对条件信息的依赖。
+这里先按固定长度讨论；可变长度的完整生成事件还需包含终止词元，其概率处理见\bookxref{ch:rev-autoregressive}。分类是目标仅含一个类别的特例；翻译、问答和指令回答则把类别预测重复到整个目标序列。条件 $c$ 可以进入每一步计算，却不一定属于损失监督区域。屏蔽条件位置的损失只改变优化区域，条件仍通过前向计算影响每一步预测。
 
-\subsection{序列归一化及样本权重}
+\subsection{序列归一化和样本权重}
 对文档 $i$ 的有效预测位置集合 $\mathcal T_i$，令 $N_i=|\mathcal T_i|$。序列链式分解给出损失和
 \begin{equation}
  S_i=-\sum_{t\in\mathcal T_i}\log p_\theta(x_t^{(i)}\mid x_{<t}^{(i)}).
 \end{equation}
 总词元平均为 $\mathcal L_{\mathrm{token}}=\frac{\sum_iS_i}{\sum_iN_i}$，文档等权平均则为 $\mathcal L_{\mathrm{doc}}=n^{-1}\sum_i\frac{S_i}{N_i}$，这里要求被平均的文档均有 $N_i>0$。二者只有在特定条件下才相等。
 
-例如两篇文档分别含两个和八个有效目标，平均词元损失分别为一和二，则 $S_1=2$、$S_2=16$。总词元平均是 $\frac{18}{10}=1.8$，文档平均是 $\frac{1+2}{2}=1.5$。后者对短文档的每个词元赋予更大权重。损失归一化并非只影响显示格式，它直接改变不同样本对学习目标的贡献。
+例如两篇文档分别含两个和八个有效目标，平均词元损失分别为一和二，则 $S_1=2$、$S_2=16$。总词元平均是 $\frac{18}{10}=1.8$，文档平均是 $\frac{1+2}{2}=1.5$。后者对短文档的每个词元赋予更大权重。损失归一化直接影响不同样本对学习目标的贡献，其作用超出显示格式。
 
-填充位置和不参与监督的提示位置应由明确的有效位置集合排除。注意力掩码规定信息可见性，损失掩码规定优化区域，概率公式不能将两者混为一谈。若全部监督位置都被屏蔽，应报告无有效目标，而不能计算除零的平均损失。
+填充位置和不参与监督的提示位置应由明确的有效位置集合排除。注意力掩码规定信息可见性，损失掩码规定优化区域，两者在实现中分别维护。若全部监督位置都被屏蔽，应报告无有效目标，除零的平均损失没有定义。
 
-\subsection{困惑度的含义及比较条件}
+\subsection{困惑度的含义与比较条件}
 若平均负对数损失使用自然对数，\term{困惑度}{Perplexity}{PPL}定义为
 \begin{equation}
  \mathrm{PPL}=\exp(\mathcal L_{\mathrm{token}})
  =\left[\prod_{i,t\in\mathcal T_i}\frac1{p_\theta(x_t^{(i)}\mid x_{<t}^{(i)})}\right]^{\frac{1}{N}},
  \quad N=\sum_iN_i.
 \end{equation}
-它是正确目标逆概率的几何平均。若模型对每个正确目标都赋予 $\frac{1}{K}$，困惑度为 $K$；一般情况下，它不是每步实际候选数，也不是错误率。指数是单调的，所以在相同目标和归一化下，困惑度与平均负对数损失的排序相同。
+它是正确目标逆概率的几何平均。若模型对每个正确目标都赋予 $\frac{1}{K}$，困惑度为 $K$；一般情况下，它反映的是有效候选量的量级，每步实际候选数与错误率另由各自的指标给出。指数是单调的，所以在相同目标和归一化下，困惑度与平均负对数损失的排序相同。
 
-跨模型比较时，需要固定语料、分词器、有效位置、上下文和边界处理。分词更粗的模型可能在更少位置上完成同一文本的编码，直接比较每词元损失会改变计量单位。改用每字节或每字符指标也必须明确文本的编码与归一化条件，不能据此忽略输入协议差异。
+跨模型比较时，需要固定语料、分词器、有效位置、上下文和边界处理。分词更粗的模型可能在更少位置上完成同一文本的编码，直接比较每词元损失会改变计量单位。改用每字节或每字符指标同样要明确文本的编码与归一化条件，输入协议差异需要单独核对。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=.92\linewidth]{\subfix{../../figures/theory/math-ppl-loss-curve.pdf}}
+\caption{语言模型困惑度（PPL）与平均词元交叉熵损失的解析函数对应曲线。在自然对数下，$\mathrm{PPL}=\exp(\mathcal L_{\mathrm{token}})$；曲线标注了典型收敛区间的数值对照。}\label{fig:math-ppl-loss-curve}
+\end{figure}
+
+\begin{table}[htbp]
+\centering
+\caption{离散随机变量常用分布、采样性质与模型映射对照。}\label{tab:rev-math-distributions}
+\begin{tabularx}{\linewidth}{@{}p{24mm}p{34mm}p{28mm}X@{}}
+\toprule
+离散分布类型 & 概率质量／采样机制 & 充分统计量与参数 & 语言模型应用场景 \\\midrule
+伯努利分布 $\mathrm{Bernoulli}(p)$ & $P(X=k)=p^k(1-p)^{1-k}$ & 成功概率 $p \in [0,1]$ & 二分类任务、拒绝采样过滤器、填充掩码指示变量。 \\
+分类分布 $\mathrm{Categorical}(\vect{p})$ & $P(X=k)=p_k,\; \sum_k p_k=1$ & 概率向量 $\vect{p} \in \Delta^{V-1}$ & 下一词元预测、Softmax 输出词表概率采样。 \\
+多项分布 $\mathrm{Multinomial}(n,\vect{p})$ & $\frac{n!}{\prod k_i!}\prod p_i^{k_i}$ & 试验次数 $n$ 与向量 $\vect{p}$ & 词袋模型计数分布、批次采样统计检验。 \\
+Gumbel 分布 $\mathrm{Gumbel}(0,1)$ & $g = -\log(-\log u), u \sim U(0,1)$ & 位置参数与尺度参数 & Gumbel-Max 离散重参数化、可微采样近似。 \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
 \chapterreferences
-\end{document}
+\lfsendchapterdocument

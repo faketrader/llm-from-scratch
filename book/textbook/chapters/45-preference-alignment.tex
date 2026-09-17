@@ -1,21 +1,23 @@
+\ifdefined\LFSWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
+\fi
 \bookchapter{人类反馈学习}{ch:preference-alignment}
 
 监督微调要求示范者给出应当生成的回答，偏好数据则允许示范者在多个候选之间作比较。这种差异使反馈更容易针对语气、完整性或任务适配程度，但也引入了新的统计问题：一次比较究竟代表谁的偏好，候选从哪里产生，以及局部排序能否外推到训练后出现的新回答。
 
 比较反馈可表示为概率模型；将其与奖励正则化目标结合，可以得到直接偏好优化。在线强化学习的策略梯度基础见\bookxref{ch:reinforcement-learning}；可验证奖励和推理训练在\bookxref{ch:verifiable-reasoning}进一步展开。这里的“对齐”指依据给定反馈分布调整模型行为。
 
-\section{人类反馈及偏好数据}
+\section{人类反馈与偏好数据}
 
-\subsection{比较单位及数据分布}
-一条偏好记录可表示为 $(x,y_a,y_b,z)$，其中 $x$ 为共同上下文，$y_a,y_b$ 为两个候选，$z\in\{0,1\}$ 指示是否偏好 $y_a$。上下文包括角色、约束和必要历史；若两条候选实际上回答了不同问题，就不能用同一提示下的偏好模型解释它们。
+\subsection{比较单位与数据分布}
+一条偏好记录可表示为 $(x,y_a,y_b,z)$，其中 $x$ 为共同上下文，$y_a,y_b$ 为两个候选，$z\in\{0,1\}$ 指示是否偏好 $y_a$。上下文包括角色、约束和必要历史；若两条候选实际上回答了不同问题，同一提示下的偏好模型便解释不了它们。
 
 \term{偏好对}{Preference Pair}{}的生成机制至少包含提示分布、候选策略、解码配置和标注规则。设提示来自 $\mu$，候选来自条件分布 $q(y_a,y_b\mid x)$，标注者来自群体分布 $h$，则训练风险的期望同时依赖这三者。只扩大比较数量，不扩大提示和候选覆盖，可能只是反复学习同一狭窄区域。
 
-候选显示次序、长度、格式、模型身份泄漏和标注者知识都会影响比较。应保存可重建的原始候选、匿名化呈现条件和标注版本。多个候选产生的成对组合共享同一提示和回答，并非独立观测；划分训练与评估集合时应以提示或更高层来源分组。
+候选显示次序、长度、格式、模型身份泄漏和标注者知识都会影响比较。应保存可重建的原始候选、匿名化呈现条件和标注版本。多个候选产生的成对组合共享同一提示和回答，彼此相关；划分训练与评估集合时应以提示或更高层来源分组。
 
-\subsection{符号及假设}
+\subsection{符号与假设}
 本章主要符号见表\ref{tab:preference-alignment-symbols}。
 \begin{table}[htbp]
 \centering
@@ -27,28 +29,28 @@
 \midrule
 $x,y,T_y$ & 提示、回答序列和回答所计词元数，终止标记是否计入须固定。\\
 $y_w,y_l$ & 标注中相对优选与相对拒选的回答。\\
-$r_\phi(x,y)$ & 参数为 $\phi$ 的标量奖励函数。\\
-$\pi_\theta,\pi_{\mathrm{ref}},\pi_{\mathrm{old}}$ & 当前策略、固定参考策略及产生一批在线样本的旧策略。\\
+$r_{\vect{\phi}}(x,y)$ & 参数为 $\vect{\phi}$ 的标量奖励函数。\\
+$\pi_{\vect{\theta}},\pi_{\mathrm{ref}},\pi_{\mathrm{old}}$ & 当前策略、固定参考策略及产生一批在线样本的旧策略。\\
 $\beta$ & KL 正则化系数；DPO 推导沿用同一尺度。\\
-$\sigma(u)$ & Logistic 函数 $\frac{1}{1+e^{-u}}$。\\
+$\sigma(u)$ & Logistic 函数 $\frac{1}{1+\conste{}^{-u}}$。\\
 $Z(x)$ & 固定提示下的归一化配分函数。\\
-$\Delta_\theta$ & 优选与拒选回答的相对参考对数概率差。\\
+$\Delta_{\vect{\theta}}$ & 优选与拒选回答的相对参考对数概率差。\\
 \bottomrule
 \end{tabularx}
 \end{table}
 
 \begin{assumption}[偏好与策略推导的范围]
-先假设固定提示下回答集合有限，参考策略在该集合上为正，奖励有限且 $\beta>0$。偏好用一个标量效用差的 Logistic 概率描述。对可数无限回答集合，还需保证配分函数有限及相关期望存在。真实群体可能有冲突、平局和上下文依赖，单标量模型只是一种近似。
+先假设固定提示下回答集合有限，参考策略在该集合上为正，奖励有限且 $\beta>0$。偏好用一个标量效用差的 Logistic 概率描述。对可数无限回答集合，还需保证配分函数有限及相关期望存在。真实群体可能有冲突、平局和上下文依赖，单标量模型只是其中一种近似。
 \end{assumption}
 
 \section{奖励建模}
 
 \subsection{Bradley--Terry 形式}
-将每个候选的正强度写为 $u_a=e^{r_a}$ 和 $u_b=e^{r_b}$，以相对强度定义胜出概率，得到 Bradley--Terry 形式\autocite{bradley1952paired}
+将每个候选的正强度写为 $u_a=\conste{}^{r_a}$ 和 $u_b=\conste{}^{r_b}$，以相对强度定义胜出概率，得到 Bradley--Terry 形式\autocite{bradley1952paired}
 \begin{equation}
- p_\phi(y_a\succ y_b\mid x)
- =\frac{e^{r_a}}{e^{r_a}+e^{r_b}}
- =\sigma(r_a-r_b),\qquad r_a=r_\phi(x,y_a).
+ p_{\vect{\phi}}(y_a\succ y_b\mid x)
+ =\frac{\conste{}^{r_a}}{\conste{}^{r_a}+\conste{}^{r_b}}
+ =\sigma(r_a-r_b),\qquad r_a=r_{\vect{\phi}}(x,y_a).
  \label{eq:pref-bt}
 \end{equation}
 对二元标签采用负对数似然，单对损失为
@@ -59,25 +61,25 @@ $\Delta_\theta$ & 优选与拒选回答的相对参考对数概率差。\\
 \end{equation}
 其间隔导数为 $\frac{\partial\ell}{\partial d}=\sigma(d)-z$；二阶导数为 $\sigma(d)(1-\sigma(d))\ge0$。损失对间隔凸，深度奖励网络的参数优化通常仍为非凸问题。标注偏好 $a$ 却预测 $\sigma(d)$ 很小时，梯度会推动 $r_a-r_b$ 增大。
 
-如果同一对有多个独立判断，$z$ 可替换为偏好 $a$ 的比例，表示二项似然按比较数归一化后的目标。把一个平局直接写为 $z=\frac{1}{2}$，相当于要求模型对两者给出相等偏好概率；这未必等同于有显式平局概率的三分类机制，应根据标注含义选择。
+如果同一对有多个独立判断，$z$ 可替换为偏好 $a$ 的比例，表示二项似然按比较数归一化后的目标。把一个平局直接写为 $z=\frac{1}{2}$，相当于要求模型对两者给出相等偏好概率；它与带显式平局概率的三分类机制含义不同，应根据标注含义选择。
 
 \subsection{奖励的可辨识性}
 对同一提示给所有奖励加上任意 $c(x)$，式\eqref{eq:pref-bt}不变。因此成对比较无法识别提示相关的绝对零点。若数据只连接一部分回答子集，不同连通分量之间的相对偏移也无法由这些比较确定。
 
-尺度则不同：将差值乘常数会改变偏好概率。若同时引入未知噪声温度 $\tau$，模型只由 $\frac{r_a-r_b}{\tau}$ 决定，此时奖励尺度和温度不能分别识别。奖励归一化或温度修改会改变后续策略优化的有效强度，应与策略目标一并记录。
+尺度则不同：将差值乘常数会改变偏好概率。若同时引入未知噪声温度 $\tau$，模型只由 $\frac{r_a-r_b}{\tau}$ 决定，此时奖励尺度和温度混在一起，无法分别识别。奖励归一化或温度修改会改变后续策略优化的有效强度，应与策略目标一并记录。
 
-标量效用还不能表示确定性的循环偏好：若 $a\succ b,b\succ c,c\succ a$ 均被要求以大于 $\frac{1}{2}$ 的概率成立，则分别需要 $r_a>r_b>r_c>r_a$，产生矛盾。出现系统性冲突时，应检查群体、任务和呈现条件，不能只增加训练轮数。
+标量效用还不能表示确定性的循环偏好：若 $a\succ b,b\succ c,c\succ a$ 均被要求以大于 $\frac{1}{2}$ 的概率成立，则分别需要 $r_a>r_b>r_c>r_a$，产生矛盾。出现系统性冲突时，应检查群体、任务和呈现条件；增加训练轮数解决不了这种矛盾。
 
-\subsection{奖励网络及校准}
-奖励模型可以用编码器或因果模型提取 $(x,y)$ 的表示，再经标量读出头输出 $r_\phi$。若使用回答末端表示，须取实际有效末端，而非填充位置；若截断删除了结论或约束，原来的偏好标签可能不再适用。模型结构并不要求与策略完全相同，但输入语义必须兼容。
+\subsection{奖励网络与校准}
+奖励模型可以用编码器或因果模型提取 $(x,y)$ 的表示，再经标量读出头输出 $r_{\vect{\phi}}$。若使用回答末端表示，须取实际有效末端而不是填充位置；若截断删除了结论或约束，原来的偏好标签可能不再适用。模型结构并不要求与策略完全相同，但输入语义必须兼容。
 
-排序准确率关注差值符号，概率校准关注预测胜率与观察频率是否一致。二者不能替代。即使在离线比较集上校准良好，策略优化后产生的新回答也可能偏离原候选分布。对奖励模型进行优化会主动寻找其高分区域，因此评估需要覆盖被优化后的候选，而不只是原始数据。
+排序准确率关注差值符号，概率校准关注预测胜率与观察频率是否一致，两者测的是不同方面。即使在离线比较集上校准良好，策略优化后产生的新回答也可能偏离原候选分布。对奖励模型进行优化会主动寻找其高分区域，因此评估需要覆盖被优化后的候选，而不只是原始数据。
 
 设$r_w=1.2,r_l=0.2$，间隔为1，预测胜率 $\sigma(1)\approx0.7311$，优选标签损失约0.3133。若在相同条件下只有55\%的人选择 $w$，预测胜率比观察比例高约18个百分点。换成均为0.7的奖励，预测胜率为0.5，表示两者具有相同效用。
 
 \section{基于人类反馈的强化学习}
 
-\subsection{目标及 KL 方向}
+\subsection{目标与 KL 方向}
 \term{基于人类反馈的强化学习}{Reinforcement Learning from Human Feedback}{RLHF}可通过比较数据拟合奖励，再优化策略；InstructGPT 是这种训练链路的代表性工作\autocite{ouyang2022instructgpt}。固定提示下的一种目标为
 \begin{equation}
  J_x(\pi)=\sum_y\pi(y\mid x)r(x,y)
@@ -98,8 +100,8 @@ KL 的方向为当前策略到参考策略。它使参考零概率事件具有�
 \end{equation}
 整理可得 $\pi_y=q_y\exp(\frac{r_y}{\beta})\exp(\frac{\lambda}{\beta}-1)$。最后一项不依赖回答，通过归一化确定为 $\frac{1}{Z(x)}$，因此
 \begin{equation}
- \pi^*(y\mid x)=\frac{\pi_{\mathrm{ref}}(y\mid x)e^{\frac{r(x,y)}{\beta}}}{Z(x)},
- \qquad Z(x)=\sum_y\pi_{\mathrm{ref}}(y\mid x)e^{\frac{r(x,y)}{\beta}}.
+ \pi^*(y\mid x)=\frac{\pi_{\mathrm{ref}}(y\mid x)\conste{}^{\frac{r(x,y)}{\beta}}}{Z(x)},
+ \qquad Z(x)=\sum_y\pi_{\mathrm{ref}}(y\mid x)\conste{}^{\frac{r(x,y)}{\beta}}.
  \label{eq:pref-optimal-policy}
 \end{equation}
 不仅可以检查驻点，还可以直接证明全局最优。把最优策略的对数表达代回式\eqref{eq:pref-regularized}，得到
@@ -112,7 +114,6 @@ KL 非负，且仅在两个分布相等时为零，所以 $\pi^*$ 是支持集�
 当固定奖励且 $\beta$ 增大时，指数倾斜减弱；当 $\beta\to\infty$ 时趋近参考策略。$\beta\to0^+$ 时质量集中到最高奖励集合，并在并列最优集合中保留参考权重比例。奖励与 $\beta$ 同时乘同一个正数不改变式\eqref{eq:pref-optimal-policy}，再次说明奖励尺度与约束强度必须一起解释。
 
 \begin{example}
-\label{q:ch22:example:01}
 
 
 设回答集合仅有 $a,b$，参考概率为 $(0.8,0.2)$，奖励为 $(0,\log4)$，$\beta=1$。未归一化质量为 $(0.8,0.8)$，$Z=1.6$，故最优策略为 $(0.5,0.5)$。
@@ -132,40 +133,59 @@ KL 非负，且仅在两个分布相等时为零，所以 $\pi^*$ 是支持集�
 \begin{equation}
  r(x,y)=\beta\log\frac{\pi^*(y\mid x)}{\pi_{\mathrm{ref}}(y\mid x)}+\beta\log Z(x).
 \end{equation}
-同一提示下，两回答奖励相减时，配分函数项消失。将策略参数化为 $\pi_\theta$，用相对参考的对数概率差表示偏好间隔，就得到\term{直接偏好优化}{Direct Preference Optimization}{DPO}\autocite{rafailov2023dpo}：
+同一提示下，两回答奖励相减时，配分函数项消失。将策略参数化为 $\pi_{\vect{\theta}}$，用相对参考的对数概率差表示偏好间隔，就得到\term{直接偏好优化}{Direct Preference Optimization}{DPO}\autocite{rafailov2023dpo}：
 \begin{align}
- \Delta_\theta&=\log\pi_\theta(y_w\mid x)-\log\pi_\theta(y_l\mid x)
+ \Delta_{\vect{\theta}}&=\log\pi_{\vect{\theta}}(y_w\mid x)-\log\pi_{\vect{\theta}}(y_l\mid x)
  -\log\pi_{\mathrm{ref}}(y_w\mid x)+\log\pi_{\mathrm{ref}}(y_l\mid x),\\
- \ell_{\mathrm{DPO}}&=-\log\sigma(\beta\Delta_\theta)
- =\operatorname{softplus}(-\beta\Delta_\theta).
+ \ell_{\mathrm{DPO}}&=-\log\sigma(\beta\Delta_{\vect{\theta}})
+ =\operatorname{softplus}(-\beta\Delta_{\vect{\theta}}).
  \label{eq:pref-dpo}
 \end{align}
 这将显式奖励模型的拟合转成策略上的偏好似然。实际策略与式\eqref{eq:pref-optimal-policy}的理想解之间仍有数据覆盖、模型容量和优化误差。
 
-\subsection{偏好梯度及概率变化}
-设 $u=\beta\Delta_\theta$，则
+\subsection{偏好梯度与概率变化}
+设 $u=\beta\Delta_{\vect{\theta}}$，则
 \begin{equation}
- \nabla_\theta\ell_{\mathrm{DPO}}
+ \nabla_{\vect{\theta}}\ell_{\mathrm{DPO}}
  =-\beta\sigma(-u)
- [\nabla_\theta\log\pi_\theta(y_w\mid x)
- -\nabla_\theta\log\pi_\theta(y_l\mid x)].
+ [\nabla_{\vect{\theta}}\log\pi_{\vect{\theta}}(y_w\mid x)
+ -\nabla_{\vect{\theta}}\log\pi_{\vect{\theta}}(y_l\mid x)].
  \label{eq:pref-dpo-gradient}
 \end{equation}
 参考概率固定，不参与求导。排序错误且间隔很负时，系数趋近 $-\beta$；间隔很正时，梯度趋近零。$\beta$ 同时改变间隔缩放和饱和程度，其作用需结合当前间隔与学习率分析。
 
 DPO 优化两条回答相对参考策略的概率比。例如参考在三回答 $(w,l,o)$ 上为 $(0.4,0.4,0.2)$，某策略变为 $(0.3,0.1,0.6)$。优选概率从0.4降到0.3，但 $\frac{w}{l}$ 比从1升到3，因而 $\Delta=\log3>0$。因此应同时观察两条回答的概率、偏好间隔和自由生成表现。
 
-取 $\beta=0.5$，上述间隔给出 $u=0.549306$，偏好概率为 $\frac{\sqrt3}{1+\sqrt3}\approx0.6340$，损失约0.4557，低于初始相等策略时的 $\log2\approx0.6931$。第三个回答在自由生成中的占比增大，其质量需要另行评价。
+取 $\beta=0.5$，上述间隔给出 $u=0.549306$，偏好概率为 $\frac{\sqrt3}{1+\sqrt3}\approx0.6340$，损失约0.4557，低于初始相等策略时的 $\log2\approx0.6931$。第三个回答在自由生成中的占比增大，其质量需要另行评价。表\ref{tab:rev-alignment-losses}总结了以 DPO 为代表的主流直接偏好优化损失及其工程技术特征。
 
-\subsection{序列概率及长度}
+\begin{table}[htbp]
+\centering
+\small
+\setlength{\tabcolsep}{3.5pt}
+\caption{主流偏好对齐与直接优化算法（Direct Alignment Losses）对比}
+\label{tab:rev-alignment-losses}
+\begin{tabularx}{\linewidth}{lp{18mm}cp{26mm}X}
+\toprule
+方法 & 数据格式 & 参考模型/显存 & 核心优化目标 & 核心优势与工程权衡 \\
+\midrule
+DPO & 成对 $(y_w, y_l)$ & 需参考（双模型） & $-\log \sigma(\beta \Delta_{\vect{\theta}})$ & 无需显式奖励模型与采样，训练稳定易收敛 \\
+IPO & 成对 $(y_w, y_l)$ & 需参考（双模型） & $(\Delta_{\vect{\theta}} - \frac{1}{2\tau})^2$ & 施加平方正则项，防止偏好间隔发散过拟合 \\
+KTO & 单样本 $(y, \pm)$ & 需参考（双模型） & 前景理论效用函数 & 仅需二元非配对标签，极大降低构建门槛 \\
+ORPO & 成对 $(y_w, y_l)$ & 无需（单模型） & $\mathcal{L}_{\mathrm{SFT}} + \lambda \mathcal{L}_{\mathrm{odds}}$ & SFT 与偏好单阶段统一训练，彻底省去参考模型 \\
+SimPO & 成对 $(y_w, y_l)$ & 无需（单模型） & 长度归一化奖励差加 $\gamma$ & 零参考模型显式长度惩罚，提升生成质量 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{序列概率与长度}
 回答序列的条件概率必须遵循相同的停止协议：
 \begin{equation}
- \log\pi_\theta(y\mid x)=\sum_{t=1}^{T_y}\log\pi_\theta(y_t\mid x,y_{<t}).
+ \log\pi_{\vect{\theta}}(y\mid x)=\sum_{t=1}^{T_y}\log\pi_{\vect{\theta}}(y_t\mid x,y_{<t}).
  \label{eq:pref-sequence-logprob}
 \end{equation}
-将求和除以 $T_y$ 得到平均词元对数概率，改变了回答之间的权重。长度归一化由此定义了不同于式\eqref{eq:pref-regularized}的新目标。
+将求和除以 $T_y$ 得到平均词元对数概率，改变了回答之间的权重。长度归一化由此给出与式\eqref{eq:pref-regularized}不同的目标。
 
-长度偏差可能同时来自标注偏好、候选生成和似然累积。参考比值抵消部分基线倾向，却不保证消除全部偏差。若截断只保留两回答共同前缀，原本可辨别的比较可能变成无信号；若仅一条被截断，标签可能转而反映截断质量。共同提示应保持一致，优选与拒选的完整目标跨度应分别校验。
+长度偏差可能同时来自标注偏好、候选生成和似然累积。参考比值抵消部分基线倾向，其余偏差仍在。若截断只保留两回答共同前缀，原本可辨别的比较可能变成无信号；若仅一条被截断，标签可能转而反映截断质量。共同提示应保持一致，优选与拒选的完整目标跨度应分别校验。
 
 \begin{figure}[htbp]
 \centering
@@ -173,11 +193,11 @@ DPO 优化两条回答相对参考策略的概率比。例如参考在三回答 
 \node[box] (pair) {同一提示\\优选与拒选回答};
 \node[box,right=of pair,yshift=10mm] (pol) {当前策略\\两条序列对数概率};
 \node[box,right=of pair,yshift=-10mm] (ref) {冻结参考\\两条序列对数概率};
-\node[box,right=of pol,yshift=-10mm] (diff) {相对间隔\\$\Delta_\theta$};
-\node[box,below=of diff] (loss) {$\operatorname{softplus}(-\beta\Delta_\theta)$\\仅更新策略};
+\node[box,right=of pol,yshift=-10mm] (diff) {相对间隔\\$\Delta_{\vect{\theta}}$};
+\node[box,below=of diff] (loss) {$\operatorname{softplus}(-\beta\Delta_{\vect{\theta}})$\\仅更新策略};
 \draw[->] (pair)--(pol);\draw[->] (pair)--(ref);\draw[->] (pol)--(diff);\draw[->] (ref)--(diff);\draw[->] (diff)--(loss);
 \end{tikzpicture}
-\caption{DPO 的数据与梯度边界。参考分支提供固定概率基线，不能随策略更新漂移。}
+\caption{DPO 的数据与梯度边界。参考分支提供固定概率基线，全程不参与更新。}
 \label{fig:pref-dpo}
 \end{figure}
 
@@ -189,14 +209,14 @@ DPO 优化两条回答相对参考策略的概率比。例如参考在三回答 
 
 序列 KL 可以用链式法则写成策略访问前缀下的条件 KL 之和：
 \begin{equation}
- D_{\mathrm{KL}}(\pi_\theta(y\mid x)\|\pi_{\mathrm{ref}}(y\mid x))
- =\mathbb E_{y\sim\pi_\theta}\sum_t
- \log\frac{\pi_\theta(y_t\mid x,y_{<t})}{\pi_{\mathrm{ref}}(y_t\mid x,y_{<t})}.
+ D_{\mathrm{KL}}(\pi_{\vect{\theta}}(y\mid x)\|\pi_{\mathrm{ref}}(y\mid x))
+ =\mathbb E_{y\sim\pi_{\vect{\theta}}}\sum_t
+ \log\frac{\pi_{\vect{\theta}}(y_t\mid x,y_{<t})}{\pi_{\mathrm{ref}}(y_t\mid x,y_{<t})}.
  \label{eq:pref-kl-chain}
 \end{equation}
-单个采样词元的对数比可以为负；只有在相应分布下取期望才得到非负 KL。若轨迹来自旧策略，直接平均这些值估计的是旧分布下的对数比，除非作出近似或正确分布校正，不能将其标为当前策略的精确 KL。
+单个采样词元的对数比可以为负；在相应分布下取期望，才得到非负的 KL。若轨迹来自旧策略，直接平均这些值估计的是旧分布下的对数比，在作出近似或正确分布校正之前，该值只是当前策略 KL 的一个估计。
 
-将终局奖励与逐词元 KL 惩罚结合，可构造供\bookxref{ch:reinforcement-learning}策略优化算法使用的回报。对数比中的当前策略参数也影响采样分布；实际代理目标通常在旧轨迹上冻结部分统计量并限制更新幅度，应明确其为近似优化过程，而非把采样损失视作式\eqref{eq:pref-regularized}的逐项精确梯度。
+将终局奖励与逐词元 KL 惩罚结合，可构造供\bookxref{ch:reinforcement-learning}策略优化算法使用的回报。对数比中的当前策略参数也影响采样分布；实际代理目标通常在旧轨迹上冻结部分统计量并限制更新幅度，应把它当作近似优化过程，采样损失与式\eqref{eq:pref-regularized}的逐项精确梯度之间还有距离。
 
 \begin{figure}[htbp]
 \centering
@@ -216,16 +236,16 @@ DPO 优化两条回答相对参考策略的概率比。例如参考在三回答 
 
 \begin{algorithm}[离线 DPO 的一次参数更新]
 \textbf{输入：}偏好对批次、固定参考、策略、$\beta>0$、版本化模板与分词器。\textbf{输出：}更新后的策略及目标统计。
-\begin{algorithmic}[1]
+\begin{lfsalgorithmic}[1]
 \State 校验每对共享同一完整提示、标签有明确含义，两回答的目标跨度与终止协议有效；剔除或单独记录截断后失去偏好依据的记录。
 \State 在冻结参考上计算两条回答的目标词元对数概率和。若使用缓存，键必须绑定参考权重、模板、分词器及精确词元序列。
 \State 在当前策略上计算相同目标位置的对数概率和，依式\eqref{eq:pref-dpo}形成间隔与稳定的 Softplus 损失。
-\State 按事先声明的提示或偏好对权重聚合，反向仅更新策略；累积与并行归约保持该权重口径，而非擅自改成词元平均。
+\State 按事先声明的提示或偏好对权重聚合，反向仅更新策略；累积与并行归约保持该权重口径，词元平均是另一种口径。
 \State 记录损失、间隔、两回答对数概率、长度及有效对数；定期在独立提示上自由生成，并与冻结基线进行盲比较。
-\end{algorithmic}
+\end{lfsalgorithmic}
 \end{algorithm}
 
-参考概率缓存只有在输入与参考完全固定时才有效。使用共享基座与适配器实现参考时，关闭某个适配器不一定得到预期参考版本；还需确认基座未被更新、适配器组合一致、随机层处于确定的评分模式。
+参考概率缓存只有在输入与参考完全固定时才有效。使用共享基座与适配器实现参考时，关闭某个适配器得到的未必是预期参考版本；还需确认基座未被更新、适配器组合一致、随机层处于确定的评分模式。
 
 \begin{algorithm}[奖励模型与在线策略的分阶段更新]
 \textbf{输入：}比较数据、提示分布、初始策略及独立评估集；\textbf{输出：}带来源与评估记录的策略版本。
@@ -238,7 +258,7 @@ DPO 优化两条回答相对参考策略的概率比。例如参考在三回答 
 \end{enumerate}
 \end{algorithm}
 
-\section{GRPO 及方法选择}
+\section{GRPO 与方法选择}
 \optional
 \term{组相对策略优化}{Group Relative Policy Optimization}{GRPO}为同一提示生成 $G$ 条回答，以组内奖励构造相对优势\autocite{shao2024deepseekmath}。选择总体标准差约定时，
 \begin{equation}
@@ -269,13 +289,13 @@ GRPO & 同提示成组奖励 & 策略、评分器、可选参考约束 & 省去�
 
 表\ref{tab:preference-alignment-methods}中的方法根据起始模型与反馈条件选择。是否需要示范微调取决于起始模型是否已有任务行为；是否需要在线采样取决于离线候选覆盖和评分可靠性。参数高效微调改变更新子空间，可与上述多种目标组合，反馈仍由示范、比较或奖励提供。
 
-\section{奖励偏差及评估边界}
+\section{奖励偏差与评估边界}
 
-\term{奖励投机}{Reward Hacking}{}指策略利用评分机制的缺陷提高分数，却没有改善真正的任务目标。若代理奖励为 $\widehat r=r+e$，其中 $r$ 是目标效用、$e$ 是评分误差，则优化 $\widehat r$ 可以同时增加 $e$。原分布下误差均值很小，不保证经过策略选择后的误差仍小。
+\term{奖励投机}{Reward Hacking}{}指策略利用评分机制的缺陷提高分数，却没有改善真正的任务目标。若代理奖励为 $\widehat r=r+e$，其中 $r$ 是目标效用、$e$ 是评分误差，则优化 $\widehat r$ 可以同时增加 $e$。原分布下误差均值很小，经过策略选择后的误差则可能显著增大。
 
-偏好评估应同时固定候选生成预算、比较基线和呈现方式。胜率需要报告比较数、平局处理、提示分组及不确定性；重复比较同一提示不能简单当作独立扩大样本。长度、语言、任务类别和高严重度失败应分开观察，分别报告各类任务的表现与严重失败。
+偏好评估应同时固定候选生成预算、比较基线和呈现方式。胜率需要报告比较数、平局处理、提示分组及不确定性；重复比较同一提示并不等于独立扩大样本。长度、语言、任务类别和高严重度失败应分开观察，分别报告各类任务的表现与严重失败。
 
-\begin{note}[对齐结论必须绑定反馈范围]
+\begin{note}[对齐结论的适用范围]
 奖励模型准确率、DPO间隔、在线奖励和独立任务质量分别测量不同对象。行为改进的评价应明确提示分布、评价标准、生成条件和参考基线。训练损失和奖励用于观察优化进展，独立任务与安全评估用于检验部署表现。
 \end{note}
 
@@ -283,4 +303,4 @@ GRPO & 同提示成组奖励 & 策略、评分器、可选参考约束 & 省去�
 
 
 \chapterreferences
-\end{document}
+\lfsendchapterdocument

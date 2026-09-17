@@ -1,5 +1,7 @@
+\ifdefined\LFSWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
+\fi
 \bookchapter{参数高效微调}{ch:parameter-efficient-finetuning}
 
 预训练模型已经形成了可复用的表示与生成能力，下游任务未必需要重新调整全部权重。\term{参数高效微调}{Parameter-Efficient Fine-Tuning}{PEFT}研究的是：在冻结大部分基座参数的条件下，如何选择可训练变量及其进入网络的位置，使有限的更新预算产生有效的函数变化。
@@ -8,13 +10,13 @@ PEFT 与训练目标是两个不同维度。监督微调、偏好优化和强化
 
 \section{受约束的模型适配}
 
-\subsection{参数预算及函数空间}
-令冻结基座为 $\theta_0$，任务参数为 $\phi$，适配模型为 $f(x;\theta_0,\phi)$。优化问题写为
+\subsection{参数预算与函数空间}
+令冻结基座为 $\vect{\theta}_0$，任务参数为 $\phi$，适配模型为 $f(\vect{x};\vect{\theta}_0,\phi)$。优化问题写为
 \begin{equation}
 \min_\phi\;\mathbb E_{(x,y)\sim\mathcal D}
-\left[\ell(f(x;\theta_0,\phi),y)\right].
+\left[\ell(f(\vect{x};\vect{\theta}_0,\phi),\vect{y})\right].
 \end{equation}
-与直接优化 $\theta$ 相比，可训练变量的数量、进入计算图的位置以及参数化方式均受到限制。这些约束可以降低小数据条件下的过拟合风险，也可能限制任务所需的表达能力。
+与直接优化 $\vect{\theta}$ 相比，可训练变量的数量、进入计算图的位置以及参数化方式均受到限制。这些约束可以降低小数据条件下的过拟合风险，也可能限制任务所需的表达能力。
 
 \term{全参数微调}{Full Fine-Tuning}{FFT}允许所有指定基座权重变化。选择性微调只开放其中的偏置、归一化参数或词嵌入行。附加模块方法增加可训练的旁路或连续提示；重参数化方法则把权重增量分解为更小的变量。不同方法可能具有相同的可训练参数量，却允许不同的函数变化。
 
@@ -26,256 +28,272 @@ PEFT 与训练目标是两个不同维度。监督微调、偏好优化和强化
 \toprule
 符号 & 含义与形状\\
 \midrule
-$W_0$ & 冻结权重，$d_o\times d_i$\\
-$x,y,g$ & 输入 $d_i$、输出 $d_o$、上游梯度 $d_o$ 维列向量\\
-$A,B$ & 低秩因子，分别为 $r\times d_i$、$d_o\times r$\\
+$\mat{W}_0$ & 冻结权重，$d_o\times d_i$\\
+$\vect{x},\vect{y},\vect{g}$ & 输入 $d_i$、输出 $d_o$、上游梯度 $d_o$ 维列向量\\
+$\mat{A},\mat{B}$ & 低秩因子，分别为 $r\times d_i$、$d_o\times r$\\
 $r,\alpha,s$ & 秩上限、缩放超参数、实际尺度 $s=\frac{\alpha}{r}$\\
-$X,Y,G$ & $n$ 个样本按列堆叠的输入、输出、上游梯度\\
+$\mat{X},\mat{Y},\mat{G}$ & $n$ 个样本按列堆叠的输入、输出、上游梯度\\
 $p,d,L$ & 连续提示长度、隐藏维度、网络层数\\
-$W_q,\widehat W$ & 量化存储对象与其恢复的计算权重\\
+$\mat{W}_q,\widehat{\mat{W}}$ & 量化存储对象与其恢复的计算权重\\
 \bottomrule
 \end{tabularx}
 \end{table}
 
 \subsection{冻结参数的梯度传播}
-考虑一个冻结线性层 $y=W_0x$。尽管无需形成用于更新的 $\nabla_{W_0}\mathcal L$，链式法则仍要求
+考虑一个冻结线性层 $\vect{y}=\mat{W}_0\vect{x}$。尽管无需形成用于更新的 $\nabla_{\mat{W}_0}\mathcal L$，链式法则仍要求
 \begin{equation}
-\nabla_x\mathcal L=W_0^{\mathsf T}\nabla_y\mathcal L.
-\label{eq:ch19-frozen}
+\nabla_{\vect{x}}\mathcal L=\mat{W}_0^{\mathrm{T}}\nabla_{\vect{y}}\mathcal L.
+\label{eq:peft-frozen}
 \end{equation}
-如果 $x$ 依赖较早层的适配器，缺少此梯度便无法训练那些适配器。冻结参数与切断计算图是完全不同的操作。只有当某段计算的输入也不依赖任何需要训练的变量时，才可能把它作为不需反传的固定特征提取阶段。
+如果 $\vect{x}$ 依赖较早层的适配器，缺少此梯度便无法训练那些适配器。冻结参数与切断计算图是两个不同的操作。只有当某段计算的输入也不依赖任何需要训练的变量时，才可能把它作为不需反传的固定特征提取阶段。
 
-训练内存可以概念性地分为基座权重、可训练权重及其梯度与优化器状态、激活、临时工作区和运行时开销。PEFT 主要压缩其中与可训练变量有关的部分；长序列激活和冻结矩阵乘法依然存在。因此，可训练参数比例不能直接用来预测峰值显存或每步时延。
+训练内存可以概念性地分为基座权重、可训练权重及其梯度与优化器状态、激活、临时工作区和运行时开销。PEFT 主要压缩其中与可训练变量有关的部分；长序列激活和冻结矩阵乘法依然存在。可训练参数比例因此与峰值显存、每步时延之间没有固定换算。
 
 \section{LoRA 的低秩更新}
 
-\subsection{前向计算及参数量}
+\subsection{前向计算与参数量}
 \term{低秩适配}{Low-Rank Adaptation}{LoRA}将权重增量表示为两个窄矩阵的乘积\cite{huLoRALowRankAdaptation2022}：
 \begin{equation}
- y=W_0x+sBAx,\qquad s=\frac\alpha r,
- \quad A\in\Real^{r\times d_i},\quad B\in\Real^{d_o\times r}.
-\label{eq:ch19-lora}
+ \vect{y}=\mat{W}_0\vect{x}+s\mat{B}\mat{A}\vect{x},\qquad s=\frac\alpha r,
+ \quad \mat{A}\in\Real^{r\times d_i},\quad \mat{B}\in\Real^{d_o\times r}.
+\label{eq:peft-lora}
 \end{equation}
-原有偏置若保持冻结，可单独加到右侧而不改变以下推导。先计算 $z=Ax\in\Real^r$，再计算 $sBz\in\Real^{d_o}$，使增量与基座输出具有相同形状。把 $B$ 的列记为 $b_k$，$A$ 的行记为 $a_k^{\mathsf T}$，则
+原有偏置若保持冻结，可单独加到右侧而不改变以下推导。先计算 $\vect{z}=\mat{A}\vect{x}\in\Real^r$，再计算 $s\mat{B}\vect{z}\in\Real^{d_o}$，使增量与基座输出具有相同形状。把 $\mat{B}$ 的列记为 $\vect{b}_k$，$\mat{A}$ 的行记为 $\vect{a}_k^{\mathrm{T}}$，则
 \begin{equation}
-\Delta W=sBA=s\sum_{k=1}^{r}b_ka_k^{\mathsf T},
-\qquad \Delta y=s\sum_{k=1}^{r}b_k(a_k^{\mathsf T}x).
+\Delta \mat{W}=s\mat{B}\mat{A}=s\sum_{k=1}^{r}\vect{b}_k\vect{a}_k^{\mathrm{T}},
+\qquad \Delta \vect{y}=s\sum_{k=1}^{r}\vect{b}_k(\vect{a}_k^{\mathrm{T}}\vect{x}).
 \end{equation}
 每个通道先把输入投影为一个标量，再沿某个输出方向生成贡献。这些通道是分解中的代数方向，不天然对应独立概念或专家。
 
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[>=stealth,every node/.style={font=\small},b/.style={draw,align=center,minimum width=2cm,minimum height=.85cm}]
-\node (x) at (0,0) {$x\in\Real^{d_i}$};
-\node[b] (w) at (4,1) {冻结 $W_0$};
-\node[b] (a) at (2.2,-1) {$A:r\times d_i$};
-\node[b] (bb) at (5,-1) {$B:d_o\times r$};
+\node (x) at (0,0) {$\vect{x}\in\Real^{d_i}$};
+\node[b] (w) at (4,1) {冻结 $\mat{W}_0$};
+\node[b] (a) at (2.2,-1) {$\mat{A}:r\times d_i$};
+\node[b] (bb) at (5,-1) {$\mat{B}:d_o\times r$};
 \node[draw,circle] (plus) at (8,0) {$+$};
-\node (y) at (10,0) {$y\in\Real^{d_o}$};
+\node (y) at (10,0) {$\vect{y}\in\Real^{d_o}$};
 \draw[->](x)--(w);\draw[->](w)--(plus);
-\draw[->](x)--(a);\draw[->](a)--node[above]{$z$}(bb);\draw[->](bb)--node[below]{$s$}(plus);\draw[->](plus)--(y);
+\draw[->](x)--(a);\draw[->](a)--node[above]{$\vect{z}$}(bb);\draw[->](bb)--node[below]{$s$}(plus);\draw[->](plus)--(y);
 \end{tikzpicture}
 \caption{LoRA 只训练低秩旁路，基座仍参与前向计算和输入梯度传播。}
-\label{fig:ch19-lora}
+\label{fig:peft-lora-arch}
 \end{figure}
 
-由于乘积的列空间包含于 $B$ 的列空间，$\operatorname{rank}(BA)\le r$。这一约束针对增量，不针对 $W_0$ 或 $W_0+sBA$。可训练参数量由 $d_od_i$ 变为 $r(d_i+d_o)$，比例为
+由于乘积的列空间包含于 $\mat{B}$ 的列空间，$\operatorname{rank}(\mat{B}\mat{A})\le r$。该约束只作用于增量；$\mat{W}_0$ 与 $\mat{W}_0+s\mat{B}\mat{A}$ 的秩不受它限制。可训练参数量由 $d_od_i$ 变为 $r(d_i+d_o)$，比例为
 \begin{equation}
 \gamma=\frac{r(d_i+d_o)}{d_id_o}.
 \end{equation}
 仅当 $r<\frac{d_id_o}{d_i+d_o}$ 时，新增因子数少于原矩阵元素数。对于方阵 $d_i=d_o=d$，比例为 $\frac{2r}{d}$。例如 $d=4096,r=8$，基座矩阵有 $16777216$ 个元素，适配器有 $65536$ 个参数，占 $0.390625\%$。整模型的可训练参数比例需要汇总全部目标模块。
 
 \subsection{低秩假设的适用边界}
-如果已知理想增量 $\Delta W_\star$，其奇异值按降序为 $\sigma_1,\sigma_2,\ldots$，在无权 Frobenius 范数下最优秩 $r$ 近似的平方误差为 $\sum_{k>r}\sigma_k^2$。这个线性代数结论有助于理解容量，但真实微调优化的是任务损失，并非已知矩阵的无权逼近。
+如果已知理想增量 $\Delta \mat{W}_\star$，其奇异值按降序为 $\sigma_1,\sigma_2,\ldots$，在无权 Frobenius 范数下最优秩 $r$ 近似的平方误差为 $\sum_{k>r}\sigma_k^2$。这个线性代数结论有助于理解容量，真实微调优化的却是任务损失。
 
-即使只有一层，输出误差也取决于输入协方差。令 $E=\Delta W-\Delta W_\star$，输入二阶矩为 $C=\mathbb E[xx^{\mathsf T}]$，则
+即使只有一层，输出误差也取决于输入协方差。令 $\mat{E}=\Delta \mat{W}-\Delta \mat{W}_\star$，输入二阶矩为 $\mat{C}=\mathbb E[\vect{x}\vect{x}^{\mathrm{T}}]$，则
 \begin{equation}
-\mathbb E\|Ex\|_2^2=\operatorname{tr}(ECE^{\mathsf T}).
+\mathbb E\|\mat{E}\vect{x}\|_2^2=\operatorname{tr}(\mat{E}\mat{C}\mat{E}^{\mathrm{T}}).
 \end{equation}
-当 $C\ne I$ 时，不同输入方向的误差权重不同；深层非线性网络中的任务关系更复杂。合成回归适合检验对指定低秩结构的学习；实际任务所需的秩还取决于输入分布与目标函数。
+当 $\mat{C}\ne I$ 时，不同输入方向的误差权重不同；深层非线性网络中的任务关系更复杂。合成回归适合检验对指定低秩结构的学习；实际任务所需的秩还取决于输入分布与目标函数。
 
-因子本身也不唯一：对任意可逆 $R\in\Real^{r\times r}$，有 $(BR)(R^{-1}A)=BA$。因此不同训练得到的通道不能按编号直接比较，其范数还受分解尺度影响。增大 $r$ 扩大可表示集合，但不保证固定步数、固定学习率下更容易优化。
+因子本身也不唯一：对任意可逆 $\mat{R}\in\Real^{r\times r}$，有 $(\mat{B}\mat{R})(\mat{R}^{-1}\mat{A})=\mat{B}\mat{A}$。因此不同训练得到的通道不能按编号直接比较，其范数还受分解尺度影响。增大 $r$ 扩大可表示集合，固定步数、固定学习率下是否更容易优化则另需验证。
 
-\section{反向传播、初始化及缩放}
+\section{反向传播、初始化与缩放}
 
 \begin{assumption}[LoRA 梯度推导]
-基座 $W_0$ 固定，$s$ 为非零常数，损失对输出可微；此处先不使用随机丢弃。批量样本按列组成 $X\in\Real^{d_i\times n}$。若损失包含求均值，其归一化已经体现在上游梯度 $G=\frac{\partial\mathcal L}{\partial Y}$ 中。
+基座 $\mat{W}_0$ 固定，$s$ 为非零常数，损失对输出可微；此处先不使用随机丢弃。批量样本按列组成 $\mat{X}\in\Real^{d_i\times n}$。若损失包含求均值，其归一化已经体现在上游梯度 $\mat{G}=\frac{\partial\mathcal L}{\partial \mat{Y}}$ 中。
 \end{assumption}
 
 \subsection{由微分得到三个梯度}
-批量前向为 $Y=W_0X+sBAX$。保持 $X$ 不变时，输出微分为
+批量前向为 $\mat{Y}=\mat{W}_0\mat{X}+s\mat{B}\mat{A}\mat{X}$。保持 $\mat{X}$ 不变时，输出微分为
 \begin{equation}
-\dif Y=s(\dif B)AX+sB(\dif A)X.
+\dif \mat{Y}=s(\dif \mat{B})\mat{A}\mat{X}+s\mat{B}(\dif \mat{A})\mat{X}.
 \end{equation}
-使用 $\dif\mathcal L=\operatorname{tr}(G^{\mathsf T}\dif Y)$ 及迹的循环性质，把参数微分移到右侧，可得
+使用 $\dif\mathcal L=\operatorname{tr}(\mat{G}^{\mathrm{T}}\dif \mat{Y})$ 及迹的循环性质，把参数微分移到右侧，可得
 \begin{align}
-\nabla_B\mathcal L&=sG(AX)^{\mathsf T}\in\Real^{d_o\times r},\\
-\nabla_A\mathcal L&=sB^{\mathsf T}GX^{\mathsf T}\in\Real^{r\times d_i}.
-\label{eq:ch19-gradients}
+\nabla_{\mat{B}}\mathcal L&=s\mat{G}(\mat{A}\mat{X})^{\mathrm{T}}\in\Real^{d_o\times r},\\
+\nabla_{\mat{A}}\mathcal L&=s\mat{B}^{\mathrm{T}}\mat{G}\mat{X}^{\mathrm{T}}\in\Real^{r\times d_i}.
+\label{eq:peft-gradients}
 \end{align}
-若 $X$ 也依赖可训练参数，则还必须计算
+若 $\mat{X}$ 也依赖可训练参数，则还必须计算
 \begin{equation}
-\nabla_X\mathcal L=(W_0+sBA)^{\mathsf T}G
-=W_0^{\mathsf T}G+sA^{\mathsf T}B^{\mathsf T}G.
-\label{eq:ch19-inputgradient}
+\nabla_{\mat{X}}\mathcal L=(\mat{W}_0+s\mat{B}\mat{A})^{\mathrm{T}}\mat{G}
+=\mat{W}_0^{\mathrm{T}}\mat{G}+s\mat{A}^{\mathrm{T}}\mat{B}^{\mathrm{T}}\mat{G}.
+\label{eq:peft-inputgradient}
 \end{equation}
-第一项来自冻结基座，不能删除。这也解释了为何冻结主路的参数梯度后，训练计算量不会按 $\gamma$ 同比例下降。
+第一项来自冻结基座，始终保留。冻结主路的参数梯度之后，训练计算量按其自身的规模下降，与 $\gamma$ 并不同步。
 
 \subsection{低秩因子初始化}
-常见初始化采用随机 $A$ 和零矩阵 $B$，使 $\Delta W=0$，初始函数保持为基座函数。由式\eqref{eq:ch19-gradients}，第一步 $\nabla_A\mathcal L=0$，而 $\nabla_B\mathcal L=sG(AX)^{\mathsf T}$ 通常非零。$B$ 更新以后，$A$ 才开始获得数据梯度。若 $A=B=0$，两个梯度同时为零，普通一阶梯度更新无法启动该分支。
+常见初始化采用随机 $\mat{A}$ 和零矩阵 $\mat{B}$，使 $\Delta \mat{W}=0$，初始函数保持为基座函数。由式\eqref{eq:peft-gradients}，第一步 $\nabla_{\mat{A}}\mathcal L=0$，而 $\nabla_{\mat{B}}\mathcal L=s\mat{G}(\mat{A}\mat{X})^{\mathrm{T}}$ 通常非零。$\mat{B}$ 更新以后，$\mat{A}$ 才开始获得数据梯度。若 $\mat{A}=\mat{B}=0$，两个梯度同时为零，普通一阶梯度更新无法启动该分支。
 
-若输入投影 $AX=0$ 或上游梯度与投影相消，$B$ 的批量梯度也为零。也可以把 $A$ 置零而令 $B$ 非零，此时首先更新的是 $A$，优化路径随初始化方式改变。\footnote{这里讨论损失的数据梯度。某些优化器的独立权重衰减可能在数据梯度为零时改变非零参数；应将这种变化与反向传播产生的学习信号区分。}
+若输入投影 $\mat{A}\mat{X}=0$ 或上游梯度与投影相消，$\mat{B}$ 的批量梯度也为零。也可以把 $\mat{A}$ 置零而令 $\mat{B}$ 非零，此时首先更新的是 $\mat{A}$，优化路径随初始化方式改变。\footnote{这里讨论损失的数据梯度。某些优化器的独立权重衰减可能在数据梯度为零时改变非零参数；应将这种变化与反向传播产生的学习信号区分。}
 
-对于单样本、$B_0=0$ 的一次梯度下降，记学习率为 $\eta$，则
+对于单样本、$\mat{B}_0=0$ 的一次梯度下降，记学习率为 $\eta$，则
 \begin{equation}
-B_1=-\eta s\,g x^{\mathsf T}A_0^{\mathsf T},\qquad
-\Delta W_1=-\eta s^2g x^{\mathsf T}A_0^{\mathsf T}A_0.
+\mat{B}_1=-\eta s\,\vect{g} \vect{x}^{\mathrm{T}}\mat{A}_0^{\mathrm{T}},\qquad
+\Delta \mat{W}_1=-\eta s^2\vect{g} \vect{x}^{\mathrm{T}}\mat{A}_0^{\mathrm{T}}\mat{A}_0.
 \end{equation}
-更新依赖 $A_0^{\mathsf T}A_0$，而非简单地把完整矩阵梯度乘以常数。若 $A_0$ 的元素独立、零均值、方差为 $\sigma_A^2$，则 $\mathbb E[A_0^{\mathsf T}A_0]=r\sigma_A^2I$；在固定初始基座梯度的条件下，第一步期望增量为 $-\eta s^2r\sigma_A^2gx^{\mathsf T}$。该式直接说明秩、初始化尺度、学习率和 $s$ 共同影响更新幅度。
+更新依赖 $\mat{A}_0^{\mathrm{T}}\mat{A}_0$，完整矩阵梯度还要经该矩阵重构一次。若 $\mat{A}_0$ 的元素独立、零均值、方差为 $\sigma_A^2$，则 $\mathbb E[\mat{A}_0^{\mathrm{T}}\mat{A}_0]=r\sigma_A^2I$；在固定初始基座梯度的条件下，第一步期望增量为 $-\eta s^2r\sigma_A^2\vect{g}\vect{x}^{\mathrm{T}}$。该式直接说明秩、初始化尺度、学习率和 $s$ 共同影响更新幅度。
 
-\subsection{尺度及旁路正则化}
+\subsection{尺度与旁路正则化}
 原始 LoRA 使用 $s=\frac{\alpha}{r}$\cite{huLoRALowRankAdaptation2022}。更新尺度还取决于初始化与学习率。比较秩时，应明确是固定 $\alpha$、固定 $s$，还是采用其他缩放规则；否则同时改变了容量与初始更新尺度。
 
-若采用\term{随机失活}{Dropout}{}，可令其只作用于低秩旁路输入：$y=W_0x+sBA\widetilde x$。保留概率为 $q$，使用倒置失活 $\widetilde x=\frac{m\odot x}{q}$，则条件于 $x$ 有 $\mathbb E[\widetilde x]=x$。因此线性旁路输出的期望与无失活时相同，但非线性网络的损失期望通常不等于对期望输出求损失。推理时关闭失活，才能使用后文的固定权重合并等价式。
+若采用\term{随机失活}{Dropout}{}，可令其只作用于低秩旁路输入：$\vect{y}=\mat{W}_0\vect{x}+s\mat{B}\mat{A}\widetilde{\vect{x}}$。保留概率为 $q$，使用倒置失活 $\widetilde{\vect{x}}=\frac{m\odot \vect{x}}{q}$，则条件于 $\vect{x}$ 有 $\mathbb E[\widetilde{\vect{x}}]=\vect{x}$。因此线性旁路输出的期望与无失活时相同，但非线性网络的损失期望通常不等于对期望输出求损失。推理时关闭失活，才能使用后文的固定权重合并等价式。
 
 \subsection{LoRA 单步更新}
 \begin{example}
-\label{q:ch19:example:01}
 
 
 取
 \begin{equation}
-W_0=\begin{bmatrix}1&0\\0&1\end{bmatrix},\quad
-x=\begin{bmatrix}1\\2\end{bmatrix},\quad
-A_0=\begin{bmatrix}1&-1\end{bmatrix},\quad
-B_0=\begin{bmatrix}0\\0\end{bmatrix},\quad s=1.
+\mat{W}_0=\begin{bmatrix}1&0\\0&1\end{bmatrix},\quad
+\vect{x}=\begin{bmatrix}1\\2\end{bmatrix},\quad
+\mat{A}_0=\begin{bmatrix}1&-1\end{bmatrix},\quad
+\mat{B}_0=\begin{bmatrix}0\\0\end{bmatrix},\quad s=1.
 \end{equation}
-目标为 $t=(0,1)^{\mathsf T}$，损失 $\mathcal L=\tfrac12\|y-t\|_2^2$。初始投影 $A_0x=-1$，输出 $y_0=(1,2)^{\mathsf T}$，损失为 $1$，上游梯度 $g=(1,1)^{\mathsf T}$。于是
+目标为 $\vect{t}=(0,1)^{\mathrm{T}}$，损失 $\mathcal L=\tfrac12\|\vect{y}-\vect{t}\|_2^2$。初始投影 $\mat{A}_0\vect{x}=-1$，输出 $y_0=(1,2)^{\mathrm{T}}$，损失为 $1$，上游梯度 $\vect{g}=(1,1)^{\mathrm{T}}$。于是
 \begin{equation}
-\nabla_B\mathcal L=\begin{bmatrix}-1\\-1\end{bmatrix},\qquad
-\nabla_A\mathcal L=\begin{bmatrix}0&0\end{bmatrix},\qquad
-\nabla_x\mathcal L=\begin{bmatrix}1\\1\end{bmatrix}.
+\nabla_{\mat{B}}\mathcal L=\begin{bmatrix}-1\\-1\end{bmatrix},\qquad
+\nabla_{\mat{A}}\mathcal L=\begin{bmatrix}0&0\end{bmatrix},\qquad
+\nabla_{\vect{x}}\mathcal L=\begin{bmatrix}1\\1\end{bmatrix}.
 \end{equation}
-取 $\eta=0.1$，同时使用旧参数计算梯度后更新，得到 $B_1=(0.1,0.1)^{\mathsf T}$、$A_1=A_0$。新输出为 $(0.9,1.9)^{\mathsf T}$，损失为 $0.81$。更新后的矩阵为
+取 $\eta=0.1$，同时使用旧参数计算梯度后更新，得到 $\mat{B}_1=(0.1,0.1)^{\mathrm{T}}$、$\mat{A}_1=\mat{A}_0$。新输出为 $(0.9,1.9)^{\mathrm{T}}$，损失为 $0.81$。更新后的矩阵为
 \begin{equation}
-W_0+B_1A_1=
+\mat{W}_0+\mat{B}_1\mat{A}_1=
 \begin{bmatrix}1.1&-0.1\\0.1&0.9\end{bmatrix},
 \end{equation}
-乘以 $x$ 得到同一输出。下一次反传时，$\nabla_A\mathcal L=(0.18,0.36)$ 已不为零。此例展示了梯度启动和合并后的等价计算；可训练参数与基座元素均为四个。
+乘以 $\vect{x}$ 得到同一输出。下一次反传时，$\nabla_{\mat{A}}\mathcal L=(0.18,0.36)$ 已不为零。此例展示了梯度启动和合并后的等价计算；可训练参数与基座元素均为四个。
 \end{example}
 
-\section{目标模块及更新预算}
+\section{目标模块与更新预算}
 
-Transformer 中的查询、键和值投影改变注意力匹配和被聚合的信息，输出投影改变聚合结果进入残差流的方式，前馈层投影改变位置上的非线性特征变换。只适配其中一类模块与适配全部线性映射，允许的函数变化不同。\bookxref{ch:attention}给出了这些投影的形状；具有分组查询的结构中，键值投影往往并非 $d\times d$ 方阵，不能统一套用方阵参数公式。
+Transformer 中的查询、键和值投影改变注意力匹配和被聚合的信息，输出投影改变聚合结果进入残差流的方式，前馈层投影改变位置上的非线性特征变换。只适配其中一类模块与适配全部线性映射，允许的函数变化不同。\bookxref{ch:attention}给出了这些投影的形状；具有分组查询的结构中，键值投影往往并非 $d\times d$ 方阵，方阵参数公式在这里不再适用。
 
 设目标集合为 $\mathcal M$，每个模块有秩 $r_j$、输入输出维度 $d_{i,j},d_{o,j}$，则总可训练因子数为
 \begin{equation}
 N_{\mathrm{LoRA}}=\sum_{j\in\mathcal M}r_j(d_{i,j}+d_{o,j}).
 \end{equation}
-若同时训练偏置、词嵌入或输出头，必须另行加上其参数量，并将其写入制品。模块名属于具体架构的实现，匹配规则必须依据实际模块树解析，不能仅凭名称子串推定已正确覆盖。合并查询键值的线性层还需要说明是适配整个融合矩阵还是其中指定切片。
+若同时训练偏置、词嵌入或输出头，必须另行加上其参数量，并将其写入制品。模块名属于具体架构的实现，匹配规则应依据实际模块树解析，并检查命中模块及参数数量。合并查询键值的线性层还需要说明是适配整个融合矩阵还是其中指定切片。
 
-固定总预算时，秩分配也是一个优化选择。\term{自适应低秩适配}{Adaptive Low-Rank Adaptation}{AdaLoRA}通过重要性相关的预算分配调整不同增量方向的保留\cite{zhang2023adalora}。\term{权重分解低秩适配}{Weight-Decomposed Low-Rank Adaptation}{DoRA}将权重幅值与方向变化分别参数化，方向部分使用低秩更新\cite{liu2024dora}。两者的参数化与预算分配不同，缩放、初始化和保存格式应分别依据各自的定义。
+固定总预算时，秩分配也是一个优化选择。\term{自适应低秩适配}{Adaptive Low-Rank Adaptation}{AdaLoRA}通过重要性相关的预算分配调整不同增量方向的保留\cite{zhang2023adalora}。\term{权重分解低秩适配}{Weight-Decomposed Low-Rank Adaptation}{DoRA}将权重幅值与方向变化分别参数化，方向部分使用低秩更新\cite{liu2024dora}。两者的参数化与预算分配不同，缩放、初始化和保存格式应分别依据各自的定义。表\ref{tab:rev-lora-variants}对比了标准 LoRA 及其代表性衍生变体的参数化机制与技术特征。
+
+\begin{table}[htbp]
+\centering
+\caption{LoRA 核心衍生变体参数化公式与技术特征对比}
+\label{tab:rev-lora-variants}
+\begin{tabularx}{\linewidth}{lp{32mm}p{30mm}X}
+\toprule
+变体方法 & 核心参数化机制 & 秩分配与优化特点 & 核心优势与工程权衡 \\
+\midrule
+标准 LoRA & $\Delta \mat{W} = \frac{\alpha}{r}\mat{B}\mat{A}$ & 预设固定秩 $r$ & 结构简单，推理可等价合并无时延；各模块均分秩可能次优 \\
+AdaLoRA & $\Delta \mat{W} = \mat{P}\mat{\Lambda}\mat{Q}$（奇异值参数化） & 动态重要性评分自适应剪枝 & 跨层跨模块动态平衡参数预算，相同参数量下表达能力更高 \\
+QLoRA & 4-bit NF4 基座 + BF16 适配器 & 固定秩，引入双重量化与分页 & 极大压缩基座显存，使单张消费级显卡可微调数十亿至百亿模型 \\
+DoRA & $\mat{W} = m \frac{\mat{W}_0 + \Delta \mat{W}}{\|\mat{W}_0 + \Delta \mat{W}\|_F}$ & 权重幅度 $m$ 与方向解耦 & 学习动态逼近全参数微调，在复杂推理任务上表现更优 \\
+LongLoRA & 位移短注意力 (S2-Attn) + LoRA & 固定秩，仅扩展注意力 & 极低训练显存开销扩展上下文长度，避免二次方显存爆炸 \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
 一个合理比较应固定基座、数据划分和有效训练词元预算，再分别观察目标模块、秩、缩放和学习率。参数量相同但更新位置不同的两种配置，应同时比较任务能力、原有能力保留和部署代价。目标任务与原有任务分别评估，以观察适配收益及能力变化。
 
-\section{合并、组合及数值语义}
+\section{合并、组合与数值语义}
 
 \subsection{单适配器合并}
 当推理旁路是固定线性映射且失活关闭时，可定义
 \begin{equation}
-W_{\mathrm{merged}}=W_0+sBA.
-\label{eq:ch19-merge}
+\mat{W}_{\mathrm{merged}}=\mat{W}_0+s\mat{B}\mat{A}.
+\label{eq:peft-merge}
 \end{equation}
-在实数算术中，双分支和单矩阵形式完全相等。浮点中，先形成 $BA$ 再与 $W_0$ 相加，与逐层矩阵乘法的舍入次序不同，因此应按合理容差比较。若旁路含输入相关门控或非线性，便不能直接采用式\eqref{eq:ch19-merge}。
+在实数算术中，双分支和单矩阵形式完全相等。浮点中，先形成 $\mat{B}\mat{A}$ 再与 $\mat{W}_0$ 相加，与逐层矩阵乘法的舍入次序不同，因此应按合理容差比较。若旁路含输入相关门控或非线性，式\eqref{eq:peft-merge} 便不再成立。
 
-合并消除了显式低秩旁路的运行开销，却使该模型成为某一任务配置的实体副本。多任务动态切换时，保留共享基座与独立适配器可能更有价值。应保存未合并原件，而不是依赖对合并权重反复相减来恢复；有限精度下的加减不保证无损往返。
+合并消除了显式低秩旁路的运行开销，却使该模型成为某一任务配置的实体副本。多任务动态切换时，保留共享基座与独立适配器可能更有价值。应保存未合并原件；依靠对合并权重反复相减来恢复，在有限精度下会丢失原始值。
 
 \subsection{适配器组合}
 若多个适配器均相对于同一基座、同一目标模块训练，固定线性组合可写为
 \begin{equation}
-\Delta W=\sum_{j=1}^{k}c_js_jB_jA_j.
+\Delta \mat{W}=\sum_{j=1}^{k}c_js_j\mat{B}_j\mat{A}_j.
 \end{equation}
-它可以通过拼接精确表示：$B_{\mathrm{cat}}=[c_1s_1B_1\ \cdots\ c_ks_kB_k]$，$A_{\mathrm{cat}}=[A_1^{\mathsf T}\ \cdots\ A_k^{\mathsf T}]^{\mathsf T}$，总秩上界为 $\sum_jr_j$。组合后的任务表现还取决于各增量之间的相互作用。
+它可以通过拼接精确表示：$\mat{B}_{\mathrm{cat}}=[c_1s_1\mat{B}_1\ \cdots\ c_ks_k\mat{B}_k]$，$\mat{A}_{\mathrm{cat}}=[\mat{A}_1^{\mathrm{T}}\ \cdots\ \mat{A}_k^{\mathrm{T}}]^{\mathrm{T}}$，总秩上界为 $\sum_jr_j$。组合后的任务表现还取决于各增量之间的相互作用。
 
-直接计算 $(B_1+B_2)(A_1+A_2)$ 会产生 $B_1A_2+B_2A_1$ 交叉项，通常不等于增量相加。由于因子分解不唯一，逐元素平均因子还依赖任意选取的内部坐标。若为了维持小秩而重新压缩合成增量，则引入新的近似误差，需要作为独立制品评估。
+直接计算 $(\mat{B}_1+\mat{B}_2)(\mat{A}_1+\mat{A}_2)$ 会产生 $\mat{B}_1\mat{A}_2+\mat{B}_2\mat{A}_1$ 交叉项，通常不等于增量相加。由于因子分解不唯一，逐元素平均因子还依赖任意选取的内部坐标。若为了维持小秩而重新压缩合成增量，则引入新的近似误差，需要作为独立制品评估。
 
-如果第二个适配器是在“基座加第一个适配器”上继续训练，其依赖关系也不同于两个独立任务增量。请求相关的动态组合系数更不能一次性固化为唯一矩阵。注册与部署时必须区分并行组合、串行训练依赖和单任务切换。
+如果第二个适配器是在“基座加第一个适配器”上继续训练，其依赖关系也不同于两个独立任务增量。请求相关的动态组合系数也无法一次固化为唯一矩阵。注册与部署时必须区分并行组合、串行训练依赖和单任务切换。
 
-\section{QLoRA 的量化及梯度边界}
+\section{QLoRA 的量化与梯度边界}
 
 \subsection{量化基座的梯度路径}
-\term{量化低秩适配}{Quantized Low-Rank Adaptation}{QLoRA}结合低比特基座存储与可训练低秩参数\cite{dettmers2023qlora}。令 $Q(W_0)$ 为量化对象 $W_q$，包含码值和量化元数据；令 $D(W_q)=\widehat W$ 表示恢复到计算精度的权重，则训练的线性映射为
+\term{量化低秩适配}{Quantized Low-Rank Adaptation}{QLoRA}结合低比特基座存储与可训练低秩参数\cite{dettmers2023qlora}。令 $\mat{Q}(\mat{W}_0)$ 为量化对象 $\mat{W}_q$，包含码值和量化元数据；令 $\mat{D}(\mat{W}_q)=\widehat{\mat{W}}$ 表示恢复到计算精度的权重，则训练的线性映射为
 \begin{equation}
-Y=\widehat WX+sBAX.
+\mat{Y}=\widehat{\mat{W}}\mat{X}+s\mat{B}\mat{A}\mat{X}.
 \end{equation}
-基座码值与其尺度保持冻结，梯度更新 $A,B$，但输入梯度仍为
+基座码值与其尺度保持冻结，梯度更新 $\mat{A},\mat{B}$，但输入梯度仍为
 \begin{equation}
-\nabla_X\mathcal L=\widehat W^{\mathsf T}G+sA^{\mathsf T}B^{\mathsf T}G.
-\label{eq:ch19-qlora-backward}
+\nabla_{\mat{X}}\mathcal L=\widehat{\mat{W}}^{\mathrm{T}}\mat{G}+s\mat{A}^{\mathrm{T}}\mat{B}^{\mathrm{T}}\mat{G}.
+\label{eq:peft-qlora-backward}
 \end{equation}
-这里无需求量化离散码值的梯度；需要的是在固定恢复权重下对输入求导。因此“量化不可微”并不阻止该输入梯度的计算。是否临时物化全部恢复权重，还是按块在内核内恢复，属于运行时实现，不能从此公式推定必然分配一个完整高精度副本。
+这里无需求量化离散码值的梯度；需要的是在固定恢复权重下对输入求导。因此输入梯度沿恢复后的线性运算计算，与离散码值的量化梯度无关。恢复权重可以临时完整物化，也可以在内核内按块恢复，实际内存布局由运行时实现决定。
 
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[>=stealth,every node/.style={font=\small},b/.style={draw,align=center,minimum height=.9cm,minimum width=2.4cm}]
-\node[b] (q) at (0,1) {冻结码值与尺度\\$W_q$};
-\node[b] (w) at (3.5,1) {计算权重\\$\widehat W=D(W_q)$};
-\node[b] (out) at (7.3,0) {$Y=\widehat WX+sBAX$};
-\node[b] (ab) at (3.5,-1.2) {可训练 $A,B$};
+\node[b] (q) at (0,1) {冻结码值与尺度\\$\mat{W}_q$};
+\node[b] (w) at (3.5,1) {计算权重\\$\widehat{\mat{W}}=\mat{D}(\mat{W}_q)$};
+\node[b] (out) at (7.3,0) {$\mat{Y}=\widehat{\mat{W}}\mat{X}+s\mat{B}\mat{A}\mat{X}$};
+\node[b] (ab) at (3.5,-1.2) {可训练 $\mat{A},\mat{B}$};
 \draw[->](q)--(w);\draw[->](w)--(out);\draw[->](ab)--(out);
 \draw[->,dashed](out.south)--node[below]{参数梯度}(ab.east);
-\node[align=center] at (7.3,-2.3) {输入梯度含 $\widehat W^{\mathsf T}G$\\不能切断冻结主路};
+\node[align=center] at (7.3,-2.3) {输入梯度含 $\widehat{\mat{W}}^{\mathrm{T}}\mat{G}$\\冻结主路仍参与反传};
 \end{tikzpicture}
 \caption{QLoRA 的存储、计算和更新是三个不同边界。虚线仅表示适配器参数梯度。}
-\label{fig:ch19-qlora}
+\label{fig:peft-qlora-arch}
 \end{figure}
 
-\subsection{NF4、双重量化及内存账目}
-QLoRA 原始方案使用\term{四比特正态浮点}{4-bit NormalFloat}{NF4}表示权重，量化码本面向近似正态分布的权重设计；它不是普通四比特整数的另一名称。\term{双重量化}{Double Quantization}{}进一步压缩块级量化常数，\term{分页优化器}{Paged Optimizer}{}则管理优化器状态的内存峰值\cite{dettmers2023qlora}。这些措施分别压缩基座和量化元数据、管理优化器状态；激活与梯度按各自的计算精度存储。
+\subsection{NF4、双重量化与内存账目}
+QLoRA 原始方案使用\term{四比特正态浮点}{4-bit NormalFloat}{NF4}表示权重，量化码本面向近似正态分布的权重设计；它与普通四比特整数是两种不同的表示。\term{双重量化}{Double Quantization}{}进一步压缩块级量化常数，\term{分页优化器}{Paged Optimizer}{}则管理优化器状态的内存峰值\cite{dettmers2023qlora}。这些措施分别压缩基座和量化元数据、管理优化器状态；激活与梯度按各自的计算精度存储。
 
-设$P$ 个基座元素每个用四比特码值，每 $g$ 个元素另存一个 $32$ 位尺度，忽略对齐与其他元数据，则基座存储为 $\frac{P}{2}+\frac{4P}{g}$ 字节。$g=64$ 时为每元素 $0.5625$ 字节，而不是 $0.5$ 字节。双重量化改变第二项的表示，但不会消除元数据。
+设$\mat{P}$ 个基座元素每个用四比特码值，每 $\vect{g}$ 个元素另存一个 $32$ 位尺度，忽略对齐与其他元数据，则基座存储为 $\frac{\mat{P}}{2}+\frac{4\mat{P}}{\vect{g}}$ 字节。$\vect{g}=64$ 时为每元素 $0.5625$ 字节，高于常被引用的 $0.5$ 字节。双重量化改变第二项的表示，但不会消除元数据。
 
-训练还要加入适配器状态。例如给定 $N_a$ 个参数使用两字节权重、两字节梯度、两个四字节优化器矩及四字节主副本，则该部分为 $16N_a$ 字节，具体存储量随状态精度与优化器布局变化。激活、工作区与分页迁移成本仍需另计，不能由权重位宽推出训练峰值或加速比例。
+训练还要加入适配器状态。例如给定 $N_a$ 个参数使用两字节权重、两字节梯度、两个四字节优化器矩及四字节主副本，则该部分为 $16N_a$ 字节，具体存储量随状态精度与优化器布局变化。训练峰值还包括激活、工作区与分页迁移成本；加速比例则取决于实际算子和数据移动。
 
-\subsection{量化误差及部署转换}
-令 $\widehat W=W_0+E_q$，则模型实际学习的是 $W_0+E_q+sBA$。适配器可能同时响应任务需求与量化扰动，因此将同一 $A,B$ 换到未量化 $W_0$ 上不一定保持原行为。由于 $E_q$ 可能包含许多方向，低秩增量也不保证完全补偿它。
+\subsection{量化误差与部署转换}
+令 $\widehat{\mat{W}}=\mat{W}_0+\mat{E}_q$，则模型实际学习的是 $\mat{W}_0+\mat{E}_q+s\mat{B}\mat{A}$。适配器可能同时响应任务需求与量化扰动，因此把同一 $\mat{A},\mat{B}$ 换到未量化 $\mat{W}_0$ 上会得到不同行为。由于 $\mat{E}_q$ 可能包含许多方向，低秩增量也补偿不全。
 
-纯推理量化是在训练结束后改变部署表示；QLoRA 则在训练前向与反向路径中使用固定量化基座并训练适配器。两者既可能组合，也不可混称。若部署时重新量化合并权重，得到 $D(Q'(\widehat W+sBA))$，这与训练时的 $\widehat W+sBA$ 又有差别。合并到原始高精度基座得到 $W_0+sBA$ 则改变了另一个对象。发布记录必须说明实际选择哪条路径，而非笼统标注“已合并”。\footnote{量化格式、分组粒度、计算精度和后端均属于制品兼容性。某个后端能够读取四比特文件，不等于它实现了训练时相同的量化与恢复规则。}
+纯推理量化是在训练结束后改变部署表示；QLoRA 则在训练前向与反向路径中使用固定量化基座并训练适配器。两者可以组合使用，但属于不同的对象。若部署时重新量化合并权重，得到 $\mat{D}(\mat{Q}'(\widehat{\mat{W}}+s\mat{B}\mat{A}))$，这与训练时的 $\widehat{\mat{W}}+s\mat{B}\mat{A}$ 又有差别。合并到原始高精度基座得到 $\mat{W}_0+s\mat{B}\mat{A}$ 则改变了另一个对象。发布记录必须说明实际选择哪条路径，笼统标注“已合并”覆盖不了这些差别。\footnote{量化格式、分组粒度、计算精度和后端均属于制品兼容性。某个后端能够读取四比特文件，不等于它实现了训练时相同的量化与恢复规则。}
 
 \section{其他参数高效方法}
 \optional
-\subsection{瓶颈适配器及激活缩放}
+\subsection{瓶颈适配器与激活缩放}
 \term{瓶颈适配器}{Bottleneck Adapter}{}在网络中插入小型非线性模块\cite{houlsby2019adapters}。一种典型残差形式为
 \begin{equation}
-h'=h+U\,\sigma(Dh+b_d)+b_u,
-\quad D\in\Real^{b\times d},\quad U\in\Real^{d\times b},\quad b\ll d.
+\vect{h}'=\vect{h}+\mat{U}\,\sigma(\mat{D}\vect{h}+\vect{b}_d)+\vect{b}_u,
+\quad \mat{D}\in\Real^{b\times d},\quad \mat{U}\in\Real^{d\times b},\quad b\ll d.
 \end{equation}
-每个模块含 $2db+b+d$ 个参数。下降投影压缩到瓶颈，非线性转换后再映射回残差空间。插入在注意力之后、前馈层之后或并行旁路，会形成不同结构；不能把某个插入位置视为所有 Adapter 的定义。因为包含非线性，通常不能合并为原层的单一固定矩阵。
+每个模块含 $2db+b+d$ 个参数。下降投影压缩到瓶颈，非线性转换后再映射回残差空间。插入在注意力之后、前馈层之后或并行旁路，会形成不同结构，这一名称也不对应唯一的插入位置。因为包含非线性，通常无法合并为原层的单一固定矩阵。
 
-\term{内激活抑制与放大适配}{Infused Adapter by Inhibiting and Amplifying Inner Activations}{IA$^3$}使用可学习向量缩放键、值和前馈中间激活\cite{liu2022ia3}。若一头注意力的键值按行排列，可写为 $K'=K\operatorname{diag}(\ell_k)$、$V'=V\operatorname{diag}(\ell_v)$；前馈部分可写为
+\term{内激活抑制与放大适配}{Infused Adapter by Inhibiting and Amplifying Inner Activations}{IA$^3$}使用可学习向量缩放键、值和前馈中间激活\cite{liu2022ia3}。若一头注意力的键值按行排列，可写为 $\mat{K}'=\mat{K}\operatorname{diag}(\ell_k)$、$\mat{V}'=\mat{V}\operatorname{diag}(\ell_v)$；前馈部分可写为
 \begin{equation}
-h'=W_{\mathrm{down}}\,[\ell_f\odot\sigma(W_{\mathrm{up}}h)].
+h'=\mat{W}_{\mathrm{down}}\,[\ell_f\odot\sigma(\mat{W}_{\mathrm{up}}h)].
 \end{equation}
-向量通常从全一初始化，初始映射不变。它不能任意混合通道，只能在所选坐标上调整幅度。固定缩放可以吸收到相邻线性映射的行或列中，但必须遵守实际放置位置；把缩放移动到非线性或归一化另一侧一般不等价。
+向量通常从全一初始化，初始映射不变。它只在所选坐标上调整幅度，不改变通道之间的混合关系。固定缩放可以吸收到相邻线性映射的行或列中，但必须遵守实际放置位置；把缩放移动到非线性或归一化另一侧一般不等价。
 
 \subsection{输入软提示}
-\term{提示微调}{Prompt Tuning}{}学习一组输入连续向量，冻结语言模型权重\cite{lester2021prompt}。令词嵌入序列为 $E(x)\in\Real^{T\times d}$，\term{软提示}{Soft Prompt}{}为 $P\in\Real^{p\times d}$，输入为 $[P;E(x)]$，新增参数为 $pd$。这些向量不必等于词表中某个词的嵌入，也不必能够翻译成自然语言。
+\term{提示微调}{Prompt Tuning}{}学习一组输入连续向量，冻结语言模型权重\cite{lester2021prompt}。令词嵌入序列为 $\mat{E}(x)\in\Real^{T\times d}$，\term{软提示}{Soft Prompt}{}为 $\mat{P}\in\Real^{p\times d}$，输入为 $[\mat{P};\mat{E}(x)]$，新增参数为 $pd$。这些向量不必等于词表中某个词的嵌入，也没有对应的自然语言。
 
-损失仍由真实目标位置计算，梯度通过整个冻结网络传回 $P$。相较于自然语言提示工程，它需要梯度训练；相较于 LoRA，它不直接修改线性映射。它增加输入位置和相应计算预算，具体对最大文本长度与位置编码的影响由模型协议决定。
+损失仍由真实目标位置计算，梯度通过整个冻结网络传回 $\mat{P}$。相较于自然语言提示工程，它需要梯度训练；相较于 LoRA，它不直接修改线性映射。它增加输入位置和相应计算预算，具体对最大文本长度与位置编码的影响由模型协议决定。
 
-\subsection{逐层前缀及 P-Tuning}
-\term{前缀微调}{Prefix Tuning}{}在注意力层提供可学习的前缀状态\cite{li2021prefix}。对单头，令 $P_K\in\Real^{p\times d_k}$、$P_V\in\Real^{p\times d_v}$，真实查询为 $Q$，则
+\subsection{逐层前缀与 P-Tuning}
+\term{前缀微调}{Prefix Tuning}{}在注意力层提供可学习的前缀状态\cite{li2021prefix}。对单头，令 $\mat{P}_K\in\Real^{p\times d_k}$、$\mat{P}_V\in\Real^{p\times d_v}$，真实查询为 $\mat{Q}$，则
 \begin{equation}
-O=\softmax\!\left(\frac{Q[P_K;K]^{\mathsf T}}{\sqrt{d_k}}+M\right)[P_V;V].
-\label{eq:ch19-prefix}
+\mat{O}=\softmax\!\left(\frac{\mat{Q}[\mat{P}_K;\mat{K}]^{\mathrm{T}}}{\sqrt{d_k}}+\mat{M}\right)[\mat{P}_V;\mat{V}].
+\label{eq:peft-prefix}
 \end{equation}
-$M$ 允许真实词元读取前缀，并对真实词元间关系实施任务所需掩码。前缀不必通过输入词嵌入在每层间接产生，因而与仅学习输入 $P$ 的约束不同。若每层键与值各自的总维度为 $d_K,d_V$，层数为 $L$，直接保存前缀键值需 $Lp(d_K+d_V)$ 个参数。当键和值各有 $d$ 维时，才化为 $2Lpd$；分组键值结构应按实际维度计算。
+$\mat{M}$ 允许真实词元读取前缀，并对真实词元间关系实施任务所需掩码。前缀不必通过输入词嵌入在每层间接产生，因而与仅学习输入 $\mat{P}$ 的约束不同。若每层键与值各自的总维度为 $d_K,d_V$，层数为 $L$，直接保存前缀键值需 $Lp(d_K+d_V)$ 个参数。当键和值各有 $d$ 维时，才化为 $2Lpd$；分组键值结构应按实际维度计算。
 
 前缀还增加注意力可见的键值位置。真实长度为 $T$ 时，单头分数矩阵由 $T\times T$ 变为 $T\times(T+p)$。前缀可以预先计算和缓存，推理时仍需存储并读取这些状态。训练时使用提示编码器重参数化前缀、部署时保存生成的静态状态，是另一项需要记录的转换。
 
-\term{连续提示调优}{P-Tuning}{}的早期方法使用提示编码器产生连续嵌入，并与离散提示组合\cite{liu2021ptuning}；其提示可依任务模板放置，而非必然只是一个字符串前缀。原始方法也研究过同时调整语言模型的设置，因此不能从名称推定基座始终冻结。本章在 PEFT 比较中只考虑冻结基座的配置。
+\term{连续提示调优}{P-Tuning}{}的早期方法使用提示编码器产生连续嵌入，并与离散提示组合\cite{liu2021ptuning}；其提示可依任务模板放置，未必只是一个字符串前缀。原始方法也研究过同时调整语言模型的设置，因此从名称推不出基座始终冻结。本章在 PEFT 比较中只考虑冻结基座的配置。
 
-\term{深层提示调优}{P-Tuning v2}{}将连续提示扩展到多层，并针对不同任务调整训练方式\cite{liu2022ptuningv2}。它与逐层前缀属于紧密相关的方法路线，但输入布局、参数生成和任务头可能不同。比较时应写出真实计算位置与保存状态，不能把 Prompt、Prefix、P-Tuning 三个名字当作完全同义词。
+\term{深层提示调优}{P-Tuning v2}{}将连续提示扩展到多层，并针对不同任务调整训练方式\cite{liu2022ptuningv2}。它与逐层前缀属于紧密相关的方法路线，但输入布局、参数生成和任务头可能不同。比较时应写出真实计算位置与保存状态；把 Prompt、Prefix、P-Tuning 三个名字当作同义词会丢掉这些差异。
 
 \begin{figure}[htbp]
 \centering
@@ -287,11 +305,11 @@ $M$ 允许真实词元读取前缀，并对真实词元间关系实施任务所�
 \node at (6.8,1.4){该层前缀状态};\draw[->](6.8,1.1)--(l2);
 \end{tikzpicture}
 \caption{输入软提示只在入口增加可训练向量；逐层前缀在多个注意力层直接提供状态。}
-\label{fig:ch19-prompts}
+\label{fig:peft-prompts}
 \end{figure}
 
-\subsection{选择性微调及方法比较}
-\term{偏置微调}{BitFit}{}只训练选定偏置\cite{zaken2022bitfit}；可训练词元方法只开放指定词嵌入行。它们仍属于改变已有参数的策略。无偏置架构中，可用偏置集合可能很小或为空；新增词元还涉及词表、输入输出嵌入绑定和保存范围，不能只交付几行矩阵而忽略词元编号协议。
+\subsection{选择性微调与方法比较}
+\term{偏置微调}{BitFit}{}只训练选定偏置\cite{zaken2022bitfit}；可训练词元方法只开放指定词嵌入行。它们仍属于改变已有参数的策略。无偏置架构中，可用偏置集合可能很小或为空；新增词元还涉及词表、输入输出嵌入绑定和保存范围，只交付几行矩阵会丢掉词元编号协议。
 
 \begin{table}[htbp]
 \centering
@@ -304,7 +322,7 @@ $M$ 允许真实词元读取前缀，并对真实词元间关系实施任务所�
 全参数微调 & 基座权重 & 状态多，通常每任务保留完整权重\\
 LoRA & 低秩因子 & 更新秩与目标位置受限；线性旁路可合并\\
 QLoRA & 量化基座上的因子 & 基座存储较小；仍需激活和输入梯度\\
-瓶颈 Adapter & 非线性瓶颈模块 & 增加算子，通常不能线性合并\\
+瓶颈 Adapter & 非线性瓶颈模块 & 增加算子，无法线性合并\\
 IA$^3$ & 激活缩放向量 & 通道缩放表达受限，吸收位置须正确\\
 Prompt & 输入连续向量 & 增加输入位置，梯度穿过冻结网络\\
 Prefix/深层提示 & 多层前缀状态 & 增加注意力状态与读取成本\\
@@ -313,13 +331,13 @@ Prefix/深层提示 & 多层前缀状态 & 增加注意力状态与读取成本\
 \end{tabularx}
 \end{table}
 
-表\ref{tab:peft-method-comparison}中的资源特征用于提出候选方案，不能替代测量。对于同一任务，应比较质量、有效词元吞吐、峰值内存、制品大小、加载时延、合并能力和目标后端支持。尤其不能在改变训练数据或上下文长度的同时，把全部收益归因于 PEFT 方法。
+表\ref{tab:peft-method-comparison}中的资源特征用于提出候选方案，最终判断仍以测量为准。对于同一任务，应比较质量、有效词元吞吐、峰值内存、制品大小、加载时延、合并能力和目标后端支持。尤其要避免在改变训练数据或上下文长度的同时把全部收益归因于 PEFT 方法。
 
-\section{训练及制品生命周期}
+\section{训练与制品生命周期}
 
-\subsection{可训练集合及数据目标同时受控}
+\subsection{可训练集合与数据目标同时受控}
 \begin{algorithm}[冻结基座的适配训练]
-\label{alg:ch19-training}
+\label{alg:peft-training}
 \textbf{输入：}固定基座与分词协议、目标模块集合、适配方法配置、训练数据和停止预算。\textbf{输出：}任务参数与依赖清单。\textbf{状态：}适配参数、优化器状态、数据位置、有效标签累计量。
 \begin{enumerate}
 \item 加载基座，解析实际模块和形状；冻结基座参数。按方法注入并初始化适配变量，建立精确可训练名单。
@@ -331,26 +349,26 @@ Prefix/深层提示 & 多层前缀状态 & 增加注意力状态与读取成本\
 \textbf{不变量：}参数更新范围等于声明范围；冻结基座不被更新，但必要的梯度链保持连通。训练状态保存与部署适配器保存具有不同职责。
 \end{algorithm}
 
-例如面向对话的监督训练只对指定助手回答计算损失，系统消息、用户消息和填充不应意外进入目标。掩码的数学含义由有效标签集合定义，某个库使用的忽略索引只是实现约定。训练模板与部署模板可以为记录监督区间采用不同标记机制，但实际模型词元序列必须遵守同一协议。\bookxref{ch:data-engineering}进一步讨论了这些消费视图与版本关系。
+例如面向对话的监督训练只对指定助手回答计算损失，系统消息、用户消息和填充需要排除在目标之外。掩码的数学含义由有效标签集合定义，某个库使用的忽略索引只是实现约定。训练模板与部署模板可以为记录监督区间采用不同标记机制，但实际模型词元序列必须遵守同一协议。\bookxref{ch:data-engineering}进一步讨论了这些消费视图与版本关系。
 
 \subsection{角色一致性的能力边界}
 角色一致性适配使模型在身份询问、错误前提和能力范围问题中稳定遵循产品定义，并在普通任务中保持回答简洁。租户隔离与工具授权由运行系统管理。
 
 应按信息变更周期分层：在适配器生命周期内稳定的公开角色与行为约束可进入训练；当前日期、部署版本、租户和可用工具来自运行时配置；账户状态、实时事实和检索结果来自真实观察。把频繁变化的信息固化进权重，会把一次配置更新变成训练与发布问题。
 
-为识别适配器的真实增量，角色测试中不能只使用已经直接给出全部答案的提示。还应保留部署上下文下的组合测试，以及翻译、数学等非触发控制任务。训练与测试按提示家族隔离，分别报告角色稳定性、错误前提处理、动态事实边界和过度触发，而非只统计几个名字是否正确。干净基座、启用适配器和从干净基座重载适配器构成三种必要的比较对象。
+为识别适配器的真实增量，角色测试中应避免只使用已经直接给出全部答案的提示。还应保留部署上下文下的组合测试，以及翻译、数学等非触发控制任务。训练与测试按提示家族隔离，分别报告角色稳定性、错误前提处理、动态事实边界和过度触发；只统计几个名字是否正确覆盖不到这些维度。干净基座、启用适配器和从干净基座重载适配器构成三种必要的比较对象。
 
-\subsection{绑定、组合及回滚}
-适配器不是独立模型。其版本至少绑定基座权重身份、架构、词表与模板、目标模块及形状、方法配置、额外可训练对象、量化条件、数据与代码版本。基座名称相同而权重不同，或矩阵形状相同而语义位置变化，都不能保证兼容。
+\subsection{绑定、组合与回滚}
+适配器依赖特定基座与输入协议。其版本至少绑定基座权重身份、架构、词表与模板、目标模块及形状、方法配置、额外可训练对象、量化条件、数据与代码版本。兼容性需要同时匹配权重身份、张量形状和模块语义。
 
-动态加载服务需要把请求绑定到具体适配器与组合配置。\term{适配器注册表}{Adapter Registry}{}记录依赖和发布状态，\term{适配器路由}{Adapter Routing}{}按服务端授权选择版本，而非让模型自行判断当前租户。不同适配器通常会改变隐藏状态和键值缓存，因此缓存身份也必须包含影响其生成的模型与适配配置；切换后不能无条件沿用旧缓存。
+动态加载服务需要把请求绑定到具体适配器与组合配置。\term{适配器注册表}{Adapter Registry}{}记录依赖和发布状态，\term{适配器路由}{Adapter Routing}{}按服务端授权选择版本，租户由服务端判定。不同适配器通常会改变隐藏状态和键值缓存，因此缓存身份也必须包含影响其生成的模型与适配配置；切换后必须重建或隔离旧缓存。
 
 \begin{algorithm}[适配器发布与恢复]
 \textbf{输入：}适配器原件、依赖清单、批准的组合与部署模式。\textbf{输出：}可回滚的发布版本。\textbf{状态：}基座版本、适配器版本、路由版本及必要缓存命名空间。
 \begin{enumerate}
 \item 在干净基座上恢复完整训练变化，检查依赖和张量语义；拒绝不匹配版本，不静默跳过缺失模块。
 \item 在固定输入和明确精度条件下比较恢复前后的数值输出，再评估目标能力与原有能力保留。
-\item 若合并或重新量化，生成新的不可变制品并独立评估；若动态组合，按实际组合与系数评估，不复用单适配器结论代替。
+\item 若合并或重新量化，生成新的不可变制品并独立评估；若动态组合，按实际组合与系数评估，单适配器的结论在这里不作依据。
 \item 发布新的路由与缓存身份，保留前一版本。出现回滚条件时恢复路由并隔离不兼容缓存，停止向新请求分配失效版本。
 \end{enumerate}
 \textbf{不变量：}请求能追溯到实际基座、适配器及组合；未合并原件保留，恢复不依赖对低精度权重反复加减。
@@ -364,27 +382,30 @@ PEFT 减少每个任务需要学习与维护的参数量。基座仍参与计算
 
 
 
-\section{微调框架的职责及组合}
+\section{微调框架的职责与组合}
 
 框架选型首先要区分模型实现、可训练参数管理、训练目标和运行组织。它们处于不同层次，同一训练过程常同时使用多个项目；比较框架时，应先确定是否在比较同一种职责。
 
-\begin{center}
+\begin{table}[htbp]
+\centering
+\caption{开源微调生态核心组件职责分工与协同边界}
+\label{tab:rev-peft-frameworks}
 \begin{tabularx}{\linewidth}{p{28mm}XX}
 \toprule 组件 & 负责的对象 & 需要核对的边界\\\midrule
 Transformers & 模型结构、分词器、权重及生成接口 & 架构支持、聊天模板、特殊词元和模型修订。\\
-PEFT & LoRA等适配方法、参数注入与适配器制品 & 实际目标模块、冻结范围、额外保存层及基座绑定。\\
+PEFT & LoRA 等适配方法、参数注入与适配器制品 & 实际目标模块、冻结范围、额外保存层及基座绑定。\\
 TRL & SFT、偏好优化和策略训练等目标的训练器 & 数据语义、监督掩码、参考模型与奖励定义。\\
 LLaMA-Factory、Axolotl & 配置驱动的数据处理、训练与导出流程 & 最终生效配置、模板映射和底层依赖组合。\\
 \bottomrule
 \end{tabularx}
-\end{center}
+\end{table}
 Transformers与PEFT分别提供模型和适配器层接口\cite{HuggingfaceTransformers2018,huggingfacePEFT2023}；TRL的SFT训练器可以与PEFT组合\cite{huggingface2026trlframework}。LLaMA-Factory与Axolotl则把多项训练步骤组织成配置化工作流\cite{llamafactory2026framework,axolotl2026framework}。集成程度较高可以减少重复编排，但研究者仍须知道配置如何改变底层目标。
 
 以问答微调为例，分词器把角色与文本转成词元，训练器确定哪些位置受到监督，PEFT决定哪些参数获得梯度，分布式运行时再决定这些参数与状态怎样放到设备上。若切换框架时同时改变聊天模板、回答掩码和有效批量，观察到的收益便无法只归因于框架实现。应先对同一条样本核对词元、标签和损失，再比较训练速度。
 
-使用集成框架时，应保存解析后的完整配置及依赖版本，而不只保存手写的几行覆盖项。默认模板、填充、打包、优化器和检查点形式都可能随版本变化。适配器导出后还应在干净基座上重载，验证张量绑定和固定输入输出，并完成任务质量与部署性能检查。
+使用集成框架时，应保存解析后的完整配置及依赖版本；手写的几行覆盖项复原不了实际配置。默认模板、填充、打包、优化器和检查点形式都可能随版本变化。适配器导出后还应在干净基座上重载，验证张量绑定和固定输入输出，并完成任务质量与部署性能检查。
 
 需要直接研究训练目标和数据处理时，可先采用Transformers、PEFT与TRL的组合，使监督链条便于检查；需要重复管理多种数据格式与训练任务时，可采用集成框架，并保留同样的数据与数值验收。最终配置应满足参数预算、可训练范围和合并条件。
 
 \chapterreferences
-\end{document}
+\lfsendchapterdocument

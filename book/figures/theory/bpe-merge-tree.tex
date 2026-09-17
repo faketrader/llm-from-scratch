@@ -1,0 +1,74 @@
+\documentclass[tikz,border=5pt]{standalone}
+\usepackage{ctex}
+\usepackage{amsmath,amssymb}
+\usetikzlibrary{arrows.meta,positioning}
+\input{diagram_styles.tex}
+
+\begin{document}
+\begin{tikzpicture}[lfs picture, >=Latex, node distance=10mm]
+
+% Style definitions
+\tikzset{
+  leaf/.style={draw=LFSBlue, fill=LFSBlueSoft, rounded corners=2pt, font=\small\ttfamily, inner sep=4pt, minimum width=9mm, minimum height=7mm},
+  intermediate/.style={draw=LFSPurple, fill=LFSPurpleSoft, rounded corners=2pt, font=\small\ttfamily, inner sep=4pt, minimum width=14mm, minimum height=7mm},
+  root/.style={draw=LFSGreen, fill=LFSGreenSoft, rounded corners=3pt, font=\small\bfseries, inner sep=5pt, minimum height=8mm},
+  rulebox/.style={draw=LFSOrange, fill=LFSOrangeSoft, rounded corners=2pt, font=\footnotesize, align=left, inner sep=6pt},
+  stage/.style={font=\small\bfseries, text=LFSGray}
+}
+
+% Left: Merge rule hierarchy table / box
+\node[stage] (rule_title) at (-0.5, 3.8) {训练阶段：有序合并规则表};
+\node[rulebox, below=3mm of rule_title, text width=52mm] (rules) {
+  \textbf{优先级队列}（由训练频数决定）：\\[2mm]
+  \textbf{Rank 1}: \texttt{('l', 'o')} $\to$ \texttt{'lo'} \hfill (频数最高)\\
+  \textbf{Rank 2}: \texttt{('e', 'r')} $\to$ \texttt{'er'}\\
+  \textbf{Rank 3}: \texttt{('lo', 'w')} $\to$ \texttt{'low'}\\
+  \textbf{Rank 4}: \texttt{('low', '\_')} $\to$ \texttt{'low\_'}\\
+  \textbf{Rank 5}: \texttt{('low\_', 'er')} $\to$ \texttt{'lower'}\\[1.5mm]
+  \rule{\linewidth}{0.4pt}\\[1.5mm]
+  \textit{编码原则}：按规则优先级由小到大\\
+  贪心执行全局非重叠字符对合并。
+};
+
+% Right: Hierarchical parse tree
+\node[stage] (tree_title) at (6.5, 3.8) {推理阶段：层次词元切分树};
+
+% Leaf tokens
+\node[leaf] (c1) at (3.5, -0.2) {'l'};
+\node[leaf] (c2) at (4.7, -0.2) {'o'};
+\node[leaf] (c3) at (5.9, -0.2) {'w'};
+\node[leaf] (c4) at (7.1, -0.2) {'\_'};
+\node[leaf] (c5) at (8.3, -0.2) {'e'};
+\node[leaf] (c6) at (9.5, -0.2) {'r'};
+
+% First level merges
+\node[intermediate] (m1) at (4.1, 0.9) {'lo'};
+\draw[->, draw=LFSPurple, line width=0.8pt] (c1) -- (m1) node[midway, left, font=\tiny, text=LFSOrange] {R1};
+\draw[->, draw=LFSPurple, line width=0.8pt] (c2) -- (m1);
+
+\node[intermediate] (m2) at (8.9, 0.9) {'er'};
+\draw[->, draw=LFSPurple, line width=0.8pt] (c5) -- (m2) node[midway, left, font=\tiny, text=LFSOrange] {R2};
+\draw[->, draw=LFSPurple, line width=0.8pt] (c6) -- (m2);
+
+% Second level merge
+\node[intermediate] (m3) at (5.0, 1.8) {'low'};
+\draw[->, draw=LFSPurple, line width=0.8pt] (m1) -- (m3) node[midway, left, font=\tiny, text=LFSOrange] {R3};
+\draw[->, draw=LFSPurple, line width=0.8pt] (c3) -- (m3);
+
+% Third level merge
+\node[intermediate] (m4) at (6.0, 2.7) {'low\_'};
+\draw[->, draw=LFSPurple, line width=0.8pt] (m3) -- (m4) node[midway, left, font=\tiny, text=LFSOrange] {R4};
+\draw[->, draw=LFSPurple, line width=0.8pt] (c4) -- (m4);
+
+% Final merge
+\node[root] (m5) at (7.45, 3.6) {词元: \texttt{'lower'}};
+\draw[->, draw=LFSGreen, line width=1pt] (m4) -- (m5) node[midway, above left, font=\tiny, text=LFSOrange] {R5};
+\draw[->, draw=LFSGreen, line width=1pt] (m2) to[out=90, in=-50] (m5);
+
+% Annotation at bottom
+\node[font=\footnotesize, text=LFSGray, align=center] at (6.5, -0.9) {
+  原始序列由 6 个基础字符组成 $\xrightarrow{\text{5 轮合并}}$ 压缩为 1 个完整词元
+};
+
+\end{tikzpicture}
+\end{document}

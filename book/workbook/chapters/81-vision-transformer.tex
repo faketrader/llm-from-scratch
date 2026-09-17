@@ -8,7 +8,7 @@
 \end{solution}
 \end{exercise}
 
-\begin{exercise} 证明式\tbobject{eq:ch37-patchify}可逆，并说明当滑窗重叠、忽略边界或带填充时，哪些结论发生变化。
+\begin{exercise} 证明式\tbobject{eq:vit-patchify}可逆，并说明当滑窗重叠、忽略边界或带填充时，哪些结论发生变化。
 
 \begin{solution}
 无重叠整除时，每像素$h,w$唯一分解为$h=g_hP_h+u,w=g_wP_w+v$，其中商余数唯一；再将$(g_h,g_w)$和$(c,u,v)$编码为n、f，构成双射，逆映射按商余数还原。重叠会复制像素，逆需检查一致并累加/归一；忽略边界丢信息所以不可逆；填充需保留原尺寸并裁掉新增位置，才能恢复原图。
@@ -18,28 +18,28 @@
 \begin{exercise} 以本章 $4\times4$ 图像算例为基础交换块内两个像素的展平位置。怎样变换 $W_E$ 才保持输出不变？只改变展平规则会造成什么错误？
 
 \begin{solution}
-令块内置换矩阵为P，行向量展平改成$X'=XP$，取$W'_E=P^TW_E$，则$X'W'_E=XPP^TW_E=XW_E$。交换两个像素等于交换W对应两行。只改X不改W会让不同像素被原位置权重相乘，例如左右差核可能算成上下或混合差，形状虽不变而输出语义改变。
+令块内置换矩阵为P，行向量展平改成$\mat{X}'=\mat{X}\mat{P}$，取$\mat{W}'_E=\mat{P}^{\mathrm{T}}\mat{W}_E$，则$\mat{X}'\mat{W}'_E=\mat{X}\mat{P}\mat{P}^{\mathrm{T}}\mat{W}_E=\mat{X}\mat{W}_E$。交换两个像素等于交换W对应两行。只改X不改W会让不同像素被原位置权重相乘，例如左右差核可能算成上下或混合差，形状虽不变而输出语义改变。
 \end{solution}
 \end{exercise}
 
 \begin{exercise}\optional 推导重叠滑窗情况下图像梯度的累加公式，并说明为什么不能用无重叠逆重排直接替代。
 
 \begin{solution}
-设抽取算子$X=UI$，投影$Z=XW$，则$D_I=U^T(D_ZW^T)$。展开为某像素的梯度等于所有包含该像素的窗口、对应块内位置以及输出通道贡献之和。重叠时同像素出现多次，单纯逆重排只保留一次会漏梯度；若为重建图像求平均，要明确这是另一归一化算子，而反向应为前向抽取算子的转置。
+设抽取算子$\mat{X}=\mat{U}\mat{I}$，投影$\mat{Z}=\mat{X}\mat{W}$，则$\mat{D}_I=\mat{U}^{\mathrm{T}}(\mat{D}_Z\mat{W}^{\mathrm{T}})$。展开为某像素的梯度等于所有包含该像素的窗口、对应块内位置以及输出通道贡献之和。重叠时同像素出现多次，单纯逆重排只保留一次会漏梯度；若为重建图像求平均，要明确这是另一归一化算子，而反向应为前向抽取算子的转置。
 \end{solution}
 \end{exercise}
 
 \begin{exercise}\optional 当 $F=12,d=5$ 时，证明至少存在七维的补丁扰动空间不会改变线性嵌入。这个结论是否足以判断分类性能？
 
 \begin{solution}
-线性映射由$12\times5$矩阵定义，其秩至多5。秩零化度定理给核空间维数$12-\operatorname{rank}W\ge7$，所以存在至少七维非零扰动$\delta x$满足$\delta xW=0$。这说明线性编码不能保留全部输入差异，却不能单独判断分类性能，因为被丢弃方向可能与标签无关；任务充分性需要数据与分类目标证据。
+线性映射由$12\times5$矩阵定义，其秩至多5。秩零化度定理给核空间维数$12-\operatorname{rank}\mat{W}\ge7$，所以存在至少七维非零扰动$\delta \vect{x}$满足$\delta \vect{x}\mat{W}=0$。这说明线性编码不能保留全部输入差异，却不能单独判断分类性能，因为被丢弃方向可能与标签无关；任务充分性需要数据与分类目标证据。
 \end{solution}
 \end{exercise}
 
 \begin{exercise} 证明没有位置编码时，固定 CLS、任意置换补丁不会改变分类读出。加入位置后同时置换内容和位置，与只置换内容有何区别？
 
 \begin{solution}
-令置换$P=\operatorname{diag}(1,P_v)$固定CLS，对无位置的自注意力有$Q'=PQ,K'=PK,V'=PV$，行Softmax满足$\operatorname{softmax}(PSP^T)=P\operatorname{softmax}(S)P^T$，输出为PO；逐位置前馈、归一化和残差也等变。由层归纳CLS行不变，分类不变。加入位置后同时置换内容和位置仍只是整行置换；只置换内容则改变内容与空间的配对，一般改变输出。推理关闭随机丢弃或同步其置换是该证明的条件。
+令置换$\mat{P}=\operatorname{diag}(1,\mat{P}_v)$固定CLS，对无位置的自注意力有$\mat{Q}'=\mat{P}\mat{Q},\mat{K}'=\mat{P}\mat{K},\mat{V}'=\mat{P}\mat{V}$，行Softmax满足$\operatorname{softmax}(\mat{P}\mat{S}\mat{P}^{\mathrm{T}})=\mat{P}\operatorname{softmax}(\mat{S})\mat{P}^{\mathrm{T}}$，输出为PO；逐位置前馈、归一化和残差也等变。由层归纳CLS行不变，分类不变。加入位置后同时置换内容和位置仍只是整行置换；只置换内容则改变内容与空间的配对，一般改变输出。推理关闭随机丢弃或同步其置换是该证明的条件。
 \end{solution}
 \end{exercise}
 
@@ -50,7 +50,7 @@
 \end{solution}
 \end{exercise}
 
-\begin{exercise} 当 $d=512,\rho=4$ 时，求式\tbobject{eq:ch37-cost}中线性项与二次项相等的序列长度；解释这为何不是硬件延迟交点。
+\begin{exercise} 当 $d=512,\rho=4$ 时，求式\tbobject{eq:vit-cost}中线性项与二次项相等的序列长度；解释这为何不是硬件延迟交点。
 
 \begin{solution}
 主要线性项$(4+2\rho)Ld^2$与注意力项$2L^2d$相等，正L下约去$2Ld$得$L=(2+\rho)d=6\times512=3072$。这是乘加量交点；内存搬运、融合、并行度、矩阵利用率和工作区不同，真实时间交点必须测量，不能据此直接决定内核选择。

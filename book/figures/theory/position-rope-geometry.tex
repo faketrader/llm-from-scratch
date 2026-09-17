@@ -1,0 +1,18 @@
+\documentclass[tikz,border=6pt]{standalone}
+\usepackage{ctex}
+\usepackage{amsmath}
+\usepackage{../../mymath}
+\usetikzlibrary{arrows.meta}
+\begin{document}
+\begin{tikzpicture}[>=Stealth,every node/.style={font=\small}]
+\draw[->] (-.6,0)--(3,0) node[right]{$\vect{z}_0$};
+\draw[->] (0,-.4)--(0,2.7) node[above]{$\vect{z}_1$};
+\draw[->,thick] (0,0)--(2.4,.6) node[right]{$\vect{z}$};
+\draw[->,thick] (0,0)--(1.12,2.2) node[above]{$\mat{R}(\theta)\vect{z}$};
+\draw[dashed] (2.4,.6) arc[start angle=14,end angle=63,radius=2.47];
+\draw[->] (.78,.20) arc[start angle=14,end angle=63,radius=.8];
+\node at (.75,.7) {$\theta$};
+\node[draw,rounded corners,align=left,text width=58mm] at (6.5,1.2)
+ {同一二维子空间中：\\长度保持不变；\\位置决定旋转角；\\查询和键的角度差\\由位置差决定。};
+\end{tikzpicture}
+\end{document}

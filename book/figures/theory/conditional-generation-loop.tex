@@ -1,0 +1,20 @@
+\documentclass[tikz,border=6pt]{standalone}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning}
+\begin{document}
+\begin{tikzpicture}[
+  >=Latex,
+  font=\small,
+  node distance=6mm,
+  box/.style={draw,align=center,text width=25mm,minimum height=12mm}
+]
+\node[box] (text) {文本及参考媒体\\条件编码};
+\node[box,right=of text] (net) {U-Net或DiT\\条件预测};
+\node[box,right=of net] (step) {引导与求解器\\状态更新};
+\node[box,below=of step] (decode) {逆缩放与解码\\图像或视频};
+\draw[->] (text)--(net);
+\draw[->] (net)--(step);
+\draw[->] (step.north) -- ++(0,.5) -| (net.north);
+\draw[->] (step)--node[right]{到达终点}(decode);
+\end{tikzpicture}
+\end{document}

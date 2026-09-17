@@ -4,14 +4,14 @@
 \begin{exercise}\optional 推导式\tbobject{eq:open-latent}在行向量约定下的形式，并核对查询吸收与值求和后的上投影形状。
 
 \begin{solution}
-把列向量记号转置，$c=hD^{\mathsf T}\in\Real^{1\times r}$、$k_i=cU_i^{\mathsf T}\in\Real^{1\times d_k}$、$v_i=cV_i^{\mathsf T}\in\Real^{1\times d_v}$。分数 $q_i k_i^{\mathsf T}=(q_iU_i)c^{\mathsf T}$，吸收查询 $q_iU_i$ 为 $1\times r$。输出 $\sum_ja_jc_jV_i^{\mathsf T}=(\sum_ja_jc_j)V_i^{\mathsf T}$，先汇总r维潜变量再投影到值宽度。
+把列向量记号转置，$\vect{c}=\vect{h}\mat{D}^{\mathrm{T}}\in\Real^{1\times r}$、$k_i=\vect{c}\mat{U}_i^{\mathrm{T}}\in\Real^{1\times d_k}$、$v_i=\vect{c}\mat{V}_i^{\mathrm{T}}\in\Real^{1\times d_v}$。分数 $q_i k_i^{\mathrm{T}}=(q_i\mat{U}_i)\vect{c}^{\mathrm{T}}$，吸收查询 $q_i\mat{U}_i$ 为 $1\times r$。输出 $\sum_ja_jc_j\mat{V}_i^{\mathrm{T}}=(\sum_ja_jc_j)\mat{V}_i^{\mathrm{T}}$，先汇总r维潜变量再投影到值宽度。
 \end{solution}
 \end{exercise}
 
-\begin{exercise}\optional 对给定矩阵 $U$ 和两个位置旋转 $R_1,R_2$，说明为什么一般不能为所有历史位置复用一个 $U^{\mathsf T}R_j^{\mathsf T}R_tq$。给出可以交换的特殊条件。
+\begin{exercise}\optional 对给定矩阵 $\mat{U}$ 和两个位置旋转 $\mat{R}_1,\mat{R}_2$，说明为什么一般不能为所有历史位置复用一个 $\mat{U}^{\mathrm{T}}\mat{R}_j^{\mathrm{T}}\mat{R}_t\vect{q}$。给出可以交换的特殊条件。
 
 \begin{solution}
-$U^{\mathsf T}R_j^{\mathsf T}R_tq$ 随j变化，一般需逐历史位置计算，不能当作同一个当前查询。若U为同一二维子空间的标量单位矩阵，则与旋转可交换，但旋转角度仍依赖j；“可交换”本身不等于“可消除位置”。不使用旋转、所有相对旋转恰为同一矩阵，或相关向量位于旋转恒等子空间时，才可在该限定范围复用。
+$\mat{U}^{\mathrm{T}}\mat{R}_j^{\mathrm{T}}\mat{R}_t\vect{q}$ 随j变化，一般需逐历史位置计算，不能当作同一个当前查询。若U为同一二维子空间的标量单位矩阵，则与旋转可交换，但旋转角度仍依赖j；“可交换”本身不等于“可消除位置”。不使用旋转、所有相对旋转恰为同一矩阵，或相关向量位于旋转恒等子空间时，才可在该限定范围复用。
 \end{solution}
 \end{exercise}
 

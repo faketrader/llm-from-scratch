@@ -4,7 +4,7 @@
 \begin{exercise} 推导在线统计量合并的三块表达，并说明精确算术下合并顺序无关的原因。
 
 \begin{solution}
-设 $m=\max(m_1,m_2,m_3)$，$\ell=\sum_ie^{m_i-m}\ell_i,u=\sum_ie^{m_i-m}u_i$。代回各块定义后，分别等于全体有效位置的 $\sum e^{s_j-m}$ 与 $\sum e^{s_j-m}v_j$；这些有限和在精确算术中结合律成立，输出u/ell与合并次序无关。浮点舍入仍可能造成微小次序差。
+设 $m=\max(m_1,m_2,m_3)$，$\ell=\sum_i\conste{}^{m_i-m}\ell_i,\vect{u}=\sum_i\conste{}^{m_i-m}u_i$。代回各块定义后，分别等于全体有效位置的 $\sum \conste{}^{s_j-m}$ 与 $\sum \conste{}^{s_j-m}v_j$；这些有限和在精确算术中结合律成立，输出u/ell与合并次序无关。浮点舍入仍可能造成微小次序差。
 \end{solution}
 \end{exercise}
 
@@ -25,7 +25,7 @@
 \begin{exercise}\optional 从 Softmax Jacobian 推导本章反向公式的行内减均值项。
 
 \begin{solution}
-对一行 $p=\mathrm{softmax}(s)$，雅可比为 $\mathrm{diag}(p)-pp^\mathsf T$。设概率上游 $g_p$，得 $g_s=p\odot(g_p-\langle p,g_p\rangle\mathbf1)$。注意力中 $g_{p,j}=g_o^\mathsf Tv_j$，均值为 $g_o^\mathsf To$；该减均值保证分数共同平移方向的梯度为零。
+对一行 $\vect{p}=\mathrm{softmax}(\vect{s})$，雅可比为 $\mathrm{diag}(\vect{p})-\vect{p}\vect{p}^{\mathrm{T}}$。设概率上游 $\vect{g}_p$，得 $\vect{g}_s=\vect{p}\odot(\vect{g}_p-\langle \vect{p},\vect{g}_p\rangle\mathbf1)$。注意力中 $g_{p,j}=\vect{g}_o^{\mathrm{T}}v_j$，均值为 $\vect{g}_o^{\mathrm{T}}\vect{o}$；该减均值保证分数共同平移方向的梯度为零。
 \end{solution}
 \end{exercise}
 
@@ -53,7 +53,7 @@ p=(.1,.6,.3)，q=(.5,.2,.3)，条件接受率为(.2,1,1)，接受质量(.1,.2,.3
 \begin{exercise}\optional 证明接受率等于1减去总变差距离，并讨论草稿与目标支持集不相同的情况。
 
 \begin{solution}
-$\sum_v\min(p_v,q_v)=\frac12\sum_v(p_v+q_v-|p_v-q_v|)=1-\frac12\|p-q\|_1$。q为0而p正的词元不会从草稿抽中，但可经正残差产生；p为0而q正的草稿必拒绝。只要两者为同空间规范分布，精确残差法不要求相同支持。
+$\sum_v\min(p_v,q_v)=\frac12\sum_v(p_v+q_v-|p_v-q_v|)=1-\frac12\|\vect{p}-\vect{q}\|_1$。q为0而p正的词元不会从草稿抽中，但可经正残差产生；p为0而q正的草稿必拒绝。只要两者为同空间规范分布，精确残差法不要求相同支持。
 \end{solution}
 \end{exercise}
 
@@ -81,7 +81,7 @@ $\sum_v\min(p_v,q_v)=\frac12\sum_v(p_v+q_v-|p_v-q_v|)=1-\frac12\|p-q\|_1$。q为
 \begin{exercise}\optional 推导窗口截断的输出误差上界，解释它为何不直接提供下游任务质量保证。
 
 \begin{solution}
-设被删质量delta，保留归一均值a、删除归一均值b，则 $o=(1-\delta)a+\delta b$，截断输出 $o'=a$。值范数$\le$M给 $\|o-o'\|=\delta\|b-a\|\le2\delta M$（delta<1）。多层传播、位置状态和采样可放大扰动，单行输出界不提供任务正确率保证。
+设被删质量delta，保留归一均值a、删除归一均值b，则 $\vect{o}=(1-\delta)\vect{a}+\delta \vect{b}$，截断输出 $\vect{o}'=\vect{a}$。值范数$\le$M给 $\|\vect{o}-\vect{o}'\|=\delta\|\vect{b}-\vect{a}\|\le2\delta M$（delta<1）。多层传播、位置状态和采样可放大扰动，单行输出界不提供任务正确率保证。
 \end{solution}
 \end{exercise}
 

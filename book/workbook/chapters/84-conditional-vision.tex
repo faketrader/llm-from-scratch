@@ -4,7 +4,7 @@
 \begin{exercise} 写出视觉与文本交叉注意力的全部形状，比较它与联合注意力的配对数。
 
 \begin{solution}
-单头视觉$H_v\in\mathbb R^{N_v\times d}$，文本$H_t\in\mathbb R^{N_t\times d_t}$，投影得$Q\in\mathbb R^{N_v\times d_k},K\in\mathbb R^{N_t\times d_k},V\in\mathbb R^{N_t\times d_v}$。分数和权重为$N_v\times N_t$，输出$N_v\times d_v$，多头再拼接投影。交叉配对数$N_vN_t$；联合注意力以$N_v+N_t$位置构成$(N_v+N_t)^2$对，包含双方内部及反向交互，结构不同不能只按成本等价替换。
+单头视觉$\mat{H}_v\in\mathbb R^{N_v\times d}$，文本$\mat{H}_t\in\mathbb R^{N_t\times d_t}$，投影得$\mat{Q}\in\mathbb R^{N_v\times d_k},\mat{K}\in\mathbb R^{N_t\times d_k},\mat{V}\in\mathbb R^{N_t\times d_v}$。分数和权重为$N_v\times N_t$，输出$N_v\times d_v$，多头再拼接投影。交叉配对数$N_vN_t$；联合注意力以$N_v+N_t$位置构成$(N_v+N_t)^2$对，包含双方内部及反向交互，结构不同不能只按成本等价替换。
 \end{solution}
 \end{exercise}
 
@@ -18,21 +18,21 @@
 \begin{exercise} 从高斯扰动密度推导条件得分与噪声条件均值的关系，指出 $b_t=0$ 时的问题。
 
 \begin{solution}
-扰动$x_t=a_tx_0+b_t\epsilon$，$b_t>0$时条件核得分为$\nabla_{x_t}\log q(x_t\mid x_0,c)=-\frac{x_t-a_tx_0}{b_t^2}=-\frac{\epsilon}{b_t}$。在可交换微分积分且密度正的条件下，对后验$x_0\mid x_t,c$求期望得 $\nabla\log p_t(x_t\mid c)=-\frac{E[\epsilon\mid x_t,c]}{b_t}$。b为0时核退化、该除法不成立，必须通过端点极限或单独边界处理。
+扰动$\vect{x}_t=a_t\vect{x}_0+b_t\vect{\epsilon}$，$b_t>0$时条件核得分为$\nabla_{\vect{x}_t}\log q(\vect{x}_t\mid \vect{x}_0,c)=-\frac{\vect{x}_t-a_t\vect{x}_0}{b_t^2}=-\frac{\vect{\epsilon}}{b_t}$。在可交换微分积分且密度正的条件下，对后验$\vect{x}_0\mid \vect{x}_t,c$求期望得 $\nabla\log p_t(\vect{x}_t\mid c)=-\frac{E[\vect{\epsilon}\mid \vect{x}_t,c]}{b_t}$。b为0时核退化、该除法不成立，必须通过端点极限或单独边界处理。
 \end{solution}
 \end{exercise}
 
-\begin{exercise} 将 $(1+s)\epsilon_c-s\epsilon_u$ 转换成本章引导约定，并计算 $s=3$ 对应的 $w$。
+\begin{exercise} 将 $(1+s)\vect{\epsilon}_c-s\vect{\epsilon}_u$ 转换成本章引导约定，并计算 $s=3$ 对应的 $w$。
 
 \begin{solution}
-本章约定$\epsilon_g=\epsilon_u+w(\epsilon_c-\epsilon_u)=w\epsilon_c+(1-w)\epsilon_u$。比较系数可得$w=1+s$，s为3时w为4。不同库把guidance称为s或w，参数同名不能直接照搬；条件缺失训练、数值精度与双路推理协议也需一致。
+本章约定$\vect{\epsilon}_g=\vect{\epsilon}_u+w(\vect{\epsilon}_c-\vect{\epsilon}_u)=w\vect{\epsilon}_c+(1-w)\vect{\epsilon}_u$。比较系数可得$w=1+s$，s为3时w为4。不同库把guidance称为s或w，参数同名不能直接照搬；条件缺失训练、数值精度与双路推理协议也需一致。
 \end{solution}
 \end{exercise}
 
 \begin{exercise} 为什么固定时间的幂次密度解释不能直接证明 CFG 终点分布？
 
 \begin{solution}
-在固定t上，$s_u+w(s_c-s_u)$可写成$\nabla\log[p_t(x\mid c)^w p_t(x)^{1-w}]$，但这只是该时间局部得分形式。各t的幂次密度未必满足采用的前向/反向动态所需的一致边缘方程，且归一化与模型误差另有条件。因此不能据此断言采样终点恰为对应幂次数据密度，更不能保证w越大越真实。
+在固定t上，$\vect{s}_u+w(\vect{s}_c-\vect{s}_u)$可写成$\nabla\log[p_t(\vect{x}\mid c)^w p_t(\vect{x})^{1-w}]$，但这只是该时间局部得分形式。各t的幂次密度未必满足采用的前向/反向动态所需的一致边缘方程，且归一化与模型误差另有条件。因此不能据此断言采样终点恰为对应幂次数据密度，更不能保证w越大越真实。
 \end{solution}
 \end{exercise}
 
@@ -53,14 +53,14 @@ $q(z\mid x)=\mathcal N(\mu,\operatorname{diag}\sigma^2)$到$\mathcal N(0,I)$的K
 \begin{exercise}\optional 证明平方速度回归的条件均值最优性，并写出连续性方程的弱形式。
 
 \begin{solution}
-令U为训练条件路径速度，固定$(z,t,c)$时平方回归同样分解为不可约条件方差加$\|u-E[U\mid z,t,c]\|^2$，最优场为条件期望。对光滑紧支撑$\varphi$，若微分可交换，$\frac{dE[\varphi(Z_t)]}{dt}=E[\nabla\varphi(Z_t)^Tu(Z_t,t,c)]$，等价弱式$\partial_tp+\nabla\cdot(pu)=0$。从弱式到唯一ODE运输还需速度正则性、可积性等条件，不能只凭训练损失低得出精确生成。
+令U为训练条件路径速度，固定$(\vect{z},t,c)$时平方回归同样分解为不可约条件方差加$\|\vect{u}-E[\vect{U}\mid \vect{z},t,c]\|^2$，最优场为条件期望。对光滑紧支撑$\varphi$，若微分可交换，$\frac{dE[\varphi(\vect{Z}_t)]}{dt}=E[\nabla\varphi(\vect{Z}_t)^{\mathrm{T}}\vect{u}(\vect{Z}_t,t,c)]$，等价弱式$\partial_tp+\nabla\cdot(p\vect{u})=0$。从弱式到唯一ODE运输还需速度正则性、可积性等条件，不能只凭训练损失低得出精确生成。
 \end{solution}
 \end{exercise}
 
-\begin{exercise}\optional 对 $u(z)=z$ 使用四步 Euler，比较结果与 $e$，解释误差来源。
+\begin{exercise}\optional 对 $u(z)=z$ 使用四步 Euler，比较结果与 $\conste$，解释误差来源。
 
 \begin{solution}
-补足初值和区间为$z(0)=1,t\in[0,1]$，步长$h=\frac{1}{4}$。递推$z_{k+1}=1.25z_k$，四步为$1.25^4=2.44140625$；精确$e\approx2.71828183$，低估约0.27687558。局部截断$O(h^2)$、固定区间全局$O(h)$需光滑与稳定条件；网络近似误差不包含在该纯求解器例子中。
+补足初值和区间为$z(0)=1,t\in[0,1]$，步长$h=\frac{1}{4}$。递推$z_{k+1}=1.25z_k$，四步为$1.25^4=2.44140625$；精确$\conste\approx2.71828183$，低估约0.27687558。局部截断$O(h^2)$、固定区间全局$O(h)$需光滑与稳定条件；网络近似误差不包含在该纯求解器例子中。
 \end{solution}
 \end{exercise}
 

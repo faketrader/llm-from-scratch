@@ -1,8 +1,0 @@
-flowchart TD
-    S["推理目标<br/>质量、TTFT、TPOT、吞吐、成本"] --> B{"主要瓶颈"}
-    B -->|"重复计算"| R["以存代算<br/>KV Cache、Prefix Cache、Response Cache"]
-    B -->|"串行 Decode 步数"| D["Speculative Decoding<br/>Draft + Verify"]
-    B -->|"Kernel / HBM / Python 开销"| K["低精度、SDPA / FlashAttention<br/>融合算子、编译、CUDA Graph"]
-    B -->|"GPU 利用率不足"| Q["Continuous Batching、Paged KV<br/>Chunked Prefill、长度分桶"]
-    B -->|"模型或 KV 放不下"| M["量化推理格式、GQA / MQA<br/>KV 分层、TP / PP、Offload"]
-    B -->|"集群与服务瓶颈"| C["Replica、P/D 分离<br/>Cache 分层、路由、背压"]

@@ -46,7 +46,7 @@ TTFT 从到达到首词元，为 $0.3$ 秒；首执行等待为 $0.1$ 秒。31�
 \begin{exercise}\optional 推导 M/M/1 的空闲概率、平均队列长度和式\tbobject{eq:schedule-mm1-tail}。指出连续批处理违反其中哪些假设。
 
 \begin{solution}
-记$\rho=\frac{\lambda}{\mu}<1$。出生死亡平衡给 $\pi_{n+1}=\rho\pi_n$，归一化得 $\pi_0=1-\rho$、$\pi_n=(1-\rho)\rho^n$。由几何级数求导，$L=\frac{\rho}{1-\rho}$，服务中概率为$\rho$，故$L_q=\frac{\rho^2}{1-\rho}$。泊松到达看见稳态人数，条件于$n$个在系统者，总驻留为$n+1$个参数$\mu$指数变量之和；其拉普拉斯变换为 $\sum_n\pi_n[\frac{\mu}{\mu+s}]^{n+1}=\frac{\mu-\lambda}{\mu-\lambda+s}$，所以 $P(W>t)=e^{-(\mu-\lambda)t}$。连续批处理的多请求协同服务、依长度变化的轮时和调度优先级违反单服务台独立指数、FCFS等前提。
+记$\rho=\frac{\lambda}{\mu}<1$。出生死亡平衡给 $\pi_{n+1}=\rho\pi_n$，归一化得 $\pi_0=1-\rho$、$\pi_n=(1-\rho)\rho^n$。由几何级数求导，$L=\frac{\rho}{1-\rho}$，服务中概率为$\rho$，故$L_q=\frac{\rho^2}{1-\rho}$。泊松到达看见稳态人数，条件于$n$个在系统者，总驻留为$n+1$个参数$\mu$指数变量之和；其拉普拉斯变换为 $\sum_n\pi_n[\frac{\mu}{\mu+s}]^{n+1}=\frac{\mu-\lambda}{\mu-\lambda+s}$，所以 $P(W>t)=\conste{}^{-(\mu-\lambda)t}$。连续批处理的多请求协同服务、依长度变化的轮时和调度优先级违反单服务台独立指数、FCFS等前提。
 \end{solution}
 \end{exercise}
 

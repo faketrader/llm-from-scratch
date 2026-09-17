@@ -1,7 +1,0 @@
-flowchart LR
-    J["data.jsonl<br/>权威源资产"] --> L["load_dataset + Features"]
-    L --> A["Arrow Dataset"]
-    A --> M["map<br/>派生质量字段"]
-    M --> F["filter<br/>质量门禁"]
-    F --> D["DatasetDict<br/>train / validation / test"]
-    D --> B["DataLoader 或训练任务"]

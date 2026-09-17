@@ -25,7 +25,7 @@
 \begin{exercise} 对重排器的成对逻辑损失求正负候选分数的偏导，并说明为什么候选采样分布影响训练目标。
 
 \begin{solution}
-令$\Delta=s^+-s^-$，$\ell=\log(1+e^{-\Delta})$，则 $\frac{\partial\ell}{\partial s^+}=-\frac{1}{1+e^\Delta}$、$\frac{\partial\ell}{\partial s^-}=\frac{1}{1+e^\Delta}$。梯度下降提升正例相对分数。训练期望取决于采到哪些查询和负例，曝光偏差及假负例会改变优化对象；部署候选与训练候选不同也可能失配。
+令$\Delta=s^+-s^-$，$\ell=\log(1+\conste{}^{-\Delta})$，则 $\frac{\partial\ell}{\partial s^+}=-\frac{1}{1+\conste{}^\Delta}$、$\frac{\partial\ell}{\partial s^-}=\frac{1}{1+\conste{}^\Delta}$。梯度下降提升正例相对分数。训练期望取决于采到哪些查询和负例，曝光偏差及假负例会改变优化对象；部署候选与训练候选不同也可能失配。
 \end{solution}
 \end{exercise}
 

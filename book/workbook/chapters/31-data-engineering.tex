@@ -15,7 +15,7 @@
 \end{solution}
 \end{exercise}
 
-\begin{exercise} 推导式\tbobject{eq:ch14-filter}，构造两个领域原始数量相同但过滤后严重失衡的例子，并说明校正所需的信息。
+\begin{exercise} 推导式\tbobject{eq:data-filter}，构造两个领域原始数量相同但过滤后严重失衡的例子，并说明校正所需的信息。
 
 \begin{solution}
 设接受事件A满足 $P(A\mid Z=z)=a(z)$，由条件概率 $P(Z=z\mid A)=\frac{a(z)P(z)}{P(A)}$，其中 $P(A)=\mathbb E_Pa(Z)>0$。两个领域原各1000条，接受率.9和.1，则过滤后900与100，份额.9/.1。校正需要各领域准入后数量、接受机制和目标份额；可抽样或重要性加权，但被完全过滤的子群没有支持，不能仅靠无限权重恢复。

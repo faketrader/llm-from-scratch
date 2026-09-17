@@ -1,0 +1,55 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex,amsmath,amssymb}
+\usetikzlibrary{arrows.meta,positioning,calc,shapes.geometric}
+\input{diagram_styles.tex}
+
+\begin{document}
+\begin{tikzpicture}[lfs picture]
+
+% 左侧：经典信息熵维恩图
+\begin{scope}[shift={(0,0)}]
+  % 填充左右两圆
+  \fill[LFSBlueSoft, opacity=0.85] (0,0) circle (1.8cm);
+  \fill[LFSGreenSoft, opacity=0.85] (2.2,0) circle (1.8cm);
+
+  % 描边
+  \draw[LFSBlue, line width=1.1pt] (0,0) circle (1.8cm);
+  \draw[LFSGreen, line width=1.1pt] (2.2,0) circle (1.8cm);
+
+  % 文字标签
+  \node at (-0.8,0) [align=center] {\bfseries $H(X\mid Y)$\\{\scriptsize 条件熵}};
+  \node at (1.1,0) [align=center] {\bfseries $I(X;Y)$\\{\scriptsize 互信息}};
+  \node at (3.0,0) [align=center] {\bfseries $H(Y\mid X)$\\{\scriptsize 条件熵}};
+
+  % 上方与下方标注
+  \node at (0, 2.2) [text=LFSBlue, font=\small\bfseries] {$H(X)$ 边缘熵};
+  \node at (2.2, 2.2) [text=LFSGreen, font=\small\bfseries] {$H(Y)$ 边缘熵};
+  \node at (1.1,-2.3) [text=LFSGray, font=\small\bfseries] {$H(X,Y)$ 联合熵（整体区域）};
+\end{scope}
+
+% 右侧：交叉熵与相对熵（KL散度）分解条形图
+\begin{scope}[shift={(6.2,-1.5)}]
+  \node[title] at (2.4, 3.7) {交叉熵与相对熵分解关系};
+
+  % 完整交叉熵条形外框
+  \draw[draw=LFSOrange, fill=LFSOrangeSoft, line width=0.9pt, rounded corners=2pt] (0,1.8) rectangle (4.8, 2.8);
+  \node at (2.4, 2.3) {\bfseries $H(p, q) = -\sum_x p(x) \log q(x)$ \quad（总交叉熵损失）};
+
+  % 分解的两段
+  \draw[draw=LFSBlue, fill=LFSBlueSoft, line width=0.9pt, rounded corners=2pt] (0,0.2) rectangle (2.1, 1.2);
+  \node at (1.05, 0.7) [align=center] {\bfseries $H(p)$\\{\scriptsize 真实分布固有熵}};
+
+  \draw[draw=LFSRed, fill=LFSRedSoft, line width=0.9pt, rounded corners=2pt] (2.3,0.2) rectangle (4.8, 1.2);
+  \node at (3.55, 0.7) [align=center] {\bfseries $D_{\mathrm{KL}}(p\|q)$\\{\scriptsize 预测偏差相对熵}};
+
+  \node at (2.2, 0.7) [font=\large\bfseries] {$+$};
+
+  % 关系指示虚线
+  \draw[control arrow] (1.05, 1.2) -- (1.05, 1.8);
+  \draw[control arrow] (3.55, 1.2) -- (3.55, 1.8);
+
+  \node[label text] at (2.4, -0.3) {优化目标：$\min_q H(p,q) \iff \min_q D_{\mathrm{KL}}(p\|q)$};
+\end{scope}
+
+\end{tikzpicture}
+\end{document}

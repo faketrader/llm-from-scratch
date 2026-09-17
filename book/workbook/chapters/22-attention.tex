@@ -1,10 +1,10 @@
 \workbookchapter{注意力机制}
 
 \begin{exercises}
-\begin{exercise} 设 $Q\in\Real^{5\times8}$、$K\in\Real^{7\times8}$、$V\in\Real^{7\times3}$，写出分数、权重与输出的形状。为什么不能沿查询轴做本章定义的归一化？
+\begin{exercise} 设 $\mat{Q}\in\Real^{5\times8}$、$\mat{K}\in\Real^{7\times8}$、$\mat{V}\in\Real^{7\times3}$，写出分数、权重与输出的形状。为什么不能沿查询轴做本章定义的归一化？
 
 \begin{solution}
-$QK^{\mathsf T}$ 为 $5\times7$，逐键归一化A仍为 $5\times7$，$AV$ 为 $5\times3$。每个查询需要一组对七个键的概率；沿查询轴归一化使每个键在五个查询间分配质量，通常不能保证某个查询权重和为1，定义了另一运算。
+$\mat{Q}\mat{K}^{\mathrm{T}}$ 为 $5\times7$，逐键归一化A仍为 $5\times7$，$\mat{A}\mat{V}$ 为 $5\times3$。每个查询需要一组对七个键的概率；沿查询轴归一化使每个键在五个查询间分配质量，通常不能保证某个查询权重和为1，定义了另一运算。
 \end{solution}
 \end{exercise}
 
@@ -18,21 +18,21 @@ $QK^{\mathsf T}$ 为 $5\times7$，逐键归一化A仍为 $5\times7$，$AV$ 为 $
 \begin{exercise} 对本章单头例题，去掉因果掩码，计算第一行权重及输出。再将第三个值向量替换为零，比较第一行输出变化。
 
 \begin{solution}
-第一行分数为 $(c,0,c)$，$c=\frac{1}{\sqrt2}$。令 $r=\frac{e^c}{2e^c+1}$、$s=\frac{1}{2e^c+1}$，权重 $(r,s,r)\approx(.401112,.197776,.401112)$，输出为 $(2r,2s+2r)\approx(.802224,1.197776)$。第三个值置零但QK固定时，输出变为 $(r,2s)\approx(.401112,.395552)$；权重不变，差值是原来的 $rV_3$。
+第一行分数为 $(c,0,c)$，$c=\frac{1}{\sqrt2}$。令 $r=\frac{\conste{}^c}{2\conste{}^c+1}$、$s=\frac{1}{2\conste{}^c+1}$，权重 $(r,s,r)\approx(.401112,.197776,.401112)$，输出为 $(2r,2s+2r)\approx(.802224,1.197776)$。第三个值置零但QK固定时，输出变为 $(r,2s)\approx(.401112,.395552)$；权重不变，差值是原来的 $r\mat{V}_3$。
 \end{solution}
 \end{exercise}
 
-\begin{exercise} 证明 Softmax 雅可比满足 $J\mathbf1=0$，并解释这一性质与分数常数平移不变性的关系。
+\begin{exercise} 证明 Softmax 雅可比满足 $\mat{J}\mathbf1=0$，并解释这一性质与分数常数平移不变性的关系。
 
 \begin{solution}
-$J=\operatorname{diag}(a)-aa^{\mathsf T}$，所以 $J\mathbf1=a-a(a^{\mathsf T}\mathbf1)=0$。对分数加常数c时指数分子分母共同乘 $e^c$，概率精确不变；全一方向是该不变性的微分表示。雅可比因此至少有一个零特征方向。
+$\mat{J}=\operatorname{diag}(\vect{a})-\vect{a}\vect{a}^{\mathrm{T}}$，所以 $\mat{J}\mathbf1=\vect{a}-\vect{a}(\vect{a}^{\mathrm{T}}\mathbf1)=0$。对分数加常数c时指数分子分母共同乘 $\conste{}^c$，概率精确不变；全一方向是该不变性的微分表示。雅可比因此至少有一个零特征方向。
 \end{solution}
 \end{exercise}
 
-\begin{exercise}\optional 对第二查询的局部损失 $\mathcal L=o_{2,1}$，手算 $\overline K_1,\overline K_2$。用中心差分验证其中一个坐标，明确扰动时哪些变量保持固定。
+\begin{exercise}\optional 对第二查询的局部损失 $\mathcal L=o_{2,1}$，手算 $\overline{\mat{K}}_1,\overline{\mat{K}}_2$。用中心差分验证其中一个坐标，明确扰动时哪些变量保持固定。
 
 \begin{solution}
-令 $\alpha=\frac{1}{1+e^c}$。第二查询为 $(0,1)$，分数梯度为 $(\alpha(1-\alpha),-\alpha(1-\alpha))$，故 $\overline K_1=(0,\frac{\alpha(1-\alpha)}{\sqrt2})$、$\overline K_2=-\overline K_1$。仅扰动 $K_{1,2}$ 为t，固定Q、V及其余K，损失变为 $f(t)=\frac{1}{[1+\exp(c-\frac{t}{\sqrt2})]}$。中心差分 $\frac{[f(\varepsilon)-f(-\varepsilon)]}{2\varepsilon}$ 趋向 $.1563986$；这不是同时改变自注意力源X的总导数。
+令 $\alpha=\frac{1}{1+\conste{}^c}$。第二查询为 $(0,1)$，分数梯度为 $(\alpha(1-\alpha),-\alpha(1-\alpha))$，故 $\overline{\mat{K}}_1=(0,\frac{\alpha(1-\alpha)}{\sqrt2})$、$\overline{\mat{K}}_2=-\overline{\mat{K}}_1$。仅扰动 $\mat{K}_{1,2}$ 为t，固定Q、V及其余K，损失变为 $f(t)=\frac{1}{[1+\exp(c-\frac{t}{\sqrt2})]}$。中心差分 $\frac{[f(\varepsilon)-f(-\varepsilon)]}{2\varepsilon}$ 趋向 $.1563986$；这不是同时改变自注意力源X的总导数。
 \end{solution}
 \end{exercise}
 
@@ -53,7 +53,7 @@ $J=\operatorname{diag}(a)-aa^{\mathsf T}$，所以 $J\mathbf1=a-a(a^{\mathsf T}\
 \begin{exercise}\optional 若两个头的 $A$ 相同而 $V$ 不同，它们的输出是否必然相同？若两个头的 $K,V$ 相同而 $Q$ 不同呢？分别给出反例或证明。
 
 \begin{solution}
-相同A不同V：一个键权重1时分别取 $V_1=0,V_2=1$，输出不同。相同K、V不同Q：取标量键 $(0,1)$、值 $(0,1)$，查询分别0和1，输出分别 $\frac{1}{2}$ 和 $\frac{e}{1+e}$。反之，特定退化V也可能使不同权重输出相同，所以“不同”也非必然。
+相同A不同V：一个键权重1时分别取 $V_1=0,V_2=1$，输出不同。相同K、V不同Q：取标量键 $(0,1)$、值 $(0,1)$，查询分别0和1，输出分别 $\frac{1}{2}$ 和 $\frac{\conste}{1+\conste}$。反之，特定退化V也可能使不同权重输出相同，所以“不同”也非必然。
 \end{solution}
 \end{exercise}
 

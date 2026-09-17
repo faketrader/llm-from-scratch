@@ -1,0 +1,75 @@
+\documentclass[tikz,border=5pt]{standalone}
+\usepackage{ctex}
+\usepackage{amsmath,amssymb}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds}
+\input{diagram_styles.tex}
+
+\begin{document}
+\begin{tikzpicture}[lfs picture, >=Latex, node distance=7mm]
+
+\tikzset{
+  actor/.style={draw=LFSBlue, fill=LFSBlueSoft, rounded corners=2pt, font=\small\bfseries, align=center, inner sep=4pt, minimum width=24mm, minimum height=9mm},
+  attacker/.style={draw=LFSRed, fill=LFSRedSoft, rounded corners=2pt, font=\small\bfseries, align=center, inner sep=4pt, minimum width=24mm, minimum height=9mm},
+  danger/.style={draw=LFSRed, fill=LFSRedSoft, rounded corners=2pt, font=\scriptsize, align=center, inner sep=3pt, minimum width=28mm},
+  safe/.style={draw=LFSGreen, fill=LFSGreenSoft, rounded corners=2pt, font=\scriptsize, align=center, inner sep=3pt, minimum width=28mm},
+  module/.style={draw=LFSPurple, fill=LFSPurpleSoft, rounded corners=2pt, font=\small\bfseries, align=center, inner sep=4pt, minimum width=28mm, minimum height=10mm},
+  bound/.style={draw=LFSOrange, dashed, line width=1pt},
+  flow/.style={->, draw=LFSGray, line width=0.8pt},
+  badflow/.style={->, draw=LFSRed, line width=1pt}
+}
+
+% Actors & Inputs
+\node[actor] (user) at (0, 3.2) {合法用户\\(User)};
+\node[attacker] (attacker) at (0, 0) {对抗攻击者\\(Attacker)};
+
+% Intermediates
+\node[safe, right=14mm of user] (u_req) {正常分析请求\\``总结该网页内容''};
+\node[danger, right=14mm of attacker] (poison) {恶意投毒外部数据\\(含注入指令: 窃取私有凭证)};
+
+% LLM Context / Processing
+\node[module, right=16mm of u_req, yshift=-16mm] (llm) {
+  大语言模型 Agent\\
+  \scriptsize 拼装上下文：[系统提示 + 用户输入 + 检索数据]
+};
+
+% Execution / Tools
+\node[module, right=18mm of llm] (tools) {
+  工具执行器与外部 API\\
+  \scriptsize (邮件/文件读写、私网请求)
+};
+
+% Data exfiltration / Target
+\node[danger, below=10mm of tools] (leak) {
+  非授权执行 / 数据外发\\
+  \scriptsize (私密数据泄漏至恶意服务器)
+};
+
+% Security Barrier
+\node[safe, above=9mm of tools] (guard) {
+  纵深防御边界\\
+  \scriptsize • 最小权限控制 (Least Privilege)\\
+  • 高危动作人机协同确认 (HITL)\\
+  • 数据平面与控制平面严格隔离
+};
+
+% Flow connections
+\draw[flow] (user) -- (u_req);
+\draw[flow] (u_req) -| (llm.north);
+
+\draw[badflow] (attacker) -- (poison);
+\draw[badflow] (poison) -| (llm.south) node[midway, below, font=\tiny, text=LFSRed] {通过 RAG / 搜索被动读入};
+
+\draw[badflow] (llm) -- (tools) node[midway, above, font=\tiny, text=LFSRed] {控制流被劫持\\诱导越权调用};
+\draw[badflow] (tools) -- (leak);
+
+\draw[flow, draw=LFSGreen, line width=1pt] (guard) -- (tools) node[midway, right, font=\tiny, text=LFSGreen] {拦截非法调用};
+
+% Trust boundary box
+\begin{scope}[on background layer]
+  \node[draw=LFSOrange, dashed, line width=0.8pt, fill=LFSOrangeSoft!20, rounded corners=4pt,
+        fit=(llm) (tools) (guard), inner sep=5mm] (t_box) {};
+  \node[font=\scriptsize\bfseries, text=LFSOrange, anchor=north west] at (t_box.north west) {受信执行环境内部};
+\end{scope}
+
+\end{tikzpicture}
+\end{document}

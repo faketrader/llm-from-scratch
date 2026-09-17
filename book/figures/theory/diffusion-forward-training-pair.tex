@@ -5,14 +5,14 @@
 \begin{document}
 \begin{tikzpicture}[lfs picture]
 
-\node[storage] (x0) {干净样本 $x_0$};
+\node[storage] (x0) {干净样本 $\vect{x}_0$};
 \node[storage, below=of x0] (t) {随机时间步 $t$};
-\node[storage, below=of t] (eps) {高斯噪声 $\epsilon$};
+\node[storage, below=of t] (eps) {高斯噪声 $\vect{\epsilon}$};
 \node[interface, below=of eps] (schedule) {Noise Schedule};
-\node[compute, right=22mm of $(t)!0.5!(eps)$] (q) {$q(x_t\mid x_0)$\\\scriptsize 一步重参数化};
-\node[storage, right=of q] (xt) {带噪样本 $x_t$};
+\node[compute, right=22mm of $(t)!0.5!(eps)$] (q) {$q(\vect{x}_t\mid \vect{x}_0)$\\\scriptsize 一步重参数化};
+\node[storage, right=of q] (xt) {带噪样本 $\vect{x}_t$};
 \node[block, right=of xt] (net) {噪声预测网络};
-\node[storage, right=of net] (pred) {预测 $\hat\epsilon$};
+\node[storage, right=of net] (pred) {预测 $\hat{\vect{\epsilon}}$};
 \node[compute, below=of pred] (loss) {MSE Loss};
 \draw[data arrow] (x0) -- (q);
 \draw[data arrow] (t) -- (q);

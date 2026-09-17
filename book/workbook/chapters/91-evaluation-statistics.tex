@@ -15,7 +15,7 @@ $P=\frac{TP}{TP+FP},R=\frac{TP}{TP+FN}$代入调和均值得$F_1=\frac{2TP}{2TP+
 \end{solution}
 \end{exercise}
 
-\begin{exercise} 若正确决策也有成本，推导替代式\tbobject{eq:ch41-threshold}的阈值，并说明何时应增加弃权行动。
+\begin{exercise} 若正确决策也有成本，推导替代式\tbobject{eq:eval-threshold}的阈值，并说明何时应增加弃权行动。
 
 \begin{solution}
 记$C_{ay}$为采取a、真值y时成本，p为真阳概率。行动1风险$(1-p)C_{10}+pC_{11}$，行动0风险$(1-p)C_{00}+pC_{01}$。若$D=C_{10}-C_{00}+C_{01}-C_{11}>0$，选1要求 $p>\frac{C_{10}-C_{00}}{D}$；D非正时须直接比较或反向不等式。增加弃权行动a=r时，只要其条件风险低于两者即可弃权，风险成本与后续人工能力必须定义。
@@ -43,7 +43,7 @@ $P=\frac{TP}{TP+FP},R=\frac{TP}{TP+FN}$代入调和均值得$F_1=\frac{2TP}{2TP+
 \end{solution}
 \end{exercise}
 
-\begin{exercise} 从子集计数推导式\tbobject{eq:ch41-passk}，说明相关采样与完美候选选择假设分别影响哪一层结论。
+\begin{exercise} 从子集计数推导式\tbobject{eq:eval-passk}，说明相关采样与完美候选选择假设分别影响哪一层结论。
 
 \begin{solution}
 n候选均匀无放回选k，共$\binom nk$个子集，全失败子集$\binom{n-c}k$，所以至少一通过的子集比例为$1-\frac{\binom{n-c}k}{\binom nk}$，约定$k>n-c$时失败项为0。作为固定候选集的组合恒等式不要求候选独立；将其解释为未来k次同分布尝试覆盖率的无偏估计则需相应抽样假设。即使覆盖成功，产品还要从候选中选择正确者，完美验证选择不是组合公式自动保证的。

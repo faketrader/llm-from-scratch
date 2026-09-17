@@ -1,14 +1,16 @@
+\ifdefined\LFSWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
+\fi
 \bookchapter{视觉 Transformer}{ch:vision-transformer}
 
-图像是一张具有局部邻接关系的二维网格，而标准 Transformer 接收一列向量。两种表示之间的转换不仅涉及张量形状，还涉及像素信息保留、空间坐标、全局交互和计算预算。把图像展成一个长向量，会失去可独立交互的位置；把每个像素作为一个位置，则会使全局注意力代价过高。\term{视觉 Transformer}{Vision Transformer}{ViT}以局部补丁作为序列单元，在两者之间选择一种可训练的表示粒度\cite{dosovitskiyImageWorth16x162022}。
+图像是一张具有局部邻接关系的二维网格，而标准 Transformer 接收一列向量。两种表示之间的转换不仅涉及张量形状，还涉及像素信息保留、空间坐标、全局交互和计算预算。把图像展成一个长向量，可独立交互的位置随之消失；把每个像素作为一个位置，全局注意力的代价又过高。\term{视觉 Transformer}{Vision Transformer}{ViT}以局部补丁作为序列单元，在两者之间选择一种可训练的表示粒度\cite{dosovitskiyImageWorth16x162022}。
 
 视觉编码器将图像映射为特征序列，分类头利用全局特征预测类别。跨模态对齐需要图文配对等监督信号，定位任务则需要保留细粒度空间信息；相应的训练目标与表示要求有所不同。
 
 \section{图像补丁表示}
 
-\subsection{形状及坐标}
+\subsection{形状与坐标}
 \term{补丁}{Patch}{}是图像中按规则取出的局部像素区域。先考虑无重叠、无填充的矩形补丁，图像张量采用批量、通道、高、宽的顺序。表\ref{tab:vision-transformer-symbols}统一本章符号，所有坐标从零开始。
 \begin{table}[htbp]
 \centering
@@ -29,67 +31,70 @@ $K,\rho d$ & 类别数、前馈中间层宽度\\
 \end{table}
 
 \begin{assumption}[标准补丁化的前提]
-$H$ 与 $W$ 分别可被 $P_h$ 与 $P_w$ 整除；补丁不重叠、不丢弃边界像素；输入的通道顺序与像素归一化已经确定。固定按补丁行优先、块内通道优先及像素行优先排列。不同排列同样可以定义有效模型，但必须同时变换后续权重和位置映射。
+$H$ 与 $W$ 分别可被 $P_h$ 与 $P_w$ 整除；补丁不重叠、不丢弃边界像素；输入的通道顺序与像素归一化已经确定。固定按补丁行优先、块内通道优先及像素行优先排列。不同排列同样可以定义有效模型，代价是后续权重和位置映射必须一并变换。
 \end{assumption}
 
 设网格坐标为 $(r,s)$，补丁内坐标为 $(u,v)$，通道为 $c$。\term{补丁化}{Patchification}{}可以写成精确的索引映射：
-\begin{align}
- n&=rG_w+s, & f&=(cP_h+u)P_w+v,\label{eq:ch37-index}\\
- X_{b,n,f}&=I_{b,c,rP_h+u,sP_w+v}, & X&\in\Real^{B\times N\times F}.\label{eq:ch37-patchify}
-\end{align}
-由 $n$ 可以恢复 $r=\lfloor \frac{n}{G_w}\rfloor$、$s=n\bmod G_w$，由 $f$ 可以恢复 $c,u,v$。因此，式\eqref{eq:ch37-patchify}是一个双射，元素总数满足 $BNF=BCHW$。在这些前提下，切分只是重排，没有学习参数，也没有丢失像素。
+\begin{equation}
+ n=rG_w+s,\qquad f=(cP_h+u)P_w+v.
+ \label{eq:vit-index}
+\end{equation}
+\begin{equation}
+ X_{b,n,f}=I_{b,c,rP_h+u,sP_w+v},\qquad \mat{X}\in\Real^{B\times N\times F}.
+ \label{eq:vit-patchify}
+\end{equation}
+由 $n$ 可以恢复 $r=\lfloor \frac{n}{G_w}\rfloor$、$s=n\bmod G_w$，由 $f$ 可以恢复 $c,u,v$。因此，式\eqref{eq:vit-patchify}是一个双射，元素总数满足 $BNF=BCH\mat{W}$。在这些前提下，切分只是重排，既无学习参数，也不丢失像素。
 
 这里必须区分逻辑重排与物理复制。张量布局允许时，某些重排可以由步长视图表示；后续矩阵运算若要求连续内存，仍可能发生复制。复制成本由张量步长与后续算子的布局要求决定。\footnote{库中的滑窗提取操作往往也支持重叠和填充；只有核尺寸、步幅及边界规则满足本节前提时，才对应这里的无重叠补丁化。}
 
-\subsection{线性投影及信息保留}
+\subsection{线性投影和信息保留}
 \term{补丁嵌入}{Patch Embedding}{}将每个补丁映射到共同隐藏空间：
 \begin{equation}
- E=XW_E+\boldsymbol 1 b_E^{\mathsf T},\qquad
- W_E\in\Real^{F\times d},\quad b_E\in\Real^d,
- \quad E\in\Real^{B\times N\times d}.
- \label{eq:ch37-embedding}
+ \mat{E}=\mat{X}\mat{W}_E+\boldsymbol 1 \vect{b}_E^{\mathrm{T}},\qquad
+ \mat{W}_E\in\Real^{F\times d},\quad \vect{b}_E\in\Real^d,
+ \quad \mat{E}\in\Real^{B\times N\times d}.
+ \label{eq:vit-embedding}
 \end{equation}
-同一个 $W_E$ 作用于所有补丁，参数量为 $Fd+d$，不随图像补丁数增长。与像素重排不同，投影可能损失信息：若 $d<F$，则 $\operatorname{rank}(W_E)\leq d<F$，必然存在非零行向量 $\delta$ 满足 $\delta W_E=0$。补丁 $x$ 与 $x+\delta$ 因而具有完全相同的嵌入。即使 $d\geq F$，也只有矩阵具有满行秩时才可能从嵌入唯一恢复补丁。
+同一个 $\mat{W}_E$ 作用于所有补丁，参数量为 $Fd+d$，不随图像补丁数增长。与像素重排不同，投影可能损失信息：若 $d<F$，则 $\operatorname{rank}(\mat{W}_E)\leq d<F$，必然存在非零行向量 $\vect{\delta}$ 满足 $\vect{\delta} \mat{W}_E=0$。补丁 $\vect{x}$ 与 $\vect{x}+\vect{\delta}$ 因而具有完全相同的嵌入。即使 $d\geq F$，从嵌入唯一恢复补丁也要求矩阵具有满行秩。
 
-分类目标通常不要求保留每个像素扰动，模型可以学习舍弃与标签无关的变化。但对于细小文字、边缘缺陷等任务，若有用变化进入投影的零空间，后续注意力无法恢复它。补丁粒度与投影维度因此是任务信息与计算资源之间的结构选择。
+分类目标通常不要求保留每个像素扰动，模型可以学习舍弃与标签无关的变化。但对于细小文字、边缘缺陷等任务，若有用变化进入投影的零空间，后续注意力再也取不回它。补丁粒度与投影维度因此是任务信息与计算资源之间的结构选择。
 
-\section{补丁投影及卷积的等价性}
+\section{补丁投影与卷积的等价性}
 
 令二维卷积核为 $\mathcal K\in\Real^{d\times C\times P_h\times P_w}$，步幅为 $(P_h,P_w)$，无填充、无膨胀。常用深度学习卷积操作实际按不翻转卷积核的互相关形式计算：
 \begin{equation}
  Y_{b,j,r,s}=b_{E,j}+\sum_{c=0}^{C-1}\sum_{u=0}^{P_h-1}\sum_{v=0}^{P_w-1}
  \mathcal K_{j,c,u,v}I_{b,c,rP_h+u,sP_w+v}.
- \label{eq:ch37-conv}
+ \label{eq:vit-conv}
 \end{equation}
 将参数对应为
 \begin{equation}
  \mathcal K_{j,c,u,v}=(W_E)_{(cP_h+u)P_w+v,j},
- \label{eq:ch37-kernelmap}
+ \label{eq:vit-kernelmap}
 \end{equation}
-再令 $n=rG_w+s$，式\eqref{eq:ch37-conv}就逐项等于式\eqref{eq:ch37-embedding}的 $E_{b,n,j}$。卷积输出的 $[B,d,G_h,G_w]$ 还需按同一行优先规则重排为 $[B,N,d]$。两种实现具有相同的参数与运算关系，执行速度取决于布局与硬件。
+再令 $n=rG_w+s$，式\eqref{eq:vit-conv}就逐项等于式\eqref{eq:vit-embedding}的 $E_{b,n,j}$。卷积输出的 $[B,d,G_h,G_w]$ 还需按同一行优先规则重排为 $[B,N,d]$。两种实现具有相同的参数与运算关系，执行速度取决于布局与硬件。
 
 从梯度也能看出这种对应。把批量与补丁位置合并，令 $G=\frac{\partial\mathcal L}{\partial E}$，则
 \begin{equation}
  \frac{\partial\mathcal L}{\partial W_E}=X^{\mathsf T}G,
  \qquad \frac{\partial\mathcal L}{\partial X}=GW_E^{\mathsf T},
  \qquad \frac{\partial\mathcal L}{\partial b_E}=\sum_{b,n}G_{b,n,:}.
- \label{eq:ch37-patchgrad}
+ \label{eq:vit-patchgrad}
 \end{equation}
-在无重叠情况下，$X$ 的梯度按逆映射放回图像即可。若使用重叠滑窗，一个像素会被多次取出，其梯度必须将各窗口贡献相加，不能用一次覆盖写回。
+在无重叠情况下，$X$ 的梯度按逆映射放回图像即可。若使用重叠滑窗，一个像素会被多次取出，其梯度必须将各窗口贡献相加；一次覆盖写回只保留最后一个窗口的贡献。
 
 \begin{example}
-\label{q:ch37:example:01}
 
 考虑单通道、单图像，令
 \begin{equation}
  I=\begin{bmatrix}1&2&3&4\\5&6&7&8\\9&10&11&12\\13&14&15&16\end{bmatrix},
  \quad P_h=P_w=2,\quad
- W_E=\begin{bmatrix}1&1\\1&-1\\1&1\\1&-1\end{bmatrix},\quad b_E=0.
+ \mat{W}_E=\begin{bmatrix}1&1\\1&-1\\1&1\\1&-1\end{bmatrix},\quad b_E=0.
 \end{equation}
-按式\eqref{eq:ch37-index}得到
+按式\eqref{eq:vit-index}得到
 \begin{equation}
- X=\begin{bmatrix}1&2&5&6\\3&4&7&8\\9&10&13&14\\11&12&15&16\end{bmatrix},
- \qquad XW_E=\begin{bmatrix}14&-2\\22&-2\\46&-2\\54&-2\end{bmatrix}.
+ \mat{X}=\begin{bmatrix}1&2&5&6\\3&4&7&8\\9&10&13&14\\11&12&15&16\end{bmatrix},
+ \qquad \mat{X}\mat{W}_E=\begin{bmatrix}14&-2\\22&-2\\46&-2\\54&-2\end{bmatrix}.
 \end{equation}
 第一个输出通道计算四个像素之和，第二个通道计算左右差。对应卷积核分别为
 \begin{equation}
@@ -99,40 +104,40 @@ $H$ 与 $W$ 分别可被 $P_h$ 与 $P_w$ 整除；补丁不重叠、不丢弃边
 卷积第一通道输出网格 $\left[\begin{smallmatrix}14&22\\46&54\end{smallmatrix}\right]$，第二通道输出全为 $-2$。重排后得到同一个 $4\times2$ 矩阵。该例逐项验证了像素索引、线性投影与卷积核之间的对应关系。
 \end{example}
 
-\subsection{重叠、填充及边界}
+\subsection{重叠、填充和边界}
 一般滑窗在高度方向的输出数为
 \begin{equation}
  G_h=\left\lfloor\frac{H+2p_h-\delta_h(P_h-1)-1}{S_h}\right\rfloor+1,
- \label{eq:ch37-window}
+ \label{eq:vit-window}
 \end{equation}
-其中 $p_h,S_h,\delta_h$ 分别为对称填充、步幅和膨胀系数，宽度方向同理。步幅小于窗口尺寸会产生重叠；步幅过大可能跳过像素；不能整除时，无填充实现可能丢弃尾部。它们仍可与相同滑窗规则的线性投影对应，但已不满足前述双射。
+其中 $p_h,S_h,\delta_h$ 分别为对称填充、步幅和膨胀系数，宽度方向同理。步幅小于窗口尺寸会产生重叠；步幅过大可能跳过像素；不能整除时，无填充实现会丢弃尾部。它们仍可与相同滑窗规则的线性投影对应，但已不满足前述双射。
 
-对变尺寸图像采用填充时，需要区分完全由填充构成的补丁与部分有效补丁。注意力掩码只能排除整个位置，不能自动去除一个补丁内部的无效像素影响。通常应先明确裁剪或填充策略、有效区域以及目标任务是否允许改变长宽比，再决定补丁规则。
+对变尺寸图像采用填充时，需要区分完全由填充构成的补丁与部分有效补丁。注意力掩码只作用于整个位置，一个补丁内部的无效像素仍在其中。通常应先明确裁剪或填充策略、有效区域以及目标任务是否允许改变长宽比，再决定补丁规则。
 
-\section{二维位置及序列组装}
+\section{二维位置与序列组装}
 
 \subsection{空间位置编码}
-不含位置编码的注意力对序列置换具有等变性。令 $\Pi$ 为位置置换矩阵，则线性映射满足 $Q'=\Pi Q,K'=\Pi K,V'=\Pi V$。逐行 softmax 满足
+不含位置编码的注意力对序列置换具有等变性。令 $\mat{\Pi}$ 为位置置换矩阵，则线性映射满足 $\mat{Q}'=\mat{\Pi} \mat{Q},\mat{K}'=\mat{\Pi} \mat{K},\mat{V}'=\mat{\Pi} \mat{V}$。逐行 softmax 满足
 \begin{equation}
- \softmax(\Pi S\Pi^{\mathsf T})=\Pi\softmax(S)\Pi^{\mathsf T},
+ \softmax(\mat{\Pi} \mat{S}\mat{\Pi}^{\mathrm{T}})=\mat{\Pi}\softmax(\mat{S})\mat{\Pi}^{\mathrm{T}},
 \end{equation}
 因此
 \begin{equation}
- \operatorname{Attn}(\Pi Z)=\Pi\operatorname{Attn}(Z).
- \label{eq:ch37-equivariance}
+ \operatorname{Attn}(\mat{\Pi} Z)=\mat{\Pi}\operatorname{Attn}(Z).
+ \label{eq:vit-equivariance}
 \end{equation}
-逐位置归一化、前馈层和残差都保持这一性质。若固定分类标记的位置，仅置换其余补丁，分类位置输出不变；均值池化同样无法区分这些排列。因此，单纯把上方补丁排在数组前面，并没有使模型知道“上方”的含义。补丁内部的像素坐标由投影权重区分，补丁之间的空间坐标则需要另行提供。
+逐位置归一化、前馈层和残差都保持这一性质。若固定分类标记的位置，仅置换其余补丁，分类位置输出不变；均值池化对这些排列同样给出相同结果。因此，单纯把上方补丁排在数组前面，模型从中读不出“上方”的含义。补丁内部的像素坐标由投影权重区分，补丁之间的空间坐标则需要另行提供。
 
-\term{分类标记}{Classification Token}{CLS}是一个跨图像共享的可训练向量 $e_{\mathrm{cls}}\in\Real^d$。标准序列初始化为
+\term{分类标记}{Classification Token}{CLS}是一个跨图像共享的可训练向量 $\vect{e}_{\mathrm{cls}}\in\Real^d$。标准序列初始化为
 \begin{equation}
- Z^{(0)}=[e_{\mathrm{cls}};E_0;\ldots;E_{N-1}]+P,
- \quad P\in\Real^{(N+1)\times d}.
- \label{eq:ch37-sequence}
+ Z^{(0)}=[\vect{e}_{\mathrm{cls}};E_0;\ldots;E_{N-1}]+\mat{P},
+ \quad \mat{P}\in\Real^{(N+1)\times d}.
+ \label{eq:vit-sequence}
 \end{equation}
 位置参数按批量广播，分类向量本身不含当前图像信息，其依赖图像的表示是在编码器中通过交互形成的。
 
 \subsection{位置参数的二维语义}
-\term{绝对位置嵌入}{Absolute Positional Embedding}{}为每个位置提供一个与内容相加的向量。标准 ViT 可以把参数存成一张一维表，但表的第 $1+rG_w+s$ 行实际对应二维网格坐标 $(r,s)$。因此，“存成一维”不等于“只能表达一维位置”。另一种设计是分解为 $P_{r,s}=P^h_r+P^w_s$，其参数更少，但位置表的可表达形式受到可加性约束。
+\term{绝对位置嵌入}{Absolute Positional Embedding}{}为每个位置提供一个与内容相加的向量。标准 ViT 可以把参数存成一张一维表，但表的第 $1+rG_w+s$ 行实际对应二维网格坐标 $(r,s)$。因此，“存成一维”只是存储形式，与能表达的位置结构无关。另一种设计是分解为 $P_{r,s}=\mat{P}^h_r+\mat{P}^w_s$，其参数更少，但位置表的可表达形式受到可加性约束。
 
 \term{二维位置插值}{Two-Dimensional Positional Interpolation}{}用于将固定网格的位置参数适配到另一网格。须先分离 CLS 行，再把补丁部分恢复为 $G_h\times G_w\times d$，按空间坐标插值，然后重新展平。把整个序列当作一条线插值，可能在旧网格一行末尾和下一行开头之间建立不符合二维邻接的混合。
 
@@ -145,26 +150,26 @@ $H$ 与 $W$ 分别可被 $P_h$ 与 $P_w$ 整除；补丁不重叠、不丢弃边
  P'_{i,j}={}&(1-\alpha)(1-\beta)P_{r,s}
  +(1-\alpha)\beta P_{r,s+1}\nonumber\\
  &+\alpha(1-\beta)P_{r+1,s}+\alpha\beta P_{r+1,s+1}.
- \label{eq:ch37-interpolation}
+ \label{eq:vit-interpolation}
 \end{align}
-上述公式采用角点对齐。采用像素中心对齐或双三次插值时，坐标和权重都会不同；退化为单行、单列的网格也应显式规定采样位置。复用已有权重时不能无意混用这些规则。\footnote{原始 ViT 在提高分辨率微调时采用位置插值。插值是参数适配操作；某个实现具体选用的插值核、对齐模式和抗锯齿选项，仍应与其检查点配置一致。}
+上述公式采用角点对齐。采用像素中心对齐或双三次插值时，坐标和权重都会不同；退化为单行、单列的网格也应显式规定采样位置。复用已有权重时，混用这些规则会引入未被察觉的偏差。\footnote{原始 ViT 在提高分辨率微调时采用位置插值。插值是参数适配操作；某个实现具体选用的插值核、对齐模式和抗锯齿选项，仍应与其检查点配置一致。}
 
 例如，一个位置通道的源网格为 $\left[\begin{smallmatrix}0&2\\4&6\end{smallmatrix}\right]$。按角点对齐扩展至 $3\times3$，结果为
 \begin{equation}
  \begin{bmatrix}0&1&2\\2&3&4\\4&5&6\end{bmatrix}.
 \end{equation}
-中心来自四个角各 $\frac{1}{4}$ 的加权和。分类位置若原为 $10$，仍单独保留为 $10$，不能加入这张空间网格。这里被插值的是学习到的位置向量，不是输入图像像素。
+中心来自四个角各 $\frac{1}{4}$ 的加权和。分类位置若原为 $10$，仍单独保留为 $10$，始终位于这张空间网格之外。这里被插值的是学习到的位置向量，与输入图像像素无关。
 
-位置插值假设原网格参数能够作为某种平滑空间场重新采样。插值效果取决于位置参数的空间变化与目标分辨率下的图像尺度分布。更换补丁尺寸还会改变 $W_E$ 的输入维度，单独插值位置表无法解决这种权重不兼容。
+位置插值假设原网格参数能够作为某种平滑空间场重新采样。插值效果取决于位置参数的空间变化与目标分辨率下的图像尺度分布。更换补丁尺寸还会改变 $W_E$ 的输入维度，这种权重不兼容超出了位置表的处理范围。
 
-\section{视觉编码及读出}
+\section{视觉编码和读出}
 
 \subsection{双向编码层}
 每层采用\term{前置层归一化}{Pre-Layer Normalization}{Pre-LN}残差结构：
 \begin{align}
  U^{(t)}&=Z^{(t-1)}+\operatorname{MHA}(\operatorname{LN}(Z^{(t-1)})),\\
  Z^{(t)}&=U^{(t)}+\operatorname{MLP}(\operatorname{LN}(U^{(t)})),\qquad t=1,\ldots,T.
- \label{eq:ch37-block}
+ \label{eq:vit-block}
 \end{align}
 此处归一化沿每个位置的隐藏维度进行，前馈网络逐位置共享参数。多头注意力的查询、键和值均来自同一视觉序列，正常有效补丁之间不施加语言模型的因果掩码。填充位置则需要有效性掩码。注意力和反向传播的通用推导见\bookxref{ch:attention}，这里展开其视觉含义。
 
@@ -172,14 +177,14 @@ $H$ 与 $W$ 分别可被 $P_h$ 与 $P_w$ 整除；补丁不重叠、不丢弃边
 \begin{equation}
  a_{ij}=\frac{\exp(\frac{q_i^{\mathsf T}k_j}{\sqrt{d_h}})}{\sum_{m\in\mathcal V}\exp(\frac{q_i^{\mathsf T}k_m}{\sqrt{d_h}})},
  \qquad o_i=\sum_{j\in\mathcal V}a_{ij}v_j,
- \label{eq:ch37-visual-attn}
+ \label{eq:vit-visual-attn}
 \end{equation}
-$\mathcal V$ 为有效位置集合。一个补丁可以依据内容和位置从其他区域收集信息：局部边缘可以与远处轮廓组合，分类位置也可以汇集多个区域。全局可访问只表示存在信息通路，并不保证模型实际利用了需要的区域。
+$\mathcal V$ 为有效位置集合。一个补丁可以依据内容和位置从其他区域收集信息：局部边缘可以与远处轮廓组合，分类位置也可以汇集多个区域。全局可访问只表示存在信息通路；模型是否实际利用了需要的区域，要看训练后的注意力分布。
 
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[>=stealth,every node/.style={font=\small},box/.style={draw,rounded corners,align=center,minimum height=9mm,text width=28mm}]
-\node[box] (im) at (0,0) {图像\\$B\times C\times H\times W$};
+\node[box] (im) at (0,0) {图像\\$B\times C\times H\times \mat{W}$};
 \node[box] (pa) at (3.8,0) {补丁投影\\$B\times N\times d$};
 \node[box] (seq) at (7.6,0) {加入 CLS 与位置\\$B\times L\times d$};
 \node[box] (en) at (7.6,-1.8) {双向编码器\\$T$ 层};
@@ -189,40 +194,39 @@ $\mathcal V$ 为有效位置集合。一个补丁可以依据内容和位置从�
 \node[align=center] at (7.6,-3) {保留补丁输出时\\仍可恢复二维网格};
 \draw[->] (en)--(7.6,-2.55);
 \end{tikzpicture}
-\caption{ViT 的表示路径。分类读出压缩空间序列；密集预测可以保留补丁表示。}\label{fig:ch37-vitsystem}
+\caption{ViT 的表示路径。分类读出压缩空间序列；密集预测可以保留补丁表示。}\label{fig:vit-system}
 \end{figure}
 
-\subsection{CLS 及平均池化}
-在最终归一化后令 $\widehat Z=\operatorname{LN}(Z^{(T)})$。CLS 读出采用 $h=\widehat Z_0$；\term{全局平均池化}{Global Average Pooling}{GAP}可以采用
+\subsection{CLS 和平均池化}
+在最终归一化后令 $\widehat Z=\operatorname{LN}(Z^{(T)})$。CLS 读出采用 $\vect{h}=\widehat Z_0$；\term{全局平均池化}{Global Average Pooling}{GAP}可以采用
 \begin{equation}
- h=\frac{1}{N_{\mathrm{valid}}}\sum_{n=1}^{N}m_n\widehat Z_n,
+ \vect{h}=\frac{1}{N_{\mathrm{valid}}}\sum_{n=1}^{N}m_n\widehat Z_n,
  \qquad N_{\mathrm{valid}}=\sum_{n=1}^{N}m_n,
- \label{eq:ch37-pooling}
+ \label{eq:vit-pooling}
 \end{equation}
-其中 $m_n\in\{0,1\}$，且 $N_{\mathrm{valid}}>0$。前者通过专门位置学习信息汇集，后者对最终补丁表示赋相同读出权重，但这些补丁已经经过内容相关的全局交互，因而不能把 GAP 误解为对原始像素简单取平均。
+其中 $m_n\in\{0,1\}$，且 $N_{\mathrm{valid}}>0$。前者通过专门位置学习信息汇集，后者对最终补丁表示赋相同读出权重，但这些补丁已经经过内容相关的全局交互，GAP 与对原始像素简单取平均是两回事。
 
-两者也产生不同的直接梯度路径。若分类损失对 $h$ 的梯度为 $g$，GAP 对每个有效最终补丁的直接梯度为 $\frac{g}{N_{\mathrm{valid}}}$，CLS 则在读出位置接收直接梯度，再经各层注意力传递至补丁。读出方式的选择依据任务评估，替换预训练读出时可能需要重新训练并调整优化设置。
+两者也产生不同的直接梯度路径。若分类损失对 $\vect{h}$ 的梯度为 $g$，GAP 对每个有效最终补丁的直接梯度为 $\frac{g}{N_{\mathrm{valid}}}$，CLS 则在读出位置接收直接梯度，再经各层注意力传递至补丁。读出方式的选择依据任务评估，替换预训练读出时可能需要重新训练并调整优化设置。
 
-分类头令 $o=hW_C+b_C$，其中 $W_C\in\Real^{d\times K}$，并以 $p_k=\frac{\exp(o_k)}{\sum_j\exp(o_j)}$ 得到类别概率。对于单标签监督 $y$，损失为 $-\log p_y$。密集定位任务则需要保留 $N$ 个补丁特征，恢复 $G_h\times G_w$ 网格，并通过任务头处理空间分辨率；单个 CLS 无法直接替代这条空间输出路径。
+分类头令 $\vect{o}=\vect{h}\mat{W}_C+\vect{b}_C$，其中 $\mat{W}_C\in\Real^{d\times K}$，并以 $p_k=\frac{\exp(o_k)}{\sum_j\exp(o_j)}$ 得到类别概率。对于单标签监督 $y$，损失为 $-\log p_y$。密集定位任务则需要保留 $N$ 个补丁特征，恢复 $G_h\times G_w$ 网格，并通过任务头处理空间分辨率；单个 CLS 承担不了这条空间输出路径。
 
-\section{分辨率及计算预算}
+\section{分辨率和计算预算}
 
-\subsection{参数及运算规模}
-对每层标准多头注意力，忽略偏置、归一化和逐元素算子，以一次乘加作为一个计数单位，四个投影约需 $4BLd^2$ 次乘加；$QK^{\mathsf T}$ 与注意力乘 $V$ 合计 $2BL^2d$；前馈网络中间维度为 $\rho d$ 时约需 $2B L\rho d^2$。因此
+\subsection{参数与运算规模}
+对每层标准多头注意力，忽略偏置、归一化和逐元素算子，以一次乘加作为一个计数单位，四个投影约需 $4BLd^2$ 次乘加；$\mat{Q}\mat{K}^{\mathrm{T}}$ 与注意力乘 $\mat{V}$ 合计 $2BL^2d$；前馈网络中间维度为 $\rho d$ 时约需 $2B L\rho d^2$。因此
 \begin{equation}
  \mathrm{MACs}_{\mathrm{layer}}\approx
  B\left[(4+2\rho)Ld^2+2L^2d\right].
- \label{eq:ch37-cost}
+ \label{eq:vit-cost}
 \end{equation}
-若按一次乘法和一次加法各计一次浮点运算，主要项再乘二。这个计量约定必须与报告一致。
+若按一次乘法和一次加法各计一次浮点运算，主要项再乘二。报告数值时必须同时说明采用哪一种计量约定。
 
-标准注意力的逻辑分数共有 $BaL^2$ 个元素。若显式以每元素 $s$ 字节存储，单张分数张量占 $sBaL^2$ 字节；训练还包括其他激活、梯度和优化器状态。融合注意力内核可能不物化整张矩阵，故逻辑规模不是实际峰值显存的等式。相关实现见高效注意力章节。
+标准注意力的逻辑分数共有 $BaL^2$ 个元素。若显式以每元素 $s$ 字节存储，单张分数张量占 $sBaL^2$ 字节；训练还包括其他激活、梯度和优化器状态。融合注意力内核可能不物化整张矩阵，故逻辑规模与实际峰值显存是两笔账。相关实现见高效注意力章节。
 
-固定 $d$、$C$ 与图像尺寸时，补丁投影的主要乘加量为 $BNFd=BCHWd$，在无重叠规则下与补丁面积无关；但其参数数 $Fd+d$ 会随补丁面积变化。减小补丁主要增加编码器序列长度，而不是简单地按同一倍数增加所有模块。这一区分有助于定位成本来源。
+固定 $d$、$C$ 与图像尺寸时，补丁投影的主要乘加量为 $BNFd=BCHWd$，在无重叠规则下与补丁面积无关；但其参数数 $Fd+d$ 会随补丁面积变化。减小补丁主要增加编码器序列长度，各模块的增长倍数并不一致。这一区分有助于定位成本来源。
 
 \subsection{规模比较}
 \begin{example}
-\label{q:ch37:example:02}
 
 设图像为 $224\times224$，采用方形补丁与一个 CLS。下表列出不同补丁大小对应的序列长度和注意力元素数量。
 \begin{table}[htbp]
@@ -257,23 +261,40 @@ $P$ & 网格 & $N$ & $L$ & 每头 $L^2$\\
 更细补丁提高空间采样粒度，同时增加编码器序列成本；更高分辨率可能保留输入细节，但也改变内容尺度和位置分布。质量收益取决于任务需要的细节与训练分布。比较质量时应同时固定数据划分、预处理、优化预算和评价口径，并说明哪些变量实际发生了变化。
 \end{note}
 
-\section{归纳偏置及训练边界}
+\section{归纳偏置和训练边界}
 
-\subsection{卷积先验及全局交互}
-\term{归纳偏置}{Inductive Bias}{}是模型结构或学习过程对可学习规律的偏好。卷积通过局部连接和跨位置共享核编码空间先验；在适当边界与步幅条件下，其输出随输入平移而相应平移，这称为\term{平移等变性}{Translation Equivariance}{}。带步幅的卷积仅对与采样网格兼容的平移具有相应性质，不能无条件套用逐像素平移等变的说法。
+\subsection{卷积先验与全局交互}
+\term{归纳偏置}{Inductive Bias}{}是模型结构或学习过程对可学习规律的偏好。卷积通过局部连接和跨位置共享核编码空间先验；在适当边界与步幅条件下，其输出随输入平移而相应平移，这称为\term{平移等变性}{Translation Equivariance}{}。带步幅的卷积仅对与采样网格兼容的平移具有相应性质，逐像素平移等变的说法只适用于无步幅情形。
 
-ViT 的补丁投影具有局部性与权重共享的视觉先验。它的编码器允许补丁全局交互，而绝对位置表可使不同位置具有不同作用。一像素平移可能改变多个补丁内部的像素组合，不能简单视为补丁序列的整数置换。因此，式\eqref{eq:ch37-equivariance}的序列置换等变不等于图像平移等变。
+ViT 的补丁投影具有局部性与权重共享的视觉先验。它的编码器允许补丁全局交互，而绝对位置表可使不同位置具有不同作用。一像素平移可能改变多个补丁内部的像素组合，与补丁序列的整数置换是两种不同的变换。因此，式\eqref{eq:vit-equivariance}的序列置换等变与图像平移等变是两条性质。
 
-原始 ViT 强调了预训练数据规模与迁移效果的关系；后续数据高效视觉 Transformer 研究说明，训练配方、正则化及蒸馏也会显著改变数据利用效率\cite{touvron2021deit}。模型容量、目标域和数据增强共同决定泛化条件。
+原始 ViT 强调了预训练数据规模与迁移效果的关系；后续数据高效视觉 Transformer 研究说明，训练配方、正则化及蒸馏也会显著改变数据利用效率\cite{touvron2021deit}。模型容量、目标域和数据增强共同决定泛化条件。视觉 Transformer 与传统卷积神经网络的核心归纳偏置及计算机制对比见表\ref{tab:rev-vit-vs-cnn}。
+
+\begin{table}[htbp]
+\centering
+\caption{视觉 Transformer (ViT) 与卷积神经网络 (CNN) 的核心机制对比。}
+\label{tab:rev-vit-vs-cnn}
+\begin{tabularx}{\linewidth}{@{}p{2.2cm}p{5.2cm}X@{}}
+\toprule
+比较维度 & 卷积神经网络 (CNN) & 视觉 Transformer (ViT)\\
+\midrule
+核心算子与偏置 & 局部滑窗卷积与池化；具备平移等变性与局部紧邻空间强归纳偏置 & 补丁线性投影与全局自注意力；弱归纳偏置，依赖可学习位置编码建立坐标感知\\
+有效感受野 & 随网络层数加深逐步线性或亚线性扩大，浅层局限于局部小邻域 & 首层自注意力即具备跨全图补丁的全局感知通路，权重由内容动态生成\\
+计算与显存扩展 & 计算量与特征图尺寸成线性关系 $\mathcal{O}(HW \cdot C_{\mathrm{in}} C_{\mathrm{out}})$ & 计算量与补丁数平方成二次方关系 $\mathcal{O}\left(\left(\frac{HW}{P_h P_w}\right)^2 d\right)$，细粒度分辨率下显存开销显著\\
+数据规模敏感度 & 小规模数据集（如 ImageNet-1K）即可稳定收敛，小样本泛化良好 & 强依赖亿级超大规模预训练或专用强数据增强与知识蒸馏训练配方\\
+任意分辨率适配 & 天然支持变长高宽输入与全卷积滑动推理，多尺度金字塔技术成熟 & 改变输入尺寸需进行二维位置嵌入插值，长宽比失真易影响空间对应关系\\
+\bottomrule
+\end{tabularx}
+\end{table}
 
 \subsection{数据增强的目标效应}
 \term{数据增强}{Data Augmentation}{}从变换分布 $a\sim\mathcal A$ 采样图像变换，训练目标相应成为
 \begin{equation}
  \min_\theta\frac1M\sum_{i=1}^{M}
  \mathbb E_{a\sim\mathcal A}\left[\ell(f_\theta(a(I_i)),y_i)\right].
- \label{eq:ch37-augmentation}
+ \label{eq:vit-augmentation}
 \end{equation}
-随机裁剪和翻转隐含“变换后标签仍有效”的假设。裁剪移除了唯一目标、镜像改变文字含义或左右具有临床语义时，标签保持假设可能失败。因此，增强不能仅按强弱选择，还应按任务的语义不变性选择。验证阶段通常使用固定处理流程，以免随机输入变化掩盖模型差异。
+随机裁剪和翻转隐含“变换后标签仍有效”的假设。裁剪移除了唯一目标、镜像改变文字含义或左右具有临床语义时，标签保持假设可能失败。因此，增强的选择依据是任务的语义不变性，强弱程度只是其中一个维度。验证阶段通常使用固定处理流程，随机输入变化会掩盖模型差异。
 
 \term{混合增强}{Mixup}{}在线性组合输入时同时组合标签\cite{zhang2018mixup}：
 \begin{equation}
@@ -287,25 +308,25 @@ ViT 的补丁投影具有局部性与权重共享的视觉先验。它的编码�
 \end{equation}
 例如 $\lambda=0.7$，两类标签混合为 $(0.7,0.3)$，预测为 $(0.8,0.2)$，则损失为 $-0.7\log0.8-0.3\log0.2\approx0.6390$。软标签指定合成输入的训练目标。
 
-\subsection{迁移策略及输入协议}
-\term{线性探测}{Linear Probing}{}冻结视觉主干，仅训练新的线性分类头；全量微调更新主干与分类头；部分解冻则在两者之间选择可训练层。冻结主干减少优化器状态，却不自动证明其表示适合新域。若主干前面还存在需要训练的模块，冻结权重的层仍需向输入传播梯度，这与参数高效微调中的原则相同。
+\subsection{迁移策略和输入协议}
+\term{线性探测}{Linear Probing}{}冻结视觉主干，仅训练新的线性分类头；全量微调更新主干与分类头；部分解冻则在两者之间选择可训练层。冻结主干减少优化器状态，其表示是否适合新域仍需单独验证。若主干前面还存在需要训练的模块，冻结权重的层仍需向输入传播梯度，这与参数高效微调中的原则相同。
 
 小数据下可从预训练表示与较保守的更新范围开始，依据独立验证选择策略。层间学习率衰减可以让较浅层更新更小；参数指数移动平均对历次参数进行平滑。两者以及混合精度、梯度累积的通用机制见训练章节，是否提升当前视觉任务仍需受控比较，据此选择训练配方。
 
-发布时必须绑定权重、架构配置、图像处理器和标签映射。预处理中的通道顺序、像素范围、缩放插值、裁剪位置、均值与标准差共同定义输入分布。若训练使用 $x=\frac{\frac{p}{255}-\mu}{\sigma}$，部署直接把 $p$ 代入同一个归一化式，便不是一个微小误差，而是显著改变输入尺度。分类头还需使用与训练一致的标签映射：标签索引发生置换时，模型输出的数值可以完全合理，显示的类别却整体错误。
+发布时必须绑定权重、架构配置、图像处理器和标签映射。预处理中的通道顺序、像素范围、缩放插值、裁剪位置、均值与标准差共同定义输入分布。若训练使用 $x=\frac{\frac{p}{255}-\mu}{\sigma}$，部署直接把 $p$ 代入同一个归一化式，输入尺度将发生数量级变化。分类头还需使用与训练一致的标签映射：标签索引发生置换时，模型输出的数值可以完全合理，显示的类别却整体错误。
 
 \begin{algorithm}[视觉编码的确定性推理路径]
 \textbf{输入：}图像批量、固定预处理协议、补丁与位置网格配置、$T$ 层权重、分类标签映射。\par
 \textbf{输出：}类别概率，以及按需要保留的补丁表征。\par
 \textbf{状态：}有效区域、补丁网格 $(G_h,G_w)$、序列 $Z$、层计数 $t$。
-\begin{algorithmic}[1]
+\begin{lfsalgorithmic}[1]
  \State 按声明的通道、范围、缩放与归一化处理图像；根据边界规则裁剪或填充，并记录有效区域。
- \State 由式\eqref{eq:ch37-index}确定补丁次序，使用式\eqref{eq:ch37-embedding}或等价卷积投影。保持权重排列与像素排列一致。
+ \State 由式\eqref{eq:vit-index}确定补丁次序，使用式\eqref{eq:vit-embedding}或等价卷积投影。保持权重排列与像素排列一致。
  \State 检查位置表的源网格；若目标网格不同，分离 CLS 后按声明的二维规则插值。若补丁投影尺寸不兼容，终止并报告配置错误。
  \State 加入 CLS 与位置嵌入，建立有效位置掩码。每个有效查询必须至少有一个可见键；不得将全屏蔽行直接送入普通 softmax。
- \State 对 $t=1,\ldots,T$ 执行式\eqref{eq:ch37-block}，保持序列长度和隐藏维度不变；推理时停用训练期随机失活。
+ \State 对 $t=1,\ldots,T$ 执行式\eqref{eq:vit-block}，保持序列长度和隐藏维度不变；推理时停用训练期随机失活。
  \State 按固定的 CLS 或有效均值读出方式产生 $h$，计算分类分数与概率，并用绑定的标签映射解释输出。
-\end{algorithmic}
+\end{lfsalgorithmic}
 \textbf{停止条件与不变量：}完成 $T$ 层与分类头后返回；每个补丁的序列位置始终对应同一空间位置。配置不兼容或无有效输入时显式终止，不静默更换预处理或读出策略。
 \end{algorithm}
 
@@ -313,7 +334,7 @@ ViT 的补丁投影具有局部性与权重共享的视觉先验。它的编码�
 
 算子检查验证线性投影与卷积的对应关系，补丁逆映射检查坐标处理，分类评估检验任务表现。预处理按输入协议单独检查。评价视觉系统还应控制同源图像跨划分泄漏、近重复、类别不平衡与采集域变化。
 
-注意力图显示式\eqref{eq:ch37-visual-attn}中的内部权重，不直接等于像素的因果重要性。多头投影、值向量、残差和后续非线性共同决定输出。遮挡分析也改变了输入分布，因此应说明遮挡规则和比较对象，并结合任务与扰动结果评价解释。
+注意力图显示式\eqref{eq:vit-visual-attn}中的内部权重，与像素的因果重要性是两种量。多头投影、值向量、残差和后续非线性共同决定输出。遮挡分析也改变了输入分布，因此应说明遮挡规则和比较对象，并结合任务与扰动结果评价解释。
 
 
 
@@ -321,4 +342,4 @@ ViT 的补丁投影具有局部性与权重共享的视觉先验。它的编码�
 
 % END GENERATED INTERVIEWS
 \chapterreferences
-\end{document}
+\lfsendchapterdocument

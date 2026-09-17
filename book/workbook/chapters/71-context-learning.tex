@@ -8,7 +8,7 @@
 \end{solution}
 \end{exercise}
 
-\begin{exercise} 为式\tbobject{eq:ch31-selection}设计一个包含相关性、技能覆盖和冗余的具体评分，说明评分可以使用哪些信息、不得使用哪些测试信息。
+\begin{exercise} 为式\tbobject{eq:icl-selection}设计一个包含相关性、技能覆盖和冗余的具体评分，说明评分可以使用哪些信息、不得使用哪些测试信息。
 
 \begin{solution}
 可令 $F(S)=\sum_{i\in S}r_i+\lambda\sum_k\min(1,\sum_{i\in S}a_{ik})-\gamma\sum_{i<j\in S}\operatorname{sim}(i,j)$，约束$\sum_{i\in S}l_i\le B_D$。$r_i$来自查询相似度，$a_{ik}$来自预先标注技能，冗余来自示例内容；权重在开发集确定。禁止使用测试答案、测试判定结果或按最终测试分数逐题挑示例，查询本身可作为已允许输入。

@@ -5,7 +5,7 @@
 \begin{document}
 \begin{tikzpicture}[lfs picture]
 
-\node[storage] (xt) {Noisy Latent $x_t$\\\scriptsize $[B,C,H,W]$};
+\node[storage] (xt) {Noisy Latent $\vect{x}_t$\\\scriptsize $[B,C,H,W]$};
 \node[compute, right=of xt] (down) {Down Block\\\scriptsize + time};
 \node[compute, below=of down] (downsample) {Downsample};
 \node[compute, right=of downsample] (mid) {Mid Block\\\scriptsize + time / Cross-Attention};

@@ -1,12 +1,14 @@
+\ifdefined\LFSWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
+\fi
 \bookchapter{条件视觉生成}{ch:conditional-vision}
 
 条件生成要求模型在多样的视觉分布中满足指定信息：文本描述、参考图像、空间布局或时间条件。它既涉及概率路径，也涉及表示压缩、网络结构和求解器。\bookxref{ch:diffusion-probability}推导了加噪与反向过程；本章解释条件如何进入网络、引导如何改变预测，以及潜空间和视频扩展如何改变成本与误差。
 
-离散视觉词元还可以采用自回归分解逐项生成，再由相应解码器恢复图像；该路线与反向扩散不同，表示接口见\bookxref{ch:multimodal-alignment}。两种路线使用不同的生成过程。
+离散视觉词元还可以采用自回归分解逐项生成，再由相应解码器恢复图像；该路线与反向扩散不同，表示接口见\bookxref{ch:multimodal-alignment}。两种路线对应不同的生成过程。
 
-\section{条件生成的对象及符号}
+\section{条件生成的对象与符号}
 
 本章主要符号见表\ref{tab:conditional-vision-symbols}。
 \begin{table}[htbp]
@@ -17,184 +19,188 @@
 \toprule
 符号 & 含义\\
 \midrule
-$x,z,c$ & 像素样本、潜变量和条件表示。\\
+$\vect{x},\vect{z},c$ & 像素样本、潜变量和条件表示。\\
 $H,W,C_x,f,C_z$ & 图像高宽、像素通道数、空间压缩因子与潜通道数。\\
 $N,M,d,d_c$ & 视觉位置数、条件位置数、视觉与条件特征宽度。\\
 $a_t,b_t$ & 扰动路径中的信号系数与噪声系数。\\
-$s_t,\epsilon_\theta,w$ & 得分函数、噪声预测与本章 CFG 引导系数。\\
-$\tau,u_\theta$ & 从噪声走向数据的连续时间与速度场。\\
+$\vect{s}_t,\vect{\epsilon}_{\vect{\theta}},w$ & 得分函数、噪声预测与本章 CFG 引导系数。\\
+$\tau,\vect{u}_{\vect{\theta}}$ & 从噪声走向数据的连续时间与速度场。\\
 $F,F',p_t,p_h,p_w$ & 原始及潜空间帧数与时空补丁尺寸。\\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-文本生成图像关注条件遵循与分布质量，图像编辑还要求保留未编辑区域，视频生成进一步要求跨帧身份、运动与时间一致性。条件可以作为序列、空间张量或全局向量进入网络，不必都转换成一段文本。训练时必须明确每种条件的缺失表示、对齐关系和可见范围。
+文本生成图像关注条件遵循与分布质量，图像编辑还要求保留未编辑区域，视频生成进一步要求跨帧身份、运动与时间一致性。条件可以作为序列、空间张量或全局向量进入网络，转换成一段文本只是其中一条路径。训练时必须明确每种条件的缺失表示、对齐关系和可见范围。
 
-\section{时间条件及去噪主干}
+\section{时间条件与去噪主干}
 
 \subsection{U-Net 的多尺度路径}
-\term{U形网络}{U-Net}{}由下采样路径、瓶颈与上采样路径构成。下采样减少空间位置数，扩大后续局部算子的有效感受野；跳跃连接将较高分辨率特征传给对应上采样层。它并不自动保证全局建模，感受野仍取决于层数、卷积与注意力配置。
+\term{U形网络}{U-Net}{}由下采样路径、瓶颈与上采样路径构成。下采样减少空间位置数，扩大后续局部算子的有效感受野；跳跃连接将较高分辨率特征传给对应上采样层。全局建模能力取决于层数、卷积感受野与注意力配置。
 
 时间编码可采用
 \begin{equation}
  e_{2j}(t)=\sin(\omega_j t),\qquad e_{2j+1}(t)=\cos(\omega_j t),
 \end{equation}
-再经多层感知机形成调制向量。对特征 $h$，常见条件调制为
+再经多层感知机形成调制向量。对特征 $\vect{h}$，常见条件调制为
 \begin{equation}
- h'=\gamma(e_t,c)\odot\operatorname{Norm}(h)+\beta(e_t,c).
+ \vect{h}'=\vect{\gamma}(\vect{e}_t,c)\odot\operatorname{Norm}(\vect{h})+\vect{\beta}(\vect{e}_t,c).
 \end{equation}
-$\gamma,\beta$ 沿空间维广播；其形状必须与通道一致。离散步编号、归一化时间与对数信噪比不是同一输入，替换时间编码时必须保持训练契约。
+$\gamma,\beta$ 沿空间维广播；其形状必须与通道一致。离散步编号、归一化时间与对数信噪比是三种不同的输入，替换时间编码时必须保持训练契约。
 
 \begin{figure}[htbp]
 \centering
-\begin{tikzpicture}[font=\small,node distance=6mm,
- box/.style={draw,rounded corners,align=center,text width=25mm,minimum height=12mm}]
-\node[box] (in) {带噪潜变量\\高分辨率};
-\node[box,right=of in] (down) {下采样\\多尺度特征};
-\node[box,right=of down] (mid) {瓶颈\\条件注意力};
-\node[box,below=of mid] (up) {上采样\\跳跃融合};
-\node[box,left=of up] (out) {噪声或速度\\与潜变量同形};
-\node[box,above=of down] (cond) {时间与文本\\调制及键值};
-\draw[->] (in)--(down);\draw[->] (down)--(mid);
-\draw[->] (mid)--(up);\draw[->] (up)--(out);
-\draw[->,dashed] (in.south) |- (up.south);
-\draw[->] (cond)--(down);\draw[->] (cond)-|(mid);
-\end{tikzpicture}
+\includegraphics[width=.92\linewidth]{\subfix{../../figures/theory/conditional-unet-flow.pdf}}
 \caption{条件 U-Net 的结构关系；跳跃连接传递特征，不绕过去噪任务。}\label{fig:vision-unet}
 \end{figure}
 
-图\ref{fig:vision-unet}中的时间与语义条件在不同尺度影响预测，跳跃特征仍需经过上采样分支的可训练计算。
+图\ref{fig:vision-unet}中的时间与语义条件在不同尺度影响预测，跳跃特征仍要经过上采样分支的可训练计算。
 
-\subsection{交叉注意力及联合注意力}
-视觉特征 $X\in\mathbb R^{N\times d}$ 和条件特征 $C\in\mathbb R^{M\times d_c}$ 通过
+\subsection{交叉注意力和联合注意力}
+视觉特征 $\mat{X}\in\mathbb R^{N\times d}$ 和条件特征 $\mat{C}\in\mathbb R^{M\times d_c}$ 通过
 \begin{equation}
- Q=XW_Q,\quad K=CW_K,\quad V=CW_V,\qquad
- A=\operatorname{softmax}\left(\frac{QK^\top}{\sqrt{d_h}}+B\right)V
+ \mat{Q}=\mat{X}\mat{W}_Q,\quad \mat{K}=\mat{C}\mat{W}_K,\quad \mat{V}=\mat{C}\mat{W}_V,\qquad
+ \mat{A}=\operatorname{softmax}\left(\frac{\mat{Q}\mat{K}^\top}{\sqrt{d_h}}+\mat{B}\right)\mat{V}
 \end{equation}
-建立交叉注意力。这里 $W_Q\in\mathbb R^{d\times d_h}$，$W_K\in\mathbb R^{d_c\times d_h}$，$W_V\in\mathbb R^{d_c\times d_v}$，输出 $A\in\mathbb R^{N\times d_v}$；$B$ 排除条件填充等不可见位置。单头打分成本随 $NMd_h$ 增长，而非视觉自注意力的 $N^2d_h$。
+建立交叉注意力。这里 $\mat{W}_Q\in\mathbb R^{d\times d_h}$，$\mat{W}_K\in\mathbb R^{d_c\times d_h}$，$\mat{W}_V\in\mathbb R^{d_c\times d_v}$，输出 $\mat{A}\in\mathbb R^{N\times d_v}$；$\mat{B}$ 排除条件填充等不可见位置。单头打分成本随 $NMd_h$ 增长，视觉自注意力则是 $N^2d_h$。
 
-把视觉与文本映射到兼容宽度后联合处理，可以让两种表示相互更新，但会产生约 $(N+M)^2$ 的注意力配对数。是否双向更新、是否使用独立投影和调制，是具体架构选择。文本编码器、分词器、截断规则和空条件表示都属于制品，不可只替换编码器名称。
+把视觉与文本映射到兼容宽度后联合处理，可以让两种表示相互更新，但会产生约 $(N+M)^2$ 的注意力配对数。是否双向更新、是否使用独立投影和调制，是具体架构选择。文本编码器、分词器、截断规则和空条件表示都属于制品，替换编码器名称远不足以对齐两者。
 
-\subsection{Transformer 主干及目标相互独立}
+\subsection{Transformer 主干与目标相互独立}
 \term{扩散 Transformer}{Diffusion Transformer}{DiT}把潜变量切分为补丁并使用 Transformer 预测去噪目标\cite{peebles2023dit}。若潜图为 $H_z\times W_z\times C_z$、补丁边长为 $p$，则位置数为 $N=\frac{H_zW_z}{p^2}$，每补丁输入宽度为 $p^2C_z$。输出投影恢复每补丁所需通道，再重排为潜图。
 
 时间或类别可调制归一化与残差门控。补丁变小会增加位置数；边长减半使 $N$ 增至4倍，完整自注意力配对数增至16倍。主干结构与训练目标可分别选择：噪声预测、速度参数化和路径速度回归都可以由不同主干实现。
 
-\section{无分类器引导的推导及边界}
+\section{无分类器引导的推导与边界}
 
 \subsection{噪声外推}
-\term{得分函数}{Score Function}{}在本节指输入密度的梯度 $s_t(x)=\nabla_x\log p_t(x)$，不是分类分数。给定条件 $c$，贝叶斯关系给出
+\term{得分函数}{Score Function}{}在本节指输入密度的梯度 $\vect{s}_t(\vect{x})=\nabla_{\vect{x}}\log p_t(\vect{x})$，与分类分数是两种不同的量。给定条件 $c$，贝叶斯关系给出
 \begin{equation}
- \nabla_x\log p_t(c\mid x)=s_t(x\mid c)-s_t(x).
+ \nabla_{\vect{x}}\log p_t(c\mid \vect{x})=\vect{s}_t(\vect{x}\mid c)-\vect{s}_t(\vect{x}).
 \end{equation}
 将条件信息梯度乘以 $w$ 加到无条件得分上，得到
 \begin{equation}
- \widehat s_t=(1-w)s_t(x)+w s_t(x\mid c).
+ \widehat s_t=(1-w)\vect{s}_t(\vect{x})+w \vect{s}_t(\vect{x}\mid c).
  \label{eq:vision-cfg-score}
 \end{equation}
-对同一高斯扰动 $x_t=a_tx_0+b_t\epsilon$，密度可微且交换积分与微分合法时，
+对同一高斯扰动 $\vect{x}_t=a_t\vect{x}_0+b_t\vect{\epsilon}$，密度可微且交换积分与微分合法时，
 \begin{align}
- \nabla_{x_t}\log p_t(x_t\mid c)
- &=\mathbb E\left[-\frac{x_t-a_tx_0}{b_t^2}\,\middle|\,x_t,c\right]\\
- &=-\frac{\mathbb E[\epsilon\mid x_t,c]}{b_t}.
+ \nabla_{\vect{x}_t}\log p_t(\vect{x}_t\mid c)
+ &=\mathbb E\left[-\frac{\vect{x}_t-a_t\vect{x}_0}{b_t^2}\,\middle|\,\vect{x}_t,c\right]\\
+ &=-\frac{\mathbb E[\vect{\epsilon}\mid \vect{x}_t,c]}{b_t}.
 \end{align}
 因此噪声回归的最优条件均值与得分成比例。在相同 $b_t>0$ 下，式\eqref{eq:vision-cfg-score}对应
 \begin{equation}
- \widehat\epsilon=\epsilon_\theta(x_t,t,\varnothing)
- +w\left[\epsilon_\theta(x_t,t,c)-\epsilon_\theta(x_t,t,\varnothing)\right].
+ \widehat{\vect{\epsilon}}=\vect{\epsilon}_{\vect{\theta}}(\vect{x}_t,t,\varnothing)
+ +w\left[\vect{\epsilon}_{\vect{\theta}}(\vect{x}_t,t,c)-\vect{\epsilon}_{\vect{\theta}}(\vect{x}_t,t,\varnothing)\right].
  \label{eq:vision-cfg-noise}
 \end{equation}
-\term{无分类器引导}{Classifier-Free Guidance}{CFG}通过条件丢弃训练，让生成模型提供两种估计，无须另训分类器\cite{ho2022cfg}。丢弃的是语义条件，不是时间；空条件的编码方式也必须在训练中确定。
+\term{无分类器引导}{Classifier-Free Guidance}{CFG}通过条件丢弃训练，让生成模型提供两种估计，无须另训分类器\cite{ho2022cfg}。丢弃的对象是语义条件；空条件的编码方式也必须在训练中确定。
 
 \subsection{外推精度边界}
-本章 $w=0$ 返回无条件预测，$w=1$ 返回普通条件预测，$w>1$ 为外推。有的文献写成 $(1+s)\epsilon_c-s\epsilon_u$，其 $s=w-1$，不能按相同数值比较。
+本章 $w=0$ 返回无条件预测，$w=1$ 返回普通条件预测，$w>1$ 为外推。有的文献写成 $(1+s)\vect{\epsilon}_c-s\vect{\epsilon}_u$，其 $s=w-1$，两种记法的数值不可直接对照。
 
-在固定时间且归一化积分存在时，式\eqref{eq:vision-cfg-score}是形式密度 $p_t(x\mid c)^w p_t(x)^{1-w}$ 的对数梯度。但不同时间的这种密度族未必满足原前向扩散关系，因此不能据此断言最终采样分布恰为 $p_0(x\mid c)^w p_0(x)^{1-w}$。模型近似与求解误差还会进一步改变结果。
+在固定时间且归一化积分存在时，式\eqref{eq:vision-cfg-score}是形式密度 $p_t(\vect{x}\mid c)^w p_t(\vect{x})^{1-w}$ 的对数梯度。但不同时间的这种密度族未必满足原前向扩散关系，据此断言最终采样分布恰为 $p_0(\vect{x}\mid c)^w p_0(\vect{x})^{1-w}$ 缺少依据。模型近似与求解误差还会进一步改变结果。
 
-设无条件与条件预测分别为 $(0.2,-0.1)$ 与 $(0.5,0.3)$，则 $w=2$ 得 $(0.8,0.7)$。引导放大了条件与无条件预测之间的差向量。若两支预测误差为 $e_u,e_c$，引导误差满足
+设无条件与条件预测分别为 $(0.2,-0.1)$ 与 $(0.5,0.3)$，则 $w=2$ 得 $(0.8,0.7)$。引导放大了条件与无条件预测之间的差向量。若两支预测误差为 $\vect{e}_u,\vect{e}_c$，引导误差满足
 \begin{equation}
- \|e_{\rm cfg}\|\le |1-w|\|e_u\|+|w|\|e_c\|.
+ \|\vect{e}_{\rm cfg}\|\le |1-w|\|\vect{e}_u\|+|w|\|\vect{e}_c\|.
 \end{equation}
-大引导可能放大误差、改变多样性和产生伪影。以负面提示替代空条件时，基线已变成另一个条件分支，不再是真正无条件密度；其语义应明确说明。\footnote{将两支合并为一个批次可以减少某些调度开销，但仍需处理两组条件前向，不等于只计算一支的成本。}
+大引导可能放大误差、改变多样性和产生伪影。以负面提示替代空条件时，基线已变成另一个条件分支，与真正无条件密度是两回事；其语义应明确说明。\footnote{将两支合并为一个批次可以减少某些调度开销，但仍需处理两组条件前向，成本仍高于只计算一支。}
 
-\section{潜空间表示及重建限制}
+\section{潜空间表示与重建限制}
 
-\phantomsection\label{q:ch40:example:02}
-
-\subsection{VAE 目标及重参数化}
-\term{变分自编码器}{Variational Autoencoder}{VAE}以 $q_\phi(z\mid x)$ 近似后验，解码器为 $p_\psi(x\mid z)$。由 Jensen 不等式，
+\subsection{VAE 目标和重参数化}
+\term{变分自编码器}{Variational Autoencoder}{VAE}以 $q_{\vect{\phi}}(\vect{z}\mid \vect{x})$ 近似后验，解码器为 $p_{\vect{\psi}}(\vect{x}\mid \vect{z})$。由 Jensen 不等式，
 \begin{equation}
- \log p_\psi(x)\ge
- \mathbb E_{q_\phi}\log p_\psi(x\mid z)
- -D_{\rm KL}(q_\phi(z\mid x)\|p(z)).
+ \log p_{\vect{\psi}}(\vect{x})\ge
+ \mathbb E_{q_{\vect{\phi}}}\log p_{\vect{\psi}}(\vect{x}\mid \vect{z})
+ -D_{\rm KL}(q_{\vect{\phi}}(\vect{z}\mid \vect{x})\|p(\vect{z})).
 \end{equation}
-对对角高斯 $q_\phi=\mathcal N(\mu,\operatorname{diag}\sigma^2)$ 与标准正态先验，KL 为
+对对角高斯 $q_{\vect{\phi}}=\mathcal N(\mu,\operatorname{diag}\sigma^2)$ 与标准正态先验，KL 为
 \begin{equation}
  \frac12\sum_j(\mu_j^2+\sigma_j^2-\log\sigma_j^2-1).
 \end{equation}
-重参数化 $z=\mu_\phi(x)+\sigma_\phi(x)\odot\eta$、$\eta\sim\mathcal N(0,I)$ 将随机输入与参数分离，使梯度沿均值与尺度传播。实际视觉自编码器可能加入感知或对抗重建目标，其总目标由各重建项与正则项共同定义。
+重参数化 $\vect{z}=\mu_{\vect{\phi}}(\vect{x})+\sigma_{\vect{\phi}}(\vect{x})\odot\eta$、$\eta\sim\mathcal N(0,I)$ 将随机输入与参数分离，使梯度沿均值与尺度传播。实际视觉自编码器可能加入感知或对抗重建目标，其总目标由各重建项与正则项共同定义。
 
-\term{潜空间扩散}{Latent Diffusion}{}先学习压缩表示，再在该表示上训练生成过程\cite{rombach2022ldm}。图像为 $H\times W\times C_x$、压缩率为 $f$ 时，潜元素数为 $\frac{HWC_z}{f^2}$，原图与潜空间元素比为 $\frac{f^2C_x}{C_z}$。例如 $512\times512\times3$ 到 $64\times64\times4$，比值为48，空间位置数减少64倍。元素比不等于端到端加速比，编码、解码和主干通道均有成本。
+\term{潜空间扩散}{Latent Diffusion}{}先学习压缩表示，再在该表示上训练生成过程\cite{rombach2022ldm}。图像为 $H\times W\times C_x$、压缩率为 $f$ 时，潜元素数为 $\frac{HWC_z}{f^2}$，原图与潜空间元素比为 $\frac{f^2C_x}{C_z}$。例如 $512\times512\times3$ 到 $64\times64\times4$，比值为48，空间位置数减少64倍。元素比与端到端加速比是两回事，编码、解码和主干通道均有成本。
 
-\subsection{缩放协议及不可恢复信息}
-若生成器训练使用 $z'=sz$，采样结束后必须先得到 $z=\frac{z'}{s}$ 再解码。遗漏缩放改变解码器输入分布；缩放值使用对应制品的配置。像素归一化、色域、裁剪、潜通道、后验采样或均值选择也必须一致。
+\subsection{缩放协议与不可恢复信息}
+若生成器训练使用 $\vect{z}'=s\vect{z}$，采样结束后必须先得到 $\vect{z}=\frac{\vect{z}'}{s}$ 再解码。遗漏缩放改变解码器输入分布；缩放值使用对应制品的配置。像素归一化、色域、裁剪、潜通道、后验采样或均值选择也必须一致。
 
-编码器丢失的信息不会因为后续生成器更大而被可靠恢复。细小文字、线条与局部身份细节尤其需要独立验证。自编码器重建误差和生成误差属于不同来源：先对真实输入做编码解码对照，才能判断瓶颈是否已出现在表示层。
+编码器丢失的信息留在表示瓶颈处，后续生成器再大也补不回来。细小文字、线条与局部身份细节尤其需要独立验证。自编码器重建误差和生成误差属于不同来源：先对真实输入做编码解码对照，才能判断瓶颈是否已出现在表示层。
 
-\section{流匹配及连续路径}
+\section{流匹配和连续路径}
 \optional
 \subsection{条件速度回归}
-本节以 $\tau\in[0,1]$ 从噪声走向数据，端点记为 $Z_0$ 与 $Z_1$，区别于\bookxref{ch:diffusion-probability}从干净样本出发的离散加噪记号。取一个端点联合分布，定义线性路径
+本节以 $\tau\in[0,1]$ 从噪声走向数据，端点记为 $\vect{Z}_0$ 与 $\vect{Z}_1$，区别于\bookxref{ch:diffusion-probability}从干净样本出发的离散加噪记号。取一个端点联合分布，定义线性路径
 \begin{equation}
- Z_\tau=(1-\tau)Z_0+\tau Z_1,\qquad U=Z_1-Z_0.
+ \vect{Z}_\tau=(1-\tau)\vect{Z}_0+\tau \vect{Z}_1,\qquad \vect{U}=\vect{Z}_1-\vect{Z}_0.
 \end{equation}
 \term{流匹配}{Flow Matching}{}可以通过条件路径监督速度场\cite{lipman2023flowmatching}。平方损失
 \begin{equation}
- \mathcal L=\mathbb E\|u_\theta(Z_\tau,\tau,c)-U\|^2
+ \mathcal L=\mathbb E\|\vect{u}_{\vect{\theta}}(\vect{Z}_\tau,\tau,c)-\vect{U}\|^2
 \end{equation}
-在固定 $(z,\tau,c)$ 下的最优解为 $u^*(z,\tau,c)=\mathbb E[U\mid Z_\tau=z,c]$。证明来自平方展开：任意预测与条件均值之差的平方，加上与预测无关的条件方差，构成全部条件风险。
+在固定 $(\vect{z},\tau,c)$ 下的最优解为 $\vect{u}^*(\vect{z},\tau,c)=\mathbb E[\vect{U}\mid \vect{Z}_\tau=\vect{z},c]$。证明来自平方展开：任意预测与条件均值之差的平方，加上与预测无关的条件方差，构成全部条件风险。
 
 对光滑紧支撑测试函数 $\varphi$，若微分与期望可以交换，
 \begin{equation}
- \frac{d}{d\tau}\mathbb E[\varphi(Z_\tau)]
- =\mathbb E[\nabla\varphi(Z_\tau)^\top U]
- =\mathbb E[\nabla\varphi(Z_\tau)^\top u^*(Z_\tau,\tau,c)].
+ \frac{d}{d\tau}\mathbb E[\varphi(\vect{Z}_\tau)]
+ =\mathbb E[\nabla\varphi(\vect{Z}_\tau)^\top \vect{U}]
+ =\mathbb E[\nabla\varphi(\vect{Z}_\tau)^\top \vect{u}^*(\vect{Z}_\tau,\tau,c)].
 \end{equation}
-因此该边缘速度满足对应密度路径的弱形式连续性方程。若速度场具备适当正则性与可积性，求解 $\frac{dZ_\tau}{d\tau}=u^*(Z_\tau,\tau,c)$ 可以运输这些边缘分布。端点配对可以独立，也可来自其他耦合；它会改变条件速度与学习难度。
+因此该边缘速度满足对应密度路径的弱形式连续性方程。若速度场具备适当正则性与可积性，求解 $\frac{d\vect{Z}_\tau}{d\tau}=\vect{u}^*(\vect{Z}_\tau,\tau,c)$ 可以运输这些边缘分布。端点配对可以独立，也可来自其他耦合；它会改变条件速度与学习难度。
 
 \subsection{直线路径的生成边界}
-\phantomsection\label{q:ch40:example:01}\optional
+\optional
 
 \begin{remark}[样本路径与生成轨迹]
-训练样本路径是直线，但同一中间位置可能对应多对端点，其条件平均速度会随位置与时间变化。边缘速度场的积分轨迹通常不同于训练样本的直线路径，生成仍需按相应求解器积分。
+训练样本路径是直线，但同一中间位置可能对应多对端点，其条件平均速度会随位置与时间变化。边缘速度场的积分轨迹通常偏离训练样本的直线，生成仍需按相应求解器积分。
 \end{remark}
 
 Euler 更新为 $z_{k+1}=z_k+h_k u_\theta(z_k,\tau_k,c)$。若场足够光滑，单步局部截断误差为二阶、固定区间的全局误差通常为一阶；网络误差另计。
 \begin{example}[Euler 离散化的误差]
-以一维 $u(z)=z,z(0)=1$ 为例，精确终点为 $e$，单步 Euler 得2，两步得2.25，都不精确。求解步数决定该离散化的精度。
+以一维 $u(z)=z,z(0)=1$ 为例，精确终点为 $\conste$，单步 Euler 得2，两步得2.25，都不精确。求解步数决定该离散化的精度。
 \end{example}
 
-扩散中的 $v$ 参数化常表示信号与噪声的特定线性组合，流匹配的 $u$ 则是路径导数。接口中的 velocity 应对应各自定义的预测量。预测对象、时间方向和求解器必须共同确定。
+扩散中的 $v$ 参数化常表示信号与噪声的特定线性组合，流匹配的 $u$ 则是路径导数。接口中的 velocity 应对应各自定义的预测量。预测对象、时间方向和求解器必须共同确定。现代条件视觉生成的主流技术路线与架构对比见表\ref{tab:rev-vision-generation-taxonomy}。
 
-\section{编辑、视频及联合媒体}
+\begin{table}[htbp]
+\centering
+\small
+\setlength{\tabcolsep}{3pt}
+\caption{现代条件视觉生成主流范式与系统架构对比。}
+\label{tab:rev-vision-generation-taxonomy}
+\begin{tabularx}{\linewidth}{@{}p{1.8cm}p{2.0cm}p{2.6cm}p{1.8cm}X@{}}
+\toprule
+生成范式 & 空间与主干 & 概率目标与过程 & 代表系统 & 核心优势与工程瓶颈 \\
+\midrule
+像素扩散 & 级联 U-Net & 离散扰动链噪声预测 & DDPM, Imagen & 细节保真无自编码损耗；显存计算开销巨大 \\
+潜空间扩散 & 交叉注意 U-Net & 连续潜空间噪声/$v$ 预测 & SD 1.5/XL & 空间压缩 $f=8$ 降低负载；上限受 VAE 解码约束 \\
+扩散 DiT & 纯 Transformer & 连续时间 adaLN 调制 & PixArt, Sora & 扩展规律显著；密集潜补丁下注意力计算量大 \\
+流匹配 (FM) & MMDiT / DiT & 最优传输条件速度场回归 & SD3, FLUX.1 & 采样路径平直仅需 10--20 步；需大容量主干拟合 \\
+离散自回归 & 因果解码器 & 离散码本自回归最大似然 & DALL-E, Parti & 与 LLM 范式统一；逐词元采样串行延迟偏高 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{编辑、视频和联合媒体}
 \optional
-图像编辑将参考图、遮罩或结构控制作为额外条件。若要求未编辑区域严格保持，应区分像素级约束与模型倾向；潜空间遮罩经过编码解码可能影响边缘及邻近区域。多次去噪中的已知区域替换还需匹配当前噪声尺度，不能直接把干净像素与高噪状态混合后宣称符合原模型。
+图像编辑将参考图、遮罩或结构控制作为额外条件。若要求未编辑区域严格保持，应区分像素级约束与模型倾向；潜空间遮罩经过编码解码可能影响边缘及邻近区域。多次去噪中的已知区域替换还需匹配当前噪声尺度；把干净像素与高噪状态混合，得到的已不是原模型所定义的状态。
 
 视频潜变量可写为 $[B,C_z,F',H',W']$，时空补丁数为
 \begin{equation}
  N=\frac{F'}{p_t}\frac{H'}{p_h}\frac{W'}{p_w},
 \end{equation}
-这里假设尺寸可整除，真实实现的补齐与边界另计。设每帧有 $S$ 个空间位置，共 $F'$ 帧，全时空注意力配对数为 $F'^2S^2$；空间与时间分解注意力约为 $F'S^2+SF'^2$，但其连接结构不同，不能称为完全相同算子的无损替换。
+这里假设尺寸可整除，真实实现的补齐与边界另计。设每帧有 $S$ 个空间位置，共 $F'$ 帧，全时空注意力配对数为 $F'^2S^2$；空间与时间分解注意力约为 $F'S^2+SF'^2$，但其连接结构与全时空注意力不同，两者并非同一算子的两种写法。
 
 \optional
 \begin{example}[视频潜序列的注意力规模]
-\label{q:ch40:example:03}
-例如16个潜帧，每帧 $32\times32$ 位置，补丁为 $1\times2\times2$，则 $S=256,N=4096$，完整打分矩阵每头有约1678万项。帧数翻倍使全注意力项增至4倍，而空间分支仅翻倍。帧率、时长与潜时间压缩共同决定 $F'$；某些因果时间编码器对首帧采用特殊处理，不能简单假设所有模型都有 $F'=\frac{F}{f_t}$。
+例如16个潜帧，每帧 $32\times32$ 位置，补丁为 $1\times2\times2$，则 $S=256,N=4096$，完整打分矩阵每头有约1678万项。帧数翻倍使全注意力项增至4倍，而空间分支仅翻倍。帧率、时长与潜时间压缩共同决定 $F'$；某些因果时间编码器对首帧采用特殊处理，$F'=\frac{F}{f_t}$ 只适用于不含这类处理的实现。
 \end{example}
 
 音视频联合生成需要共同时间基准、采样率与对齐条件。声画同步通过时间对应关系检验，物理预测通过状态变化检验。世界模型还需覆盖动作条件与状态空间，并在闭环任务中评价控制表现。
 
-\section{训练、采样及制品一致性}
+\section{训练、采样与制品一致性}
 
 \begin{algorithm}[条件潜空间生成的数据流]
 
@@ -210,26 +216,17 @@ Euler 更新为 $z_{k+1}=z_k+h_k u_\theta(z_k,\tau_k,c)$。若场足够光滑，
 
 \begin{figure}[htbp]
 \centering
-\begin{tikzpicture}[font=\small,node distance=6mm,
- box/.style={draw,align=center,text width=25mm,minimum height=12mm}]
-\node[box] (text) {文本及参考媒体\\条件编码};
-\node[box,right=of text] (net) {U-Net或DiT\\条件预测};
-\node[box,right=of net] (step) {引导与求解器\\状态更新};
-\node[box,below=of step] (decode) {逆缩放与解码\\图像或视频};
-\draw[->] (text)--(net);\draw[->] (net)--(step);
-\draw[->] (step.north) -- ++(0,.5) -| (net.north);
-\draw[->] (step)--node[right]{到达终点}(decode);
-\end{tikzpicture}
+\includegraphics[width=.92\linewidth]{\subfix{../../figures/theory/conditional-generation-loop.pdf}}
 \caption{预测网络与求解器反复协作，解码仅在规定终点执行。}\label{fig:vision-generation}
 \end{figure}
 
 图\ref{fig:vision-generation}显示预测与状态更新的分工；只有组件协议相容时，循环才具有所声明的概率含义。质量评估需同时检查条件遵循、分布多样性及任务细节：图文相似度评价表示空间中的匹配，分布距离评价总体样本特征；计数、否定、局部文字与条件遵循通过专门任务评价。
 
-服务预算应同时限制分辨率、帧数、采样步数、候选数和并发；请求数本身不足以描述工作量。组件清单包含主干、文本编码器、分词器、自编码器、缩放、求解器与控制模块。代码可获取、权重可获取和特定部署用途允许是不同事实，应依据所用精确制品记录，不能继承同家族其他版本的结论。
+服务预算应同时限制分辨率、帧数、采样步数、候选数和并发；请求数本身不足以描述工作量。组件清单包含主干、文本编码器、分词器、自编码器、缩放、求解器与控制模块。代码可获取、权重可获取和特定部署用途允许是三件不同的事，应依据所用精确制品记录，同家族其他版本的结论不作数。
 
 
 % BEGIN GENERATED INTERVIEWS
 
 % END GENERATED INTERVIEWS
 \chapterreferences
-\end{document}
+\lfsendchapterdocument

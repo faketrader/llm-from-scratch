@@ -1,13 +1,19 @@
 \NeedsTeXFormat{LaTeX2e}
 \ProvidesPackage{mymath}[2026/09/16 My mathematical notation]
 \RequirePackage{amsmath,amssymb,mathtools}
-% ! 所有行内公式改为展示档次，符号会变大可能导致不协调
-\everymath{\displaystyle}
+\RequirePackage[math-style=TeX,bold-style=TeX]{unicode-math}
+\NewDocumentCommand{\mat}{m}{\symbfit{#1}}
+\NewDocumentCommand{\vect}{m}{\symbfit{#1}}
+
+% 数学常数使用正体；变量及索引沿用原有数学字形。
+\NewDocumentCommand{\constpi}{}{\symup{\pi}}
+\NewDocumentCommand{\conste}{}{\symup{e}}
+\NewDocumentCommand{\consti}{}{\symup{i}}
 
 % 统一增加分数线两端的留白。
 \let\lfs@standardfrac\frac
 \renewcommand*{\frac}[2]{%
-  \lfs@standardfrac{\mkern2mu#1\mkern2mu}{\mkern2mu#2\mkern2mu}%
+  \lfs@standardfrac{\mkern3mu#1\mkern3mu}{\mkern3mu#2\mkern3mu}%
 }
 
 % 使用 \dif x 表示直立微分符号。
@@ -17,10 +23,13 @@
 \DeclareMathOperator*{\argmin}{arg\,min}
 % 比较符号统一使用斜线下划线形式 ⩽ ⩾。正文写作 \le/\leq 与 \ge/\geq，
 % 由这里的语义映射决定字形，写作不需改用 \leqslant。
-\let\leq\leqslant
-\let\le\leqslant
-\let\geq\geqslant
-\let\ge\geqslant
+% unicode-math 在 \begin{document} 时建立符号表，因此映射也在其后执行。
+\AtBeginDocument{%
+  \let\leq\leqslant
+  \let\le\leqslant
+  \let\geq\geqslant
+  \let\ge\geqslant
+}
 % 字面 Unicode 字符 ≤ ≥ 的映射
 \RequirePackage{newunicodechar}
 \newunicodechar{≤}{\ensuremath{\leqslant}}

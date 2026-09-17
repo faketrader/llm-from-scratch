@@ -4,7 +4,7 @@
 \begin{exercise} 展开平方梯度的指数平均，并在各步二阶原点矩相同的假设下推导偏差修正。
 
 \begin{solution}
-从 $v_t=\beta_2v_{t-1}+(1-\beta_2)g_t^2,v_0=0$ 展开得 $v_t=(1-\beta_2)\sum_{i=1}^t\beta_2^{t-i}g_i^2$。若各步 $\mathbb E g_i^2=\mu_2$，则 $\mathbb Ev_t=(1-\beta_2^t)\mu_2$，除以 $1-\beta_2^t$ 后无此初始化偏差。无需时间独立性，但矩随时间变化时不等于当前真实矩。
+从 $\vect{v}_t=\beta_2\vect{v}_{t-1}+(1-\beta_2)\vect{g}_t^2,\vect{v}_0=0$ 展开得 $\vect{v}_t=(1-\beta_2)\sum_{i=1}^t\beta_2^{t-i}g_i^2$。若各步 $\mathbb E g_i^2=\mu_2$，则 $\mathbb E\vect{v}_t=(1-\beta_2^t)\mu_2$，除以 $1-\beta_2^t$ 后无此初始化偏差。无需时间独立性，但矩随时间变化时不等于当前真实矩。
 \end{solution}
 \end{exercise}
 
@@ -14,7 +14,7 @@
 约定矩和优化器内部步号一起重置，正 $\epsilon$ 保证零梯度坐标有定义，再取 $\epsilon\to0^+$ 的纸面极限。新步修正矩为 $(0,3)$ 与 $(0,9)$，方向 $(0,1)$，故
 \[
 \begin{aligned}
-\theta_2'&=0.999(0.899,-1.898)-0.1(0,1)\\
+\vect{\theta}_2'&=0.999(0.899,-1.898)-0.1(0,1)\\
          &=(0.898101,-1.996102).
 \end{aligned}
 \]
@@ -25,7 +25,7 @@
 \begin{exercise} 证明范数裁剪是欧氏球投影，并给出逐坐标裁剪改变方向的例子。
 
 \begin{solution}
-最小化 $\frac12\|u-g\|^2$ 且 $\|u\|\le c$。可行时 $u=g$；否则拉格朗日方程 $u-g+\lambda u=0$ 给 $u=\frac{g}{1+\lambda}$，由边界得 $u=\frac{cg}{\|g\|}$。逐坐标截断如 $(3,4)\mapsto(2,2)$ 改变比例3:4；全局裁剪保持方向。
+最小化 $\frac12\|\vect{u}-\vect{g}\|^2$ 且 $\|\vect{u}\|\le c$。可行时 $\vect{u}=\vect{g}$；否则拉格朗日方程 $\vect{u}-\vect{g}+\lambda \vect{u}=0$ 给 $\vect{u}=\frac{\vect{g}}{1+\lambda}$，由边界得 $\vect{u}=\frac{c\vect{g}}{\|\vect{g}\|}$。逐坐标截断如 $(3,4)\mapsto(2,2)$ 改变比例3:4；全局裁剪保持方向。
 \end{solution}
 \end{exercise}
 
@@ -46,7 +46,7 @@
 \begin{exercise} 为不使用预热的情况定义无除零、端点明确的余弦日程，并写出首末更新的学习率。
 
 \begin{solution}
-若总更新数 $T\ge2$，对 $t=1,\ldots,T$ 取 $\eta_t=\eta_{\min}+\frac12(\eta_{\max}-\eta_{\min})[1+\cos(\frac{\pi(t-1)}{T-1})]$，首步峰值、末步最低值。$T=1$ 单独约定唯一一步为峰值或任务指定值，避免除零；只在成功参数更新后推进计数。
+若总更新数 $T\ge2$，对 $t=1,\ldots,T$ 取 $\eta_t=\eta_{\min}+\frac12(\eta_{\max}-\eta_{\min})[1+\cos(\frac{\constpi{}(t-1)}{T-1})]$，首步峰值、末步最低值。$T=1$ 单独约定唯一一步为峰值或任务指定值，避免除零；只在成功参数更新后推进计数。
 \end{solution}
 \end{exercise}
 

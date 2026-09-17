@@ -1,113 +1,117 @@
+\ifdefined\LFSWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
+\fi
 \bookchapter{注意力机制}{ch:attention}
 
-文本经分词与嵌入后形成连续张量 $X\in\Real^{B\times T\times d}$，每个位置对应一个词元向量。词元的含义还取决于上下文，例如前面的修饰语、远处的主语或另一段输入中的证据。\term{注意力机制}{Attention}{}以输入相关的权重汇总可见位置的信息，形成上下文表示。顺序信息的表达见\bookxref{ch:position-representation}。
+文本经分词与嵌入后形成连续张量 $\mat{X}\in\Real^{B\times T\times d}$，每个位置对应一个词元向量。词元的含义还取决于上下文，例如前面的修饰语、远处的主语或另一段输入中的证据。\term{注意力机制}{Attention}{}以输入相关的权重汇总可见位置的信息，形成上下文表示。顺序信息的表达见\bookxref{ch:position-representation}。
 
 注意力计算包含三个步骤：计算匹配分数，在可见位置上归一化，再对值向量加权求和。原始 Transformer 采用缩放点积形式\cite{vaswani2017attention}，多头、因果掩码和键值共享都可在这一形式上定义。
 
 \section{查询键值机制}
 
 \subsection{位置相关信息汇总}
-设候选内容向量为 $v_1,\ldots,v_S\in\Real^{d_v}$。对第 $i$ 个查询位置，先确定非负权重 $a_{ij}$，且 $\sum_j a_{ij}=1$，再得到
+设候选内容向量为 $\vect{v}_1,\ldots,\vect{v}_S\in\Real^{d_v}$。对第 $i$ 个查询位置，先确定非负权重 $a_{ij}$，且 $\sum_j a_{ij}=1$，再得到
 \begin{equation}
- o_i=\sum_{j=1}^{S}a_{ij}v_j.\label{eq:attn-weighted}
+ \vect{o}_i=\sum_{j=1}^{S}a_{ij}\vect{v}_j.\label{eq:attn-weighted}
 \end{equation}
-若所有权重相等，这只是平均汇总，不能根据当前查询区别候选内容；若只保留一个权重，则成为离散选择，通常无法直接通过所选索引传播梯度。注意力以连续权重实现内容相关的读取，同时保留端到端求导的可能。
+若所有权重相等，汇总结果与查询无关；若只保留一个权重，则退化为离散选择，梯度无法沿所选索引回传。注意力用连续权重实现内容相关的读取，读取过程全程可导。
 
-\term{查询}{Query}{Q}表达用于匹配的当前状态，\term{键}{Key}{K}表达候选位置的匹配特征，\term{值}{Value}{V}表达该位置被读取的内容。键和值拥有相同的位置索引，但承担不同的计算职责。某个位置能否匹配与匹配后提供什么信息，是可以分别学习的两个问题。\footnote{查询、键和值的名称借用了检索的表达方式；普通注意力不要求执行精确键匹配，也不保证某个键唯一对应一个位置。它是连续相似度与加权汇总，而不是字典查找。}
+\term{查询}{Query}{Q}表达用于匹配的当前状态，\term{键}{Key}{K}表达候选位置的匹配特征，\term{值}{Value}{V}表达该位置被读取的内容。键和值拥有相同的位置索引，但承担不同的计算职责。某个位置能否匹配与匹配后提供什么信息，是可以分别学习的两个问题。\footnote{查询、键和值的名称借用了检索的表达方式。普通注意力按连续相似度加权汇总，既不要求精确键匹配，也不保证某个键唯一对应一个位置，与字典查找的精确索引语义不同。}
 
-\subsection{输入来源及投影形状}
-先省略批量轴，采用每个位置占一行的约定。令查询侧输入为 $X_q\in\Real^{T\times d_q}$，键值侧输入为 $X_m\in\Real^{S\times d_m}$。两侧特征宽度可以不同。单头投影定义为
+\subsection{输入来源与投影形状}
+先省略批量轴，采用每个位置占一行的约定。令查询侧输入为 $\mat{X}_q\in\Real^{T\times d_q}$，键值侧输入为 $\mat{X}_m\in\Real^{S\times d_m}$。两侧特征宽度可以不同。单头投影定义为
 \begin{equation}
- Q=X_qW_Q,\qquad K=X_mW_K,\qquad V=X_mW_V,\label{eq:attn-projections}
+ \mat{Q}=\mat{X}_q\mat{W}_Q,\qquad \mat{K}=\mat{X}_m\mat{W}_K,\qquad \mat{V}=\mat{X}_m\mat{W}_V,\label{eq:attn-projections}
 \end{equation}
-其中 $W_Q\in\Real^{d_q\times d_k}$，$W_K\in\Real^{d_m\times d_k}$，$W_V\in\Real^{d_m\times d_v}$。查询和键必须投影到相同的 $d_k$ 维空间才能计算点积；值的宽度 $d_v$ 可以与 $d_k$ 不同。以下投影省略偏置；含偏置时，它沿位置轴广播，其梯度沿该轴求和。
+其中 $\mat{W}_Q\in\Real^{d_q\times d_k}$，$\mat{W}_K\in\Real^{d_m\times d_k}$，$\mat{W}_V\in\Real^{d_m\times d_v}$。查询和键必须投影到相同的 $d_k$ 维空间才能计算点积；值的宽度 $d_v$ 可以与 $d_k$ 不同。以下投影省略偏置；含偏置时，它沿位置轴广播，其梯度沿该轴求和。
 
 未使用掩码时，\term{缩放点积注意力}{Scaled Dot-Product Attention}{}定义为
 \begin{equation}
- \operatorname{Attention}(Q,K,V)
- =\softmax\!\left(\frac{QK^{\mathsf T}}{\sqrt{d_k}}\right)V.
+ \operatorname{Attention}(\mat{Q},\mat{K},\mat{V})
+ =\softmax\!\left(\frac{\mat{Q}\mat{K}^{\mathrm{T}}}{\sqrt{d_k}}\right)\mat{V}.
  \label{eq:attn-operator}
 \end{equation}
-Softmax 对每个查询沿键位置逐行计算。式\eqref{eq:attn-operator}依次包含匹配分数、尺度控制、权重归一化和内容汇总；下面将分别说明每一步的含义、前提与形状。加入可见性掩码后，只需在归一化前向分数矩阵加入相应的加性掩码。
+Softmax 对每个查询沿键位置逐行计算。式\eqref{eq:attn-operator}依次包含匹配分数、尺度控制、权重归一化和内容汇总，这四步的含义、前提与形状在后续小节逐一建立。加入可见性掩码后，只需在归一化前向分数矩阵加入相应的加性掩码。
 
-\begin{center}
-\begin{tabularx}{\linewidth}{lXl}
+\begin{table}[htbp]
+\centering
+\caption{注意力机制核心数学符号与张量形状}\label{tab:rev-attn-notations}
+\begin{tabularx}{\linewidth}{p{24mm}Xp{26mm}}
 \toprule
 符号 & 含义 & 形状或范围\\\midrule
 $B,T,S$ & 批量、查询长度、键值长度 & 正整数\\
 $d_q,d_m$ & 查询与记忆侧特征宽度 & 正整数\\
 $d_k,d_v$ & 单头匹配维数与内容维数 & 正整数\\
-$Q,K,V$ & 投影后的查询、键与值 & $T\times d_k,S\times d_k,S\times d_v$\\
-$U,M,A$ & 分数、加性掩码、注意力权重 & $T\times S$\\
-$O$ & 单头输出 & $T\times d_v$\\
+$\mat{Q},\mat{K},\mat{V}$ & 投影后的查询、键与值 & $T\times d_k,S\times d_k,S\times d_v$\\
+$\mat{U},\mat{M},\mat{A}$ & 分数、加性掩码、注意力权重 & $T\times S$\\
+$\mat{O}$ & 单头输出 & $T\times d_v$\\
 $H_q,H_{kv}$ & 查询头数、键值头数 & 正整数\\
 \bottomrule
 \end{tabularx}
-\end{center}
-符号 $V$ 在本章始终表示值矩阵；需要词表大小时另记为 $V_{\mathrm{vocab}}$。恢复批量轴后，各样本独立执行上述运算，输入通常写为 $[B,T,d_q]$ 和 $[B,S,d_m]$。
+\end{table}
+符号 $\mat{V}$ 在本章始终表示值矩阵；需要词表大小时另记为 $\mat{V}_{\mathrm{vocab}}$。恢复批量轴后，各样本独立执行上述运算，输入通常写为 $[B,T,d_q]$ 和 $[B,S,d_m]$。
 
-\term{自注意力}{Self-Attention}{}令两侧输入来自同一序列，即 $X_q=X_m=X$，因而 $T=S$。不同的投影矩阵通常产生不同的查询、键和值。\term{交叉注意力}{Cross-Attention}{}则允许输入来源不同，例如查询取自目标序列，键和值取自源序列的编码结果。算法名称描述信息来源，单头的计算公式保持相同。
+\term{自注意力}{Self-Attention}{}令两侧输入来自同一序列，即 $\mat{X}_q=\mat{X}_m=\mat{X}$，因而 $T=S$。不同的投影矩阵通常产生不同的查询、键和值。\term{交叉注意力}{Cross-Attention}{}则允许输入来源不同，例如查询取自目标序列，键和值取自源序列的编码结果。算法名称描述信息来源，单头的计算公式保持相同。
 
-\section{缩放点积及归一化}
+\section{缩放点积和归一化}
 
-\subsection{点积同时包含方向及长度}
-对查询行向量 $q_i$ 和键行向量 $k_j$，点积分数为 $q_i k_j^\mathsf T$。非零向量满足
+\subsection{点积同时包含方向与长度}
+对查询行向量 $\vect{q}_i$ 和键行向量 $\vect{k}_j$，点积分数为 $\vect{q}_i \vect{k}_j^{\mathrm{T}}$。非零向量满足
 \begin{equation}
- q_i k_j^\mathsf T=\|q_i\|_2\|k_j\|_2\cos\angle(q_i,k_j).
+ \vect{q}_i \vect{k}_j^{\mathrm{T}}=\|\vect{q}_i\|_2\|\vect{k}_j\|_2\cos\angle(\vect{q}_i,\vect{k}_j).
 \end{equation}
-因此点积不只是角度相似度，向量范数也影响分数。将两者分别归一化后计算余弦相似度，是另一种分数定义，不能不加说明地替换。学习到的投影可以调整匹配方向和尺度，并不要求向量各维预先具备可命名的语义。
+点积同时包含方向和长度，向量范数也进入分数。把两者分别归一化再计算余弦相似度，属于另一种分数定义，替换时要重新说明尺度假设。学习到的投影可以调整匹配的方向和尺度，向量各维无需预先具备可命名的语义。
 
 \subsection{点积分数缩放}
 \begin{assumption}[平方根缩放的矩条件]
 查询和键的分量均值为零、二阶矩有限；两向量独立，各自坐标方差分别为 $\sigma_q^2,\sigma_k^2$，不同坐标的乘积互不相关。这些条件用于分析初始化时的分数尺度。
 \end{assumption}
-在这些条件下，对 $s=\sum_{r=1}^{d_k}q_rk_r$，有
+在这些条件下，对 $s=\sum_{r=1}^{d_k}\vect{q}_r\vect{k}_r$，有
 \begin{align}
- \mathbb E[s]&=\sum_r\mathbb E[q_r]\mathbb E[k_r]=0,\\
+ \mathbb E[s]&=\sum_r\mathbb E[\vect{q}_r]\mathbb E[\vect{k}_r]=0,\\
  \operatorname{Var}(s)
- &=\sum_r\operatorname{Var}(q_rk_r)
- =\sum_r\mathbb E[q_r^2]\mathbb E[k_r^2]
+ &=\sum_r\operatorname{Var}(\vect{q}_r\vect{k}_r)
+ =\sum_r\mathbb E[\vect{q}_r^2]\mathbb E[\vect{k}_r^2]
  =d_k\sigma_q^2\sigma_k^2.
 \end{align}
 故缩放分数 $u=\frac{s}{\sqrt{d_k}}$ 满足
 \begin{equation}
  \operatorname{Var}(u)=\sigma_q^2\sigma_k^2.\label{eq:attn-scale}
 \end{equation}
-特别地，两种分量方差均为一时，未经缩放的分数标准差为 $\sqrt{d_k}$，缩放后为一。该设计抑制维数增长带来的尺度变化，并未把每个实际分数都限制在 $[-1,1]$ 内。
+特别地，两种分量方差均为一时，未经缩放的分数标准差为 $\sqrt{d_k}$，缩放后为一。该设计抑制维数增长带来的尺度变化，实际分数的取值范围落在 $[-1,1]$ 之外。
 
-同一输入经过不同投影，可能产生相关的查询与键。即使 $q,k$ 是独立零均值向量，若坐标之间相关、协方差为 $C_q,C_k$，更一般的结果也是
+同一输入经过不同投影，可能产生相关的查询与键。即使 $\vect{q},\vect{k}$ 是独立零均值向量，若坐标之间相关、协方差为 $\mat{C}_q,\mat{C}_k$，更一般的结果也是
 \begin{equation}
- \operatorname{Var}(qk^\mathsf T)
- =\mathbb E_q[qC_kq^\mathsf T]
- =\operatorname{tr}(C_qC_k),
+ \operatorname{Var}(\vect{q}\vect{k}^{\mathrm{T}})
+ =\mathbb E_q[\vect{q}\mat{C}_k\vect{q}^{\mathrm{T}}]
+ =\operatorname{tr}(\mat{C}_q\mat{C}_k),
 \end{equation}
-只有在适当的各向同性条件下才退化为 $d_k\sigma_q^2\sigma_k^2$。位置旋转、归一化和训练中的参数变化都可能影响实际分数分布，应将平方根缩放理解为有明确假设的尺度设计。
+只有在适当的各向同性条件下才退化为 $d_k\sigma_q^2\sigma_k^2$。位置旋转、归一化和训练中的参数变化都可能改变实际分数分布，平方根缩放因此是一项以本节矩条件为前提的尺度设计。
 
 \subsection{Softmax 的行归一化}
-\term{归一化指数函数}{Softmax}{}把实数分数转成非负、总和为一的权重。对分数矩阵 $U=\frac{QK^\mathsf T}{\sqrt{d_k}}$，每个查询独立归一化其键轴。没有屏蔽时，
+\term{归一化指数函数}{Softmax}{}把实数分数转成非负、总和为一的权重。对分数矩阵 $\mat{U}=\frac{\mat{Q}\mat{K}^{\mathrm{T}}}{\sqrt{d_k}}$，每个查询独立归一化其键轴。没有屏蔽时，
 \begin{equation}
- A_{ij}=\frac{\exp U_{ij}}{\sum_{r=1}^{S}\exp U_{ir}},\qquad O=AV.\label{eq:attn-basic}
+ A_{ij}=\frac{\exp U_{ij}}{\sum_{r=1}^{S}\exp U_{ir}},\qquad \mat{O}=\mat{A}\mat{V}.\label{eq:attn-basic}
 \end{equation}
-行和为一表示一个查询的读取权重在所有键之间分配；列和一般不为一，同一个键可以同时被很多查询读取。因此注意力矩阵通常不是双随机矩阵，也不要求对称。即使 $Q=K$ 使点积分数对称，各行归一化分母不同也可能破坏权重矩阵的对称性。
+行和为一表示一个查询的读取权重在所有键之间分配；列和一般不为一，同一个键可以同时被很多查询读取。注意力矩阵因此通常既不双随机，也未必对称。即使 $\mat{Q}=\mat{K}$ 使点积分数对称，各行归一化分母不同也会破坏权重矩阵的对称性。
 
-Softmax 对同一行的常数平移不变：对任意 $c_i$，以 $U_{ij}-c_i$ 代替 $U_{ij}$，分子和分母同时乘以 $e^{-c_i}$，结果不变。取 $c_i=\max_j U_{ij}$，指数项不超过一，可避免大正分数的指数溢出。这个稳定形式保留了相同的数学函数。
+Softmax 对同一行的常数平移不变：对任意 $c_i$，以 $U_{ij}-c_i$ 代替 $U_{ij}$，分子和分母同时乘以 $\conste{}^{-c_i}$，结果不变。取 $c_i=\max_j U_{ij}$，指数项不超过一，可避免大正分数的指数溢出。这个稳定形式保留了相同的数学函数。
 
-如果某个分数比其他分数大很多，权重便接近独热。Softmax 的\term{雅可比矩阵}{Jacobian Matrix}{}汇总其全部一阶偏导数，其对角项为 $a_j(1-a_j)$、非对角项为 $-a_ja_r$，在这种极度集中的情形下，多数分数梯度会变小。缩放有助于避免初始化附近无意造成的过早集中，但不能保证所有头都维持分散的权重，也不能把所有小梯度问题归因于 Softmax。
+如果某个分数比其他分数大很多，权重便接近独热。Softmax 的\term{雅可比矩阵}{Jacobian Matrix}{}汇总其全部一阶偏导数，其对角项为 $a_j(1-a_j)$、非对角项为 $-a_ja_r$，在这种极度集中的情形下，多数分数梯度会变小。缩放有助于避免初始化附近无意造成的过早集中；训练后的权重分散程度还取决于投影、数据和目标，小梯度也可能来自网络的其他路径。
 
-\subsection{凸组合的范围及例外}
+\subsection{凸组合的范围和例外}
 \begin{proposition}[注意力输出的凸组合性质]
-在允许键集合非空、分数有限且未使用\term{随机失活}{Dropout}{}的单头权重运算中，$o_i$ 位于 $\{v_j\}$ 的凸包内。\end{proposition}
+在允许键集合非空、分数有限且未使用\term{随机失活}{Dropout}{}的单头权重运算中，$\vect{o}_i$ 位于 $\{\vect{v}_j\}$ 的凸包内。\end{proposition}
 \begin{proof}
 Softmax 权重非负且和为一，因此值向量的加权和属于其凸包。任意线性投影 $P$ 满足
 \begin{equation}
- P(o_i)=\sum_j a_{ij}P(v_j),
+ P(\vect{o}_i)=\sum_j a_{ij}P(\vect{v}_j),
 \end{equation}
 \end{proof}
-所以二维投影可以保留加权组合关系，适合展示汇总机制；二维投影不能保留的距离和方向，则不能用于证明原空间中的语义关系。
+所以二维投影可以保留加权组合关系，适合展示汇总机制；原空间中的距离和方向需要在原始高维向量上分析。
 
-若在权重上施加保留概率为 $q$ 的 Dropout，实际使用 $\widetilde A_{ij}=\frac{m_{ij}A_{ij}}{q}$，其行和在一次随机采样中一般不再等于一，甚至可能为零。期望满足 $\mathbb E_m\widetilde A=A$，但每次输出不再必然处于同一个凸包。行和为一的性质适用于 Dropout 之前的归一化权重。
+若在权重上施加保留概率为 $\vect{q}$ 的 Dropout，实际使用 $\widetilde A_{ij}=\frac{m_{ij}A_{ij}}{\vect{q}}$，其行和在一次随机采样中一般不再等于一，甚至可能为零。期望满足 $\mathbb E_m\widetilde{\mat{A}}=\mat{A}$，但每次输出不再必然处于同一个凸包。行和为一的性质适用于 Dropout 之前的归一化权重。
 
 \section{掩码规定可见性}
 
@@ -120,47 +124,37 @@ Softmax 权重非负且和为一，因此值向量的加权和属于其凸包。
  \end{cases}
  \quad c_i=\max_{r\in\mathcal J_i}U_{ir}.\label{eq:attn-mask-set}
 \end{equation}
-用加性掩码表示时，$M_{ij}=0$ 对应允许，$M_{ij}=-\infty$ 对应禁止，可以简写为 $A=\softmax(U+M)$。数学上 $e^{-\infty}=0$，但具体浮点程序仍须避免全屏蔽行或非有限输入导致的不定运算。
+用加性掩码表示时，$M_{ij}=0$ 对应允许，$M_{ij}=-\infty$ 对应禁止，可以简写为 $\mat{A}=\softmax(\mat{U}+\mat{M})$。数学上 $\conste{}^{-\infty}=0$，但具体浮点程序仍须避免全屏蔽行或非有限输入导致的不定运算。
 
 布尔掩码中的真值没有跨所有接口统一的含义：有的接口使用真表示允许，有的使用真表示禁止。实现时可在接口边界将外部约定转换为统一的允许集合或加性掩码。\footnote{硬掩码改变允许集合；位置偏置等有限加性项只是改变分数。二者都可写成加法，但有限负偏置通常不等价于严格禁止读取。}
 
-\subsection{填充掩码、因果掩码及文档边界}
-填充掩码屏蔽没有真实内容的键值位置。批量中的有效长度不同时，键掩码可由 $[B,S]$ 扩展到所有头和查询行。屏蔽填充键并不保证填充查询的输出为零：填充查询仍可能读取有效键。若这些查询应被忽略，需在损失或后续输出处理上明确实现；把嵌入的某一行固定为零不能替代注意力掩码。
+\subsection{填充掩码、因果掩码与文档边界}
+填充掩码屏蔽没有真实内容的键值位置。批量中的有效长度不同时，键掩码可由 $[B,S]$ 扩展到所有头和查询行。填充查询仍可能读取有效键，因此其零输出需要在损失或后续输出处理上显式实现；嵌入行置零只影响查询初值，注意力掩码负责定义可见集合。
 
-\term{因果注意力}{Causal Attention}{}是在自注意力中采用因果可见性规则的注意力算子；\term{因果掩码}{Causal Mask}{}则是编码该规则的掩码。对于等长的自回归训练，因果允许集合为 $\mathcal J_i=\{j:j\leq i\}$。因此权重矩阵呈下三角结构，严格上三角被因果掩码屏蔽；因果注意力就是在这个允许集合上归一化并汇总值向量。这里“因果”指遵守生成顺序的信息限制，不是统计学中的干预因果推断。目标序列还必须正确右移：若位置 $i$ 的输入已经含有它要预测的答案，那么允许读取自身也会泄漏目标，单靠三角掩码无法修复。
+\term{因果注意力}{Causal Attention}{}是在自注意力中采用因果可见性规则的注意力算子；\term{因果掩码}{Causal Mask}{}则是编码该规则的掩码。对于等长的自回归训练，因果允许集合为 $\mathcal J_i=\{j:j\leq i\}$。因此权重矩阵呈下三角结构，严格上三角被因果掩码屏蔽；因果注意力就是在这个允许集合上归一化并汇总值向量。这里的“因果”专指遵守生成顺序的信息限制。目标序列还必须正确右移：若位置 $i$ 的输入已经含有它要预测的答案，那么允许读取自身也会泄漏目标，单靠三角掩码无法修复。
 
 多种硬约束共同存在时，应取允许集合的交集。例如位置既需要满足 $j\leq i$，又必须是有效词元、来自允许的文档。等价地，各种禁止条件取并集。将多篇文档拼接成一个序列时，分隔符本身不禁止跨文档读取；是否隔离仍取决于掩码。
 
-\begin{center}
-\begin{tikzpicture}[x=.48cm,y=.48cm]
- \foreach \panel/\name in {0/全可见,6/因果可见,12/分段因果}{
-  \node[font=\small] at (\panel+2,1) {\name};
-  \foreach \i in {0,1,2,3}{\foreach \j in {0,1,2,3}{
-   \pgfmathtruncatemacro{\allowed}{\panel==0 || (\j<=\i && (\panel==6 || (\i<2 && \j<2) || (\i>=2 && \j>=2)))}
-   \ifnum\allowed=1 \fill[black!20] (\panel+\j,-\i) rectangle ++(1,-1);\fi
-   \draw (\panel+\j,-\i) rectangle ++(1,-1);
-  }}
-  \node[font=\small] at (\panel+2,-4.65) {键位置 $j$};
- }
- \node[rotate=90,font=\small] at (-.8,-2) {查询位置 $i$};
-\end{tikzpicture}
-\captionof{figure}{四个位置的可见性模式，灰格表示允许读取。右图把前两个与后两个位置视为不同文档，每篇内部保持因果性。}
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=.92\linewidth]{\subfix{../../figures/theory/attention-visibility-patterns.pdf}}
+\caption{四个位置的可见性模式，灰格表示允许读取。右图把前两个与后两个位置视为不同文档，每篇内部保持因果性。}
 \label{fig:attn-masks}
-\end{center}
+\end{figure}
 
 \subsection{全屏蔽行的退化}
 若 $\mathcal J_i=\varnothing$，式\eqref{eq:attn-mask-set}的分母为零。将所有分数设为 $-\infty$ 后再减行最大值，还会遇到 $-\infty-(-\infty)$。把所有分数换成同一个有限负数也不能解决语义问题：减去最大值后所有位置相等，Softmax 返回均匀分布，反而读取全部禁止内容。
 
 应首先区分无效查询与合法查询。对于必须产生有效表示的合法查询，全屏蔽行通常表示数据或掩码构造错误，应使其显式失败。对于仅为批量补齐而存在的无效查询，可以约定该行输出恒为零，并在归一化之前分流处理；对应路径不对分数和值产生梯度。这个零输出是额外定义的算子扩展，不是空集合上的概率分布。
 
-左填充的因果批量尤其容易产生早期无效查询行：它们不能访问未来真实词元，而自身及过去位置又全是填充。设置不同的 BOS 与 PAD 身份可以避免把真实起始位置误判为填充，但仍必须检查所有无效行。不能先产生 NaN，再指望与零相乘恢复为有限结果。
+左填充的因果批量尤其容易产生早期无效查询行：它们访问不到未来真实词元，自身及过去位置又全是填充。设置不同的 BOS 与 PAD 身份可以避免把真实起始位置误判为填充，所有无效行仍要逐一检查。NaN 一旦产生，与零相乘也无法恢复为有限结果。
 
 
 \begin{algorithm}[具有严格可见性的单头注意力]
 \label{alg:attn-masked}
-\textbf{输入：}$Q\in\Real^{T\times d_k}$、$K\in\Real^{S\times d_k}$、$V\in\Real^{S\times d_v}$，每行允许集合 $\mathcal J_i$，查询有效标记 $b_i$。\textbf{输出：}$O\in\Real^{T\times d_v}$；需要诊断或显式反向时同时保留权重 $A$。本算法关闭权重 Dropout。
-\begin{algorithmic}[1]
-\State 检查形状、键值位置数和输入有限性；$O\gets0$，需要权重时 $A\gets0$
+\textbf{输入：}$\mat{Q}\in\Real^{T\times d_k}$、$\mat{K}\in\Real^{S\times d_k}$、$\mat{V}\in\Real^{S\times d_v}$，每行允许集合 $\mathcal J_i$，查询有效标记 $b_i$。\textbf{输出：}$\mat{O}\in\Real^{T\times d_v}$；需要诊断或显式反向时同时保留权重 $\mat{A}$。本算法关闭权重 Dropout。
+\begin{lfsalgorithmic}[1]
+\State 检查形状、键值位置数和输入有限性；$\mat{O}\gets0$，需要权重时 $\mat{A}\gets0$
 \For{查询 $i=1,\ldots,T$}
   \If{$b_i=0$}
     \State 保持该行输出为零，进入下一查询
@@ -169,58 +163,57 @@ Softmax 权重非负且和为一，因此值向量的加权和属于其凸包。
       \State 报告非法可见性并终止
     \EndIf
     \For{$j\in\mathcal J_i$}
-      \State $u_j\gets\frac{q_i k_j^\mathsf T}{\sqrt{d_k}}$；非有限结果触发数值异常并终止
+      \State $u_j\gets\frac{\vect{q}_i \vect{k}_j^{\mathrm{T}}}{\sqrt{d_k}}$；非有限结果触发数值异常并终止
     \EndFor
     \State $c\gets\max_{j\in\mathcal J_i}u_j$，$e_j\gets\exp(u_j-c)$，$z\gets\sum_{j\in\mathcal J_i}e_j$
     \For{$j\in\mathcal J_i$}
-      \State $a_j\gets\frac{e_j}{z}$，$o_i\gets o_i+a_jv_j$；需要权重时 $A_{ij}\gets a_j$
+      \State $a_j\gets\frac{e_j}{z}$，$\vect{o}_i\gets \vect{o}_i+a_j\vect{v}_j$；需要权重时 $A_{ij}\gets a_j$
     \EndFor
   \EndIf
 \EndFor
-\State \Return $O$ 及按需保留的 $A$
-\end{algorithmic}
+\State \Return $\mat{O}$ 及按需保留的 $\mat{A}$
+\end{lfsalgorithmic}
 有效行权重非负且和为一；无效行保持零，禁止位置不参与归一化和汇总。
 显式逐行形式用于陈述完整定义，批量矩阵或融合实现可以更改执行次序，但必须保持允许集合、无效行约定与相同输入下的计算语义。
 \end{algorithm}
 
-\subsection{矩形因果注意力及前缀偏移}
-增量读取时，查询可能只包含最新的一个或几个位置，而键值包含全部已缓存前缀，此时 $T\ne S$。因果关系应由绝对位置给出
+\subsection{矩形因果注意力与前缀偏移}
+增量读取时，查询可能只包含最新的一个或几个位置，而键值包含全部已缓存前缀，此时 $T\ne S$。因果关系由绝对位置给出
 \begin{equation}
  j_{\mathrm{abs}}\leq i_{\mathrm{abs}},
 \end{equation}
-而不是盲目在 $T\times S$ 矩阵上从左上角画下三角。例如键绝对位置为 $0,1,2,3$，唯一查询的位置为 $3$，它应能读取四个键；若把该查询当作行号零，只允许键零，就改变了函数。增量计算因此需要保留查询与键的绝对位置，缓存结构见推理相关章节。
+按矩阵行列位置从左上角画下三角会改变函数。例如键绝对位置为 $0,1,2,3$，唯一查询的位置为 $3$，它应能读取四个键；若把该查询当作行号零，只允许键零，可见集合就被改错了。增量计算因此要保留查询与键的绝对位置，缓存结构见推理相关章节。
 
 \section{因果单头注意力}
 
-\label{q:ch6:example:01}
 \subsection{查询键值投影}
 取一个包含三个位置的自注意力问题，$d_q=d_m=d_k=d_v=2$，无偏置、无 Dropout。给定
 \begin{equation}
- X=\begin{bmatrix}1&0\\0&1\\1&1\end{bmatrix},\quad
- W_Q=W_K=\begin{bmatrix}1&0\\0&1\end{bmatrix},\quad
- W_V=\begin{bmatrix}1&0\\0&2\end{bmatrix}.
+ \mat{X}=\begin{bmatrix}1&0\\0&1\\1&1\end{bmatrix},\quad
+ \mat{W}_Q=\mat{W}_K=\begin{bmatrix}1&0\\0&1\end{bmatrix},\quad
+ \mat{W}_V=\begin{bmatrix}1&0\\0&2\end{bmatrix}.
 \end{equation}
-故 $Q=K=X$，而
+故 $\mat{Q}=\mat{K}=\mat{X}$，而
 \begin{equation}
- V=\begin{bmatrix}1&0\\0&2\\1&2\end{bmatrix},\qquad
- U=\frac1{\sqrt2}\begin{bmatrix}1&0&1\\0&1&1\\1&1&2\end{bmatrix}.
+ \mat{V}=\begin{bmatrix}1&0\\0&2\\1&2\end{bmatrix},\qquad
+ \mat{U}=\frac1{\sqrt2}\begin{bmatrix}1&0&1\\0&1&1\\1&1&2\end{bmatrix}.
 \end{equation}
 加入因果掩码，记 $c=\frac{1}{\sqrt2}\approx0.707107$，得到
 \begin{equation}
- U+M=\begin{bmatrix}
+ \mat{U}+\mat{M}=\begin{bmatrix}
  c&-\infty&-\infty\\
  0&c&-\infty\\
  c&c&2c
  \end{bmatrix}.
 \end{equation}
 
-\subsection{逐行归一化及汇总}
-第一行只有一个允许位置，所以权重为 $(1,0,0)$。第二行除以 $1+e^c$，第三行先减去 $c$ 再归一化，可得到精确形式
+\subsection{逐行归一化与汇总}
+第一行只有一个允许位置，所以权重为 $(1,0,0)$。第二行除以 $1+\conste{}^c$，第三行先减去 $c$ 再归一化，可得到精确形式
 \begin{equation}
- A=\begin{bmatrix}
+ \mat{A}=\begin{bmatrix}
  1&0&0\\
- \frac1{1+e^c}&\frac{e^c}{1+e^c}&0\\
- \frac1{2+e^c}&\frac1{2+e^c}&\frac{e^c}{2+e^c}
+ \frac1{1+\conste{}^c}&\frac{\conste{}^c}{1+\conste{}^c}&0\\
+ \frac1{2+\conste{}^c}&\frac1{2+\conste{}^c}&\frac{\conste{}^c}{2+\conste{}^c}
  \end{bmatrix}
  \approx\begin{bmatrix}
  1&0&0\\
@@ -228,234 +221,213 @@ Softmax 权重非负且和为一，因此值向量的加权和属于其凸包。
  0.248255&0.248255&0.503490
  \end{bmatrix}.
 \end{equation}
-每行沿键轴归一化。将它乘以同一组 $V$，得到
+每行沿键轴归一化。将它乘以同一组 $\mat{V}$，得到
 \begin{equation}
- O=AV\approx\begin{bmatrix}
+ \mat{O}=\mat{A}\mat{V}\approx\begin{bmatrix}
  1&0\\
  0.330238&1.339523\\
  0.751745&1.503490
  \end{bmatrix}.\label{eq:attn-example-output}
 \end{equation}
-第二行输出为 $0.330238(1,0)+0.669762(0,2)$；第三行则位于三个值向量构成的三角形内。若误把 $X$ 而不是 $V$ 用于汇总，第二坐标会减半；这说明只把权重矩阵算对，仍不足以完成注意力计算。
+第二行输出为 $0.330238(1,0)+0.669762(0,2)$；第三行则位于三个值向量构成的三角形内。若误把 $\mat{X}$ 当作 $\mat{V}$ 用于汇总，第二坐标会减半。权重矩阵算对只是注意力计算的一部分。
 
-\begin{center}
-\begin{tikzpicture}[x=2.7cm,y=1.4cm,>=Stealth]
- \draw[->] (-.12,0)--(1.4,0) node[right] {第一维};
- \draw[->] (0,-.12)--(0,2.5) node[above] {第二维};
- \draw[thick] (1,0)--(0,2)--(1,2)--cycle;
- \fill (1,0) circle(1.5pt) node[below] {$v_1=(1,0)$};
- \fill (0,2) circle(1.5pt) node[left] {$v_2=(0,2)$};
- \fill (1,2) circle(1.5pt) node[right] {$v_3=(1,2)$};
- \fill (.751744922,1.503489843) circle(2pt) node[below right] {$o_3$};
- \draw[dashed] (1,0)--(.751744922,1.503489843);
- \draw[dashed] (0,2)--(.751744922,1.503489843);
- \draw[dashed] (1,2)--(.751744922,1.503489843);
-\end{tikzpicture}
-\captionof{figure}{单头例题第三个查询的加权汇总。点的位置由给定矩阵计算，表示真实二维值空间中的凸组合，不是训练测量。}
-\end{center}
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=.72\linewidth]{\subfix{../../figures/theory/attention-convex-combination.pdf}}
+\caption{单头例题第三个查询的加权汇总。点的位置由给定矩阵计算，表示真实二维值空间中的凸组合，不是训练测量。}\label{fig:attn-convex-combination}
+\end{figure}
 
-\subsection{改变未来位置及检查信息边界}
-改变第三行输入，只会改变第三个键值及第三个查询。在因果掩码下，前两个查询对第三个键的权重严格为零，所以 $o_1,o_2$ 保持不变；$o_3$ 则一般改变。若去掉掩码，第一行原本对第三个键分配正权重，未来输入的变化便可以影响早期输出。
+\subsection{改变未来位置和检查信息边界}
+改变第三行输入，只会改变第三个键值及第三个查询。在因果掩码下，前两个查询对第三个键的权重严格为零，所以 $\vect{o}_1,\vect{o}_2$ 保持不变；$\vect{o}_3$ 则一般改变。若去掉掩码，第一行原本对第三个键分配正权重，未来输入的变化便可以影响早期输出。
 
-这一结论不仅针对给定数值成立，还可推广到多层网络：假设上一层位置 $j$ 仅依赖输入前缀 $x_{\leq j}$，本层位置 $i$ 只读取 $j\leq i$ 的状态，而其他运算均逐位置进行，那么本层位置 $i$ 也只依赖 $x_{\leq i}$。由层数归纳即可证明整个堆叠的前缀隔离。位置编码必须使用相同位置定义，验证时还须固定随机运算，否则随机性本身会造成输出差异。
+这一结论可以推广到多层网络：假设上一层位置 $j$ 仅依赖输入前缀 $x_{\leq j}$，本层位置 $i$ 只读取 $j\leq i$ 的状态，而其他运算均逐位置进行，那么本层位置 $i$ 也只依赖 $x_{\leq i}$。由层数归纳即可证明整个堆叠的前缀隔离。位置编码必须使用相同位置定义，验证时还须固定随机运算，否则随机性本身会造成输出差异。
 
-\section{多头注意力及输出投影}
+\section{多头注意力与输出投影}
 
 \subsection{独立的匹配空间}
 \term{多头注意力}{Multi-Head Attention}{MHA}对同一组输入使用 $H_q$ 组投影。标准 MHA 中每个查询头有自己的键值头，即 $H_{kv}=H_q=H$：
 \begin{align}
- Q^{(h)}&=X_qW_Q^{(h)},\quad K^{(h)}=X_mW_K^{(h)},\quad V^{(h)}=X_mW_V^{(h)},\\
- O^{(h)}&=\softmax\!\left(\frac{Q^{(h)}K^{(h)\mathsf T}}{\sqrt{d_k}}+M^{(h)}\right)V^{(h)},\\
- C&=\operatorname{Concat}_{\mathrm{feature}}(O^{(1)},\ldots,O^{(H)}),\qquad Y=CW_O.
+ \mat{Q}^{(h)}&=\mat{X}_q\mat{W}_Q^{(h)},\quad \mat{K}^{(h)}=\mat{X}_m\mat{W}_K^{(h)},\quad \mat{V}^{(h)}=\mat{X}_m\mat{W}_V^{(h)},\\
+ \mat{O}^{(h)}&=\softmax\!\left(\frac{\mat{Q}^{(h)}\mat{K}^{(h)\mathsf T}}{\sqrt{d_k}}+\mat{M}^{(h)}\right)\mat{V}^{(h)},\\
+ \mat{C}&=\operatorname{Concat}_{\mathrm{feature}}(\mat{O}^{(1)},\ldots,\mat{O}^{(H)}),\qquad Y=\mat{C}\mat{W}_O.
 \end{align}
-$C\in\Real^{T\times Hd_v}$，$W_O\in\Real^{Hd_v\times d_{\mathrm{out}}}$，所以最终输出为 $T\times d_{\mathrm{out}}$。用于残差连接时通常取 $d_{\mathrm{out}}=d_q=d_m=d$。常见配置为 $d_k=d_v=\frac{d}{H}$；这是一个方便的结构选择，注意力定义本身不强制每个宽度都相同。
+$\mat{C}\in\Real^{T\times Hd_v}$，$\mat{W}_O\in\Real^{Hd_v\times d_{\mathrm{out}}}$，所以最终输出为 $T\times d_{\mathrm{out}}$。用于残差连接时通常取 $d_{\mathrm{out}}=d_q=d_m=d$。常见配置为 $d_k=d_v=\frac{d}{H}$；这是一个方便的结构选择，注意力定义本身不强制每个宽度都相同。
 
-把 $W_O$ 按行分成 $H$ 个块 $W_O^{(h)}\in\Real^{d_v\times d_{\mathrm{out}}}$，可将拼接投影改写为
+把 $\mat{W}_O$ 按行分成 $H$ 个块 $\mat{W}_O^{(h)}\in\Real^{d_v\times d_{\mathrm{out}}}$，可将拼接投影改写为
 \begin{equation}
- Y=\sum_{h=1}^{H}O^{(h)}W_O^{(h)}.\label{eq:attn-output-blocks}
+ Y=\sum_{h=1}^{H}\mat{O}^{(h)}\mat{W}_O^{(h)}.\label{eq:attn-output-blocks}
 \end{equation}
-每个头先按自己的权重读取内容，再将读出结果投影到共同输出空间并求和。这里一般不能先平均注意力矩阵，再乘一个共同值矩阵，因为各头的 $V^{(h)}$ 与输出块可能不同。展示“平均注意力图”会隐藏头间差异，不等于网络实际执行了这个平均算子。
+每个头先按自己的权重读取内容，再将读出结果投影到共同输出空间并求和。各头的 $\mat{V}^{(h)}$ 与输出块可能不同，先平均注意力矩阵再乘一个共同值矩阵会改变结果。展示“平均注意力图”会隐藏头间差异，该图只是一种可视化约简，网络并不执行这个平均算子。
 
-\begin{center}
-\begin{tikzpicture}[>=Stealth,node distance=9mm,
- block/.style={draw,rounded corners,align=center,font=\small,text width=28mm,minimum height=10mm}]
- \node[block] (in) {查询输入 $X_q$\\记忆输入 $X_m$};
- \node[block,right=of in,yshift=15mm] (h1) {头1投影与注意力\\$O^{(1)}$};
- \node[block,right=of in,yshift=-15mm] (h2) {头2投影与注意力\\$O^{(2)}$};
- \node[block,right=14mm of h1,yshift=-15mm] (cat) {特征轴拼接\\$C$};
- \node[block,right=of cat] (out) {输出投影 $W_O$\\$Y$};
- \draw[->] (in.east)--(h1.west);\draw[->] (in.east)--(h2.west);
- \draw[->] (h1.east)--(cat.west);\draw[->] (h2.east)--(cat.west);
- \draw[->] (cat)--(out);
-\end{tikzpicture}
-\captionof{figure}{两头结构示意。每个头分别归一化查询到键的读取权重，拼接发生在输出特征轴，不发生在序列轴。}
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=.92\linewidth]{\subfix{../../figures/theory/attention-multihead-flow.pdf}}
+\caption{两头结构示意。每个头分别归一化查询到键的读取权重，拼接发生在输出特征轴，不发生在序列轴。}
 \label{fig:attn-multihead}
-\end{center}
+\end{figure}
 
 \subsection{多头特征空间}
 恢复批量后，投影输出 $[B,T,Hd_k]$ 可以重排为 $[B,T,H,d_k]$，再交换中间两轴得到 $[B,H,T,d_k]$。键和值同理。头维度与序列维度承担不同含义：分头划分投影特征，通常每个头仍能读取全部允许位置；它不是把前半句交给一个头、后半句交给另一个头。
 
-不同头可以学习不同的读取模式，但结构没有要求它们自动承担固定的语法、指代或推理分工。随机初始化也会产生不同权重图，这只说明参数不同；如果要讨论某个头的具体功能，还需要训练后的干预、消融和跨样本证据。
+不同头可以学习不同的读取模式，结构本身并未指派固定的语法、指代或推理分工。随机初始化同样产生不同的权重图，这只说明参数不同。讨论某个头的具体功能，依据来自训练后的干预、消融和跨样本证据。
 
-\subsection{投影打包及参数共享}
-自注意力中，三个投影读取同一个 $X$，可以将参数沿输出特征轴拼接为
+\subsection{投影打包和参数共享}
+自注意力中，三个投影读取同一个 $\mat{X}$，可以将参数沿输出特征轴拼接为
 \begin{equation}
- W_{QKV}=[W_Q\;W_K\;W_V],\qquad
- XW_{QKV}=[XW_Q\;XW_K\;XW_V].
+ \mat{W}_{QKV}=[\mat{W}_Q\;\mat{W}_K\;\mat{W}_V],\qquad
+ \mat{X}\mat{W}_{QKV}=[\mat{X}\mat{W}_Q\;\mat{X}\mat{W}_K\;\mat{X}\mat{W}_V].
 \end{equation}
-在 $d_k=d_v=\frac{d}{H}$ 的标准 MHA 中，整体投影矩阵宽度为 $3d$。这只是矩阵布局的合并，三个参数区间仍相互独立，不会减少参数量，也不产生 $Q=K=V$。若框架线性层把权重存为“输出宽度乘输入宽度”，对应打包轴与正文约定相反，迁移时应先核对矩阵乘法方向。
+在 $d_k=d_v=\frac{d}{H}$ 的标准 MHA 中，整体投影矩阵宽度为 $3d$。这只是矩阵布局的合并，三个参数区间仍相互独立，不会减少参数量，也不产生 $\mat{Q}=\mat{K}=\mat{V}$。若框架线性层把权重存为“输出宽度乘输入宽度”，对应打包轴与正文约定相反，迁移时应先核对矩阵乘法方向。
 
-对交叉注意力，$Q$ 与 $K,V$ 来自不同输入，不能使用一次 $XW_{QKV}$ 代替全部投影。键和值可以在记忆侧打包，查询则在查询侧单独计算。参数存储布局与输入来源分别定义。
+对交叉注意力，$\mat{Q}$ 与 $\mat{K},\mat{V}$ 来自不同输入，一次 $\mat{X}\mat{W}_{QKV}$ 覆盖不了全部投影。键和值可以在记忆侧打包，查询则在查询侧单独计算。参数存储布局与输入来源分别定义。
 
-\section{交叉注意力及结构关系}
+\section{交叉注意力与结构关系}
 
-\subsection{查询长度及记忆长度}
-在源到目标的条件生成中，源表示 $X_m\in\Real^{S\times d_m}$ 已由编码器得到，目标侧状态 $X_q\in\Real^{T\times d_q}$ 发出查询。交叉权重为 $T\times S$，输出长度保持为 $T$。因此它把源信息注入每个目标位置，不会把输出序列长度改成 $S$。
+\subsection{查询长度和记忆长度}
+在源到目标的条件生成中，源表示 $\mat{X}_m\in\Real^{S\times d_m}$ 已由编码器得到，目标侧状态 $\mat{X}_q\in\Real^{T\times d_q}$ 发出查询。交叉权重为 $T\times S$，输出长度保持为 $T$。因此它把源信息注入每个目标位置，不会把输出序列长度改成 $S$。
 
-目标查询需要遵守自身生成顺序，但它通常可以读取全部已经可用的源序列。不能因为目标侧自注意力使用因果掩码，就在交叉权重矩阵上照搬目标三角形。若源信息也以流式方式到达，则应根据真实可用时点构造额外掩码；这是任务的信息约束，而非交叉注意力默认包含的性质。
+目标查询需要遵守自身生成顺序，但它通常可以读取全部已经可用的源序列。目标侧自注意力的因果掩码并不适用于交叉权重矩阵。若源信息也以流式方式到达，应根据真实可用时点构造额外掩码；该约束来自任务的信息可用性，交叉注意力本身不包含。
 
-\begin{center}
-\begin{tikzpicture}[>=Stealth,node distance=8mm,
- block/.style={draw,rounded corners,align=center,font=\small,text width=32mm,minimum height=10mm}]
- \node[block] (self) {同一序列 $X$};
- \node[block,below=of self] (sqkv) {$Q=XW_Q$\\$K=XW_K,\ V=XW_V$};
- \node[block,below=of sqkv] (so) {自注意力\\$T\times T$ 权重};
- \draw[->] (self)--(sqkv);\draw[->] (sqkv)--(so);
- \node[block,right=20mm of self] (target) {目标状态 $X_q$};
- \node[block,right=8mm of target] (memory) {源记忆 $X_m$};
- \node[block,below=of target] (cq) {$Q=X_qW_Q$};
- \node[block,below=of memory] (ckv) {$K=X_mW_K$\\$V=X_mW_V$};
- \node[block,below=of cq,xshift=20mm] (co) {交叉注意力\\$T\times S$ 权重};
- \draw[->] (target)--(cq);\draw[->] (memory)--(ckv);
- \draw[->] (cq)--(co);\draw[->] (ckv)--(co);
-\end{tikzpicture}
-\captionof{figure}{自注意力与交叉注意力的信息来源。右侧的源记忆共享位置索引，查询位置和源位置不要求一一对应。}
-\end{center}
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=.96\linewidth]{\subfix{../../figures/theory/attention-self-cross-flow.pdf}}
+\caption{自注意力与交叉注意力的信息来源。右侧的源记忆共享位置索引，查询位置和源位置不要求一一对应。}\label{fig:attn-self-cross-flow}
+\end{figure}
 
 \subsection{单头交叉注意力}
-设源侧只有两个值 $v_1=(2,0)$、$v_2=(0,4)$，目标侧有三个查询，其缩放分数分别为 $(0,0)$、$(\log3,0)$、$(0,\log3)$。逐行 Softmax 后的权重是
+设源侧只有两个值 $\vect{v}_1=(2,0)$、$\vect{v}_2=(0,4)$，目标侧有三个查询，其缩放分数分别为 $(0,0)$、$(\log3,0)$、$(0,\log3)$。逐行 Softmax 后的权重是
 \begin{equation}
- A=\begin{bmatrix}\frac{1}{2}&\frac{1}{2}\\\frac{3}{4}&\frac{1}{4}\\\frac{1}{4}&\frac{3}{4}\end{bmatrix},\qquad
- O=\begin{bmatrix}1&2\\\frac{3}{2}&1\\\frac{1}{2}&3\end{bmatrix}.
+ \mat{A}=\begin{bmatrix}\frac{1}{2}&\frac{1}{2}\\\frac{3}{4}&\frac{1}{4}\\\frac{1}{4}&\frac{3}{4}\end{bmatrix},\qquad
+ \mat{O}=\begin{bmatrix}1&2\\\frac{3}{2}&1\\\frac{1}{2}&3\end{bmatrix}.
 \end{equation}
-所有目标位置读取同一组源值，却依据不同查询得到不同汇总。输出仍有三行；第二行没有因行号超过源长度而失去定义。若第二个源位置是填充，屏蔽该列后，每一行都只能读取 $v_1$。
+所有目标位置读取同一组源值，却依据不同查询得到不同汇总。输出仍有三行；第二行没有因行号超过源长度而失去定义。若第二个源位置是填充，屏蔽该列后，每一行都只能读取 $\vect{v}_1$。
 
-编码器结构通常采用双向自注意力，解码器自回归结构采用因果自注意力，编码器--解码器结构则额外采用交叉注意力。可见性与模块组成是两个维度，不能简单等同。完整 Transformer 还需逐位置前馈变换、残差和归一化，并通过输出头与训练目标定义预测问题；这些组成在\bookxref{ch:rev-transformer}中建立。
+编码器结构通常采用双向自注意力，解码器自回归结构采用因果自注意力，编码器--解码器结构则额外采用交叉注意力。可见性与模块组成属于两个独立的维度。完整 Transformer 还需逐位置前馈变换、残差和归一化，并通过输出头与训练目标定义预测问题；这些组成在\bookxref{ch:rev-transformer}中建立。
 
 \section{注意力的反向传播}
 
 \subsection{Softmax 雅可比的推导}
-固定一行分数 $u$，记 $Z=\sum_r e^{u_r}$、$a_j=\frac{e^{u_j}}{Z}$。根据商法则，
+固定一行分数 $\vect{u}$，记 $Z=\sum_r \conste{}^{u_r}$、$a_j=\frac{\conste{}^{u_j}}{Z}$。根据商法则，
 \begin{align}
  \frac{\partial a_j}{\partial u_r}
- &=\frac{\mathbf1[j=r]e^{u_j}Z-e^{u_j}e^{u_r}}{Z^2}\notag\\
+ &=\frac{\mathbf1[j=r]\conste{}^{u_j}Z-\conste{}^{u_j}\conste{}^{u_r}}{Z^2}\notag\\
  &=a_j\bigl(\mathbf1[j=r]-a_r\bigr).
 \end{align}
-因此雅可比为 $J=\operatorname{diag}(a)-aa^\mathsf T$。若上游梯度为 $r=\frac{\partial\mathcal L}{\partial a}$，则
+因此雅可比为 $\mat{J}=\operatorname{diag}(\vect{a})-\vect{a}\vect{a}^{\mathrm{T}}$。若上游梯度为 $r=\frac{\partial\mathcal L}{\partial \vect{a}}$，则
 \begin{equation}
  \frac{\partial\mathcal L}{\partial u_j}
  =a_j\left(r_j-\sum_s a_sr_s\right).\label{eq:attn-softmax-backward}
 \end{equation}
-式中的 $\sum_s a_sr_s=a^\mathsf Tr$ 是上游梯度按当前权重的平均。分数梯度行和为零，因为对整行加常数不改变 Softmax。这个零和性质是检查反向传播的有用不变量。
+式中的 $\sum_s a_sr_s=a^{\mathrm{T}}r$ 是上游梯度按当前权重的平均。分数梯度行和为零，因为对整行加常数不改变 Softmax。这个零和性质是检查反向传播的有用不变量。
 
 \subsection{匹配分数梯度}
-令 $G=\frac{\partial\mathcal L}{\partial O}\in\Real^{T\times d_v}$。由 $O=AV$，逐元素有 $O_{ir}=\sum_j A_{ij}V_{jr}$，于是
+令 $\mat{G}=\frac{\partial\mathcal L}{\partial \mat{O}}\in\Real^{T\times d_v}$。由 $\mat{O}=\mat{A}\mat{V}$，逐元素有 $O_{ir}=\sum_j A_{ij}V_{jr}$，于是
 \begin{equation}
- \overline V=A^\mathsf TG\in\Real^{S\times d_v},\qquad
- R=GV^\mathsf T\in\Real^{T\times S},
+ \overline{\mat{V}}=\mat{A}^{\mathrm{T}}\mat{G}\in\Real^{S\times d_v},\qquad
+ \mat{R}=\mat{G}\mat{V}^{\mathrm{T}}\in\Real^{T\times S},
 \end{equation}
 其中上横线表示对应变量的损失梯度。逐行应用式\eqref{eq:attn-softmax-backward}，得到
 \begin{equation}
  D_{ij}=\overline U_{ij}
  =A_{ij}\left(R_{ij}-\sum_r A_{ir}R_{ir}\right).\label{eq:attn-score-gradient}
 \end{equation}
-硬掩码允许集合固定时，禁止位置的权重为零，其分数梯度也为零。对全屏蔽且定义为零输出的无效行，应沿定义的常量分支返回零梯度，而不是求一个不存在的空集合 Softmax 雅可比。
+硬掩码允许集合固定时，禁止位置的权重为零，其分数梯度也为零。对全屏蔽且定义为零输出的无效行，应沿定义的常量分支返回零梯度；空集合上的 Softmax 雅可比没有定义。
 
-进一步对 $U=\frac{QK^\mathsf T}{\sqrt{d_k}}$ 求导，得到
+进一步对 $\mat{U}=\frac{\mat{Q}\mat{K}^{\mathrm{T}}}{\sqrt{d_k}}$ 求导，得到
 \begin{equation}
- \overline Q=\frac{DK}{\sqrt{d_k}}\in\Real^{T\times d_k},\qquad
- \overline K=\frac{D^\mathsf TQ}{\sqrt{d_k}}\in\Real^{S\times d_k}.\label{eq:attn-qk-backward}
+ \overline{\mat{Q}}=\frac{\mat{D}\mat{K}}{\sqrt{d_k}}\in\Real^{T\times d_k},\qquad
+ \overline{\mat{K}}=\frac{\mat{D}^{\mathrm{T}}\mat{Q}}{\sqrt{d_k}}\in\Real^{S\times d_k}.\label{eq:attn-qk-backward}
 \end{equation}
-值路径直接改变被读取的内容，查询和键路径则改变读取权重。若一行只有一个可见键，其权重恒为一，该行所有分数梯度均为零，但对应值梯度可以非零。这并非梯度实现错误，而是该行没有可学习的匹配选择。
+值路径直接改变被读取的内容，查询和键路径则改变读取权重。若一行只有一个可见键，其权重恒为一，该行所有分数梯度均为零，对应值梯度可以非零。该行没有可学习的匹配选择，分数梯度为零由结构决定。
 
-\subsection{返回投影矩阵及输入}
+\subsection{返回投影矩阵与输入}
 由式\eqref{eq:attn-projections}，
 \begin{align}
- \overline W_Q&=X_q^\mathsf T\overline Q,&
- \overline W_K&=X_m^\mathsf T\overline K,&
- \overline W_V&=X_m^\mathsf T\overline V,\\
- \overline X_q&=\overline QW_Q^\mathsf T,&
- \overline X_m&=\overline KW_K^\mathsf T+\overline VW_V^\mathsf T.
+ \overline{\mat{W}}_Q&=\mat{X}_q^{\mathrm{T}}\overline{\mat{Q}},&
+ \overline{\mat{W}}_K&=\mat{X}_m^{\mathrm{T}}\overline{\mat{K}},&
+ \overline{\mat{W}}_V&=\mat{X}_m^{\mathrm{T}}\overline{\mat{V}},\\
+ \overline{\mat{X}}_q&=\overline{\mat{Q}}\mat{W}_Q^{\mathrm{T}},&
+ \overline{\mat{X}}_m&=\overline{\mat{K}}\mat{W}_K^{\mathrm{T}}+\overline{\mat{V}}\mat{W}_V^{\mathrm{T}}.
 \end{align}
-自注意力中 $X_q=X_m=X$，三个路径必须相加，不能把它们当作彼此独立的输入：
+自注意力中 $\mat{X}_q=\mat{X}_m=\mat{X}$，三个路径必须相加；把它们当作彼此独立的输入会漏掉这一重叠：
 \begin{equation}
- \overline X=\overline QW_Q^\mathsf T+
- \overline KW_K^\mathsf T+\overline VW_V^\mathsf T.
+ \overline{\mat{X}}=\overline{\mat{Q}}\mat{W}_Q^{\mathrm{T}}+
+ \overline{\mat{K}}\mat{W}_K^{\mathrm{T}}+\overline{\mat{V}}\mat{W}_V^{\mathrm{T}}.
 \end{equation}
-多头输出 $Y=CW_O$ 还需先计算 $\overline W_O=C^\mathsf T\overline Y$ 与 $\overline C=\overline YW_O^\mathsf T$，再按特征轴拆成各头上游梯度。如果启用了权重 Dropout，则在经过 Softmax 反向前，还要乘以同一次前向使用的 $\frac{m}{q}$；不能重新随机采样掩码。
+多头输出 $Y=\mat{C}\mat{W}_O$ 还需先计算 $\overline{\mat{W}}_O=\mat{C}^{\mathrm{T}}\overline Y$ 与 $\overline{\mat{C}}=\overline Y\mat{W}_O^{\mathrm{T}}$，再按特征轴拆成各头上游梯度。如果启用了权重 Dropout，则在经过 Softmax 反向前，还要乘以同一次前向使用的 $\frac{m}{\vect{q}}$；重新随机采样掩码会在反向中引入前向未使用过的值。
 
 \subsection{注意力局部梯度}
 \begin{example}
-\label{q:ch6:example:02}
-仍取因果例题第二个查询，令损失 $\mathcal L=o_{2,1}$，只取该行输出第一坐标。在其两个可见位置上，$a=(\alpha,1-\alpha)$，其中 $\alpha=\frac{1}{1+e^c}\approx0.330238$。上游 $G_2=(1,0)$，故 $R_2=(1,0)$。分数梯度为
+仍取因果例题第二个查询，令损失 $\mathcal L=\vect{o}_{2,1}$，只取该行输出第一坐标。在其两个可见位置上，$a=(\alpha,1-\alpha)$，其中 $\alpha=\frac{1}{1+\conste{}^c}\approx0.330238$。上游 $\mat{G}_2=(1,0)$，故 $\mat{R}_2=(1,0)$。分数梯度为
 \begin{equation}
- D_{2,1}=\alpha(1-\alpha)\approx0.221181,
- \qquad D_{2,2}=-\alpha(1-\alpha),\qquad D_{2,3}=0.
+ \mat{D}_{2,1}=\alpha(1-\alpha)\approx0.221181,
+ \qquad \mat{D}_{2,2}=-\alpha(1-\alpha),\qquad \mat{D}_{2,3}=0.
 \end{equation}
-值梯度分别在第一坐标得到 $\alpha$ 和 $1-\alpha$。把 $K_1=(1,0)$、$K_2=(0,1)$ 代入式\eqref{eq:attn-qk-backward}，得到
+值梯度分别在第一坐标得到 $\alpha$ 和 $1-\alpha$。把 $\mat{K}_1=(1,0)$、$\mat{K}_2=(0,1)$ 代入式\eqref{eq:attn-qk-backward}，得到
 \begin{equation}
- \overline Q_2=\frac{\alpha(1-\alpha)}{\sqrt2}(1,-1)
+ \overline{\mat{Q}}_2=\frac{\alpha(1-\alpha)}{\sqrt2}(1,-1)
  \approx(0.156399,-0.156399).
 \end{equation}
-例如沿 $q_{2,1}$ 增大，会提高第一个键的分数，增加第一内容坐标；其导数应为正。导数符号、行和为零与有限差分数值共同形成比“程序能够反向运行”更强的局部证据。
+例如沿 $\vect{q}_{2,1}$ 增大，会提高第一个键的分数，增加第一内容坐标；其导数应为正。导数符号、行和为零与有限差分数值共同形成比“程序能够反向运行”更强的局部证据。
 \end{example}
 
-\section{计算规模及键值共享}
+\section{计算规模与键值共享}
 
-\subsection{投影成本及位置交互成本}
+\subsection{投影成本和位置交互成本}
 令标准 MHA 的输入输出宽度均为 $d$、$H$ 个头且 $d_k=d_v=\frac{d}{H}$。若一次乘加计作两次浮点运算，不计偏置和低阶逐元素操作，查询投影约需 $2BTd^2$ 次运算，两个键值投影合计约需 $4BSd^2$，输出投影约需 $2BTd^2$。位置交互包括
 \begin{equation}
- QK^\mathsf T:\ 2BHTSd_k,\qquad AV:\ 2BHTSd_v.
+ \mat{Q}\mat{K}^{\mathrm{T}}:\ 2BHTSd_k,\qquad \mat{A}\mat{V}:\ 2BHTSd_v.
 \end{equation}
-因此自注意力 $T=S$ 时，线性投影为 $O(BTd^2)$，交互为 $O(BT^2d)$。说“注意力是二次复杂度”指的是随序列长度增长的位置交互项，并不表示全部成本只有这一项。短序列下投影和其他网络层仍可能占据主要开销。
+因此自注意力 $T=S$ 时，线性投影为 $\mat{O}(BTd^2)$，交互为 $\mat{O}(BT^2d)$。“注意力是二次复杂度”针对的是随序列长度增长的位置交互项，投影和其他网络层在短序列下同样可能占据主要开销。
 
 显式保存注意力矩阵需要 $BHTS$ 个元素。以 $B=2,H=16,T=S=4096$、每元素两字节为例，仅一份权重矩阵即需
 \begin{equation}
  2\cdot16\cdot4096^2\cdot2=\num{1073741824}\ \text{字节}=1\ \text{GiB}.
 \end{equation}
-这不含分数副本、反向中间量、参数或其他层。因果掩码令一半左右的条目数学上为零，但若仍分配方形稠密张量，存储并不会自动减半。避免完整物化权重矩阵的分块与融合方法将在高效推理章节讨论；它们改变内存访问和计算次序，不应被误写为一定改变注意力定义。
+这不含分数副本、反向中间量、参数或其他层。因果掩码令一半左右的条目数学上为零，但若仍分配方形稠密张量，存储并不会自动减半。避免完整物化权重矩阵的分块与融合方法将在高效推理章节讨论；它们改变内存访问和计算次序，注意力定义保持不变。
 
-\subsection{MHA、MQA 及 GQA}
+\subsection{MHA、MQA 和 GQA}
 标准 MHA 为每个查询头配置独立键值投影。\term{多查询注意力}{Multi-Query Attention}{MQA}让所有查询头共享一个键值头\cite{shazeer2019multiquery}。\term{分组查询注意力}{Grouped-Query Attention}{GQA}则使用介于一与查询头数之间的键值头数，每组查询共享一组键值\cite{ainslie2023gqa}。
 
 设 $H_q$ 个查询头、$H_{kv}$ 个键值头，且 $H_q$ 可被 $H_{kv}$ 整除。令每组查询数为 $r=\frac{H_q}{H_{kv}}$，查询头从零编号，映射 $g(h)=\lfloor \frac{h}{r}\rfloor$，则
 \begin{equation}
- O^{(h)}=\softmax\!\left(\frac{Q^{(h)}K^{(g(h))\mathsf T}}{\sqrt{d_k}}+M^{(h)}\right)V^{(g(h))}.
+ \mat{O}^{(h)}=\softmax\!\left(\frac{\mat{Q}^{(h)}\mat{K}^{(g(h))\mathsf T}}{\sqrt{d_k}}+\mat{M}^{(h)}\right)\mat{V}^{(g(h))}.
 \end{equation}
-$H_{kv}=H_q$ 对应 MHA，$H_{kv}=1$ 对应 MQA，中间值对应分组结构。共享键和值并不使组内各头输出相同，因为查询投影仍不同，Softmax 权重一般也不同。\footnote{一些文献把 MHA 与 MQA 视为 GQA 的两个端点；讨论具体结构时，明确给出查询头数与键值头数比仅写缩写更可靠。}
+$H_{kv}=H_q$ 对应 MHA，$H_{kv}=1$ 对应 MQA，中间值对应分组结构。共享键和值并不使组内各头输出相同，因为查询投影仍不同，Softmax 权重一般也不同。\footnote{一些文献把 MHA 与 MQA 视为 GQA 的两个端点；讨论具体结构时，明确给出查询头数与键值头数比仅写缩写更可靠。}三种结构的头映射拓扑如图\ref{fig:attention-head-groups}所示。
 
-\begin{center}
-\begin{tabularx}{\linewidth}{lcccX}
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.96\linewidth]{\subfix{../../figures/theory/attention-head-groups.pdf}}
+\caption{多头注意力（MHA）、分组查询注意力（GQA）与多查询注意力（MQA）的查询头与键值头映射关系对比。GQA 在保持查询多样性的同时显著压缩键值缓存（KV Cache）显存，缓解自回归生成的内存带宽瓶颈。}\label{fig:attention-head-groups}
+\end{figure}
+
+表\ref{tab:rev-attn-variants}对比了不同注意力头变体（包括现代多头潜在注意力 MLA）的机制差异、相对 KV Cache 显存开销与典型应用。
+
+\begin{table}[htbp]
+\centering
+\caption{多头注意力变体（MHA、GQA、MQA 与 MLA）核心机制与开销对比}\label{tab:rev-attn-variants}
+\begin{tabularx}{\linewidth}{p{16mm}p{14mm}p{14mm}p{20mm}X}
 \toprule
-结构 & 查询头 & 键值头 & KV相对规模 & 结构变化\\\midrule
-MHA & $H_q$ & $H_q$ & $1$ & 每头独立匹配和内容投影。\\
-GQA & $H_q$ & $H_{kv}$ & $\frac{H_{kv}}{H_q}$ & 多个查询共用一组键值投影。\\
-MQA & $H_q$ & $1$ & $\frac{1}{H_q}$ & 所有查询共用一组键值投影。\\
+结构类型 & 查询头 $H_q$ & 键值头 $H_{kv}$ & KV 相对显存 & 机制特征与典型代表制品 \\\midrule
+MHA & $H$ & $H$ & $1.0\times$ (基准) & 每头独占独立的键值投影；表达力充分，但长序列自回归解码 KV Cache 显存与访存带宽开销巨大（GPT-3、LLaMA-1） \\
+GQA & $H$ & $H_{kv}$ & $\frac{H_{kv}}{H}$ ($0.125\sim0.25\times$) & 多个查询头划分为一组共享一对键值头；兼顾生成质量与推理吞吐，为现代主流大模型标配（LLaMA-2/3、Qwen2.5/3） \\
+MQA & $H$ & $1$ & $\frac{1}{H}$ ($0.03\sim0.06\times$) & 全部查询头共享单一全局键值头；KV 显存极小，但在复杂推理任务上易出现表达退化（PaLM、Falcon） \\
+MLA & $H$ & 低秩投影 & 压缩潜向量 & 将键与值低秩压缩为低维潜向量，生成时仅缓存潜向量并在计算时吸收恢复，显存大幅降低（DeepSeek-V2/V3） \\
 \bottomrule
 \end{tabularx}
-\end{center}
+\end{table}
 
 \subsection{键值共享的计算边界}
 假设键和值的单头宽度均为 $d_h$，一个样本的 $S$ 个历史位置需要存储 $2SH_{kv}d_h$ 个键值元素。对于 $H_q=32,H_{kv}=8$，相同长度和精度下的键值存储为标准 MHA 的四分之一；MQA 则为三十二分之一。输入宽度为 $d$ 时，键值投影的参数数目由 $2dH_qd_h$ 变为 $2dH_{kv}d_h$。
 
-但是查询头仍有 $H_q$ 个，每头仍需对允许位置计算权重。显式分数的形状仍是 $[B,H_q,T,S]$，核心匹配与汇总乘加数量不会仅因共享键值就按相同比例减少。性能收益取决于重复读取是否真正复用、内核布局和硬件瓶颈，不能把键值存储比例直接当作端到端加速比。
+查询头仍有 $H_q$ 个，每头都要对允许位置计算权重。显式分数的形状仍是 $[B,H_q,T,S]$，共享键值并不按相同比例减少核心匹配与汇总的乘加数量。性能收益取决于重复读取是否真正复用、内核布局和硬件瓶颈，键值存储比例只是其中一个因素。
 
-MHA 到 GQA 的改变也不是把张量重排一下：不同键值投影被约束为共享，会改变可表达的函数族。对既有权重进行合并后通常需要继续适配和重新评估，不能仅凭形状兼容声称输出保持不变。分组数、单头宽度和投影布局均属于模型结构的一部分，须与权重共同保存。
+MHA 到 GQA 不只是一次张量重排：不同键值投影被约束为共享，可表达的函数族随之改变。合并既有权重后还要继续适配和重新评估，形状兼容并不保证输出不变。分组数、单头宽度和投影布局均属于模型结构的一部分，须与权重共同保存。
 
 \section{注意力结构性质}
 
 \subsection{排列等变性}
-没有位置表示、掩码也同步变换时，自注意力具有排列等变性。令 $P$ 为位置置换矩阵，每行每列恰有一个一，并满足 $P^{\mathsf T}P=I$。考虑自注意力输入 $X$ 变为 $PX$ 的情形。
+没有位置表示、掩码也同步变换时，自注意力具有排列等变性。令 $\mat{P}$ 为位置置换矩阵，每行每列恰有一个一，并满足 $\mat{P}^{\mathrm{T}}\mat{P}=\mat{I}$。考虑自注意力输入 $\mat{X}$ 变为 $\mat{P}\mat{X}$ 的情形。
 
 \begin{assumption}[排列等变性证明的前提]
 各位置共享投影参数；不含显式位置输入；Softmax 逐行沿键轴计算；无随机算子。若存在掩码，可见性关系必须与内容同步置换，且每个查询至少有一个允许位置。
@@ -463,37 +435,37 @@ MHA 到 GQA 的改变也不是把张量重排一下：不同键值投影被约�
 
 首先，线性投影与行置换可交换：
 \begin{equation}
- Q'=(PX)W_Q=PQ,\qquad K'=PK,\qquad V'=PV.
+ \mat{Q}'=(\mat{P}\mat{X})\mat{W}_Q=\mat{P}\mat{Q},\qquad \mat{K}'=\mat{P}\mat{K},\qquad \mat{V}'=\mat{P}\mat{V}.
 \end{equation}
-记缩放分数为 $U=\frac{QK^{\mathsf T}}{\sqrt{d_k}}$，则
+记缩放分数为 $\mat{U}=\frac{\mat{Q}\mat{K}^{\mathrm{T}}}{\sqrt{d_k}}$，则
 \begin{equation}
- U'=\frac{(PQ)(PK)^{\mathsf T}}{\sqrt{d_k}}=PUP^{\mathsf T}.
+ \mat{U}'=\frac{(\mat{P}\mat{Q})(\mat{P}\mat{K})^{\mathrm{T}}}{\sqrt{d_k}}=\mat{P}\mat{U}\mat{P}^{\mathrm{T}}.
 \end{equation}
 设置换后的第 $i$ 行对应原第 $\pi(i)$ 行。同步置换键轴只改变一行分数的排列，不改变归一化分母，因此
 \begin{equation}
- [\softmax(U')]_{ij}
+ [\softmax(\mat{U}')]_{ij}
  =\frac{\exp(U_{\pi(i),\pi(j)})}{\sum_r\exp(U_{\pi(i),\pi(r)})}
- =[P\softmax(U)P^{\mathsf T}]_{ij}.
+ =[\mat{P}\softmax(\mat{U})\mat{P}^{\mathrm{T}}]_{ij}.
 \end{equation}
-代入值矩阵并使用 $P^{\mathsf T}P=I$，得到
+代入值矩阵并使用 $\mat{P}^{\mathrm{T}}\mat{P}=\mat{I}$，得到
 \begin{equation}
- O'=P\softmax(U)P^{\mathsf T}PV=PO.
+ \mat{O}'=\mat{P}\softmax(\mat{U})\mat{P}^{\mathrm{T}}\mat{P}\mat{V}=\mat{P}\mat{O}.
 \end{equation}
-输出随输入一起重排，而不是保持不变，所以这里的性质是排列等变性而非排列不变性。
+输出随输入一起重排，所以这里的性质是排列等变性而非排列不变性。
 
-若将带加性掩码 $M$ 的自注意力记为 $F(X;M)$，相应关系是
+若将带加性掩码 $\mat{M}$ 的自注意力记为 $F(\mat{X};\mat{M})$，相应关系是
 \begin{equation}
- F(PX;PMP^{\mathsf T})=PF(X;M).
+ F(P\mat{X};P\mat{M}P^{\mathrm{T}})=PF(\mat{X};\mat{M}).
 \end{equation}
-固定下三角因果掩码通常不满足 $PMP^{\mathsf T}=M$；只置换词元却保留原掩码时，上述证明不再适用。位置表示与可见性共同使顺序具有作用，不能把“没有显式位置编码”直接等同于“网络不利用顺序”。
+固定下三角因果掩码通常不满足 $P\mat{M}P^{\mathrm{T}}=\mat{M}$；只置换词元却保留原掩码时，上述证明不再适用。位置表示与可见性共同使顺序具有作用，未显式加入位置编码的网络仍可能依据顺序信息计算。
 
 \subsection{注意力权重的语义边界}
-同一个注意力权重乘以不同值向量，会产生不同输出；输出还经过投影、多头求和、残差和后续非线性变换。因此较大的某个 $A_{ij}$ 只说明当前头在这一步汇总中给该值的系数较大，不能单独推出它对最终预测的贡献最大。
+同一个注意力权重乘以不同值向量，会产生不同输出；输出还经过投影、多头求和、残差和后续非线性变换。因此较大的某个 $A_{ij}$ 表示当前头在这一步汇总中给该值的系数较大，它对最终预测的贡献还要计入值向量和后续计算路径。
 
-更直接地，若所有 $v_j$ 都相同，那么无论注意力权重怎样改变，只要保持行和为一，输出就不变。这时权重图可以非常集中，也可以非常分散，而网络从此头得到的向量完全相同。若要研究因果影响，应明确干预对象和比较方式，并考虑干预后其他计算路径的变化。
+更直接地，若所有 $v_j$ 都相同，那么无论注意力权重怎样改变，只要保持行和为一，输出就不变。这时权重图可以非常集中，也可以非常分散，而网络从此头得到的向量完全相同。研究因果影响时，干预对象和比较方式要事先明确，并计入干预后其他计算路径的变化。
 
-\subsection{局部性质及整体行为}
-一组有意义的结构验证应同时覆盖投影形状、允许集合、归一化行和、输出矩阵乘法及梯度。因果结构还应核对未来扰动不改变早期输出；共享键值结构需核对各查询头映射到正确的组。对框架实现做数值比较，应统一参数、偏置、缩放、位置表示、掩码语义和 Dropout 状态，随机初始化的两个模块没有逐值相等的理由。
+\subsection{局部性质与整体行为}
+一组完整的结构验证覆盖投影形状、允许集合、归一化行和、输出矩阵乘法及梯度。因果结构还应核对未来扰动不改变早期输出；共享键值结构需核对各查询头映射到正确的组。对框架实现做数值比较，应统一参数、偏置、缩放、位置表示、掩码语义和 Dropout 状态，随机初始化的两个模块没有逐值相等的理由。
 
 浮点运算顺序不同可能使结果出现舍入差异，合理的相对与绝对误差容限应随精度、规模和数值范围确定。算子比较检查数值计算的一致性，任务能力则由训练目标、数据与完整网络共同决定。
 
@@ -504,4 +476,4 @@ MHA 到 GQA 的改变也不是把张量重排一下：不同键值投影被约�
 
 
 \chapterreferences
-\end{document}
+\lfsendchapterdocument

@@ -1,35 +1,35 @@
 \workbookchapter{神经网络基础}
 
 \begin{exercises}
-\begin{exercise} 设 $X\in\Real^{3\times4}$、$W\in\Real^{4\times2}$、$b\in\Real^2$。写出 $Z=XW+\mathbf1_3b^{\mathsf T}$ 的分量式，并给出上游梯度为 $G$ 时三个输入梯度的形状。解释为什么偏置梯度不是 $G$ 本身。
+\begin{exercise} 设 $\mat{X}\in\Real^{3\times4}$、$\mat{W}\in\Real^{4\times2}$、$\vect{b}\in\Real^2$。写出 $\mat{Z}=\mat{X}\mat{W}+\mathbf1_3\vect{b}^{\mathrm{T}}$ 的分量式，并给出上游梯度为 $\mat{G}$ 时三个输入梯度的形状。解释为什么偏置梯度不是 $\mat{G}$ 本身。
 
 \begin{solution}
-$Z_{ij}=\sum_{k=1}^4X_{ik}W_{kj}+b_j$，$G\in\Real^{3\times2}$。由 $\dif Z=(\dif X)W+X\dif W+\mathbf1_3\dif b^{\mathsf T}$ 得 $\overline X=GW^{\mathsf T}\in\Real^{3\times4}$、$\overline W=X^{\mathsf T}G\in\Real^{4\times2}$、$\overline b=G^{\mathsf T}\mathbf1_3\in\Real^2$。同一偏置在三行复用，其梯度必须对三条路径求和。
+$Z_{ij}=\sum_{k=1}^4X_{ik}W_{kj}+b_j$，$\mat{G}\in\Real^{3\times2}$。由 $\dif \mat{Z}=(\dif \mat{X})\mat{W}+\mat{X}\dif \mat{W}+\mathbf1_3\dif \vect{b}^{\mathrm{T}}$ 得 $\overline{\mat{X}}=\mat{G}\mat{W}^{\mathrm{T}}\in\Real^{3\times4}$、$\overline{\mat{W}}=\mat{X}^{\mathrm{T}}\mat{G}\in\Real^{4\times2}$、$\overline{\vect{b}}=\mat{G}^{\mathrm{T}}\mathbf1_3\in\Real^2$。同一偏置在三行复用，其梯度必须对三条路径求和。
 \end{solution}
 \end{exercise}
 
-\begin{exercise}\optional 从矩阵内积定义出发，推导 $\mathcal L=\frac12\|XW-T\|_F^2$ 对 $W$ 和 $X$ 的梯度，其中 $T$ 为固定目标矩阵。若损失改为对样本数取平均，哪些项需要改变？
+\begin{exercise}\optional 从矩阵内积定义出发，推导 $\mathcal L=\frac12\|\mat{X}\mat{W}-\mat{T}\|_F^2$ 对 $\mat{W}$ 和 $\mat{X}$ 的梯度，其中 $\mat{T}$ 为固定目标矩阵。若损失改为对样本数取平均，哪些项需要改变？
 
 \begin{solution}
-记 $R=XW-T$。$\dif\mathcal L=\operatorname{tr}[R^{\mathsf T}((\dif X)W+X\dif W)]$，循环移动迹中因子可得 $\nabla_W\mathcal L=X^{\mathsf T}R$、$\nabla_X\mathcal L=RW^{\mathsf T}$。若对 $B$ 个样本平均，目标乘 $\frac{1}{B}$，两个梯度也乘 $\frac{1}{B}$；不能额外再除输出宽度，除非所定义目标还按元素平均。
+记 $\mat{R}=\mat{X}\mat{W}-\mat{T}$。$\dif\mathcal L=\operatorname{tr}[\mat{R}^{\mathrm{T}}((\dif \mat{X})\mat{W}+\mat{X}\dif \mat{W})]$，循环移动迹中因子可得 $\nabla_{\mat{W}}\mathcal L=\mat{X}^{\mathrm{T}}\mat{R}$、$\nabla_{\mat{X}}\mathcal L=\mat{R}\mat{W}^{\mathrm{T}}$。若对 $B$ 个样本平均，目标乘 $\frac{1}{B}$，两个梯度也乘 $\frac{1}{B}$；不能额外再除输出宽度，除非所定义目标还按元素平均。
 \end{solution}
 \end{exercise}
 
-\begin{exercise} 对 $q=(\frac{1}{2},\frac{1}{3},\frac{1}{6})$ 写出完整 Softmax 雅可比，验证各行之和为零，并用一个给定向量检查显式矩阵乘积与向量形式相等。
+\begin{exercise} 对 $\vect{q}=(\frac{1}{2},\frac{1}{3},\frac{1}{6})$ 写出完整 Softmax 雅可比，验证各行之和为零，并用一个给定向量检查显式矩阵乘积与向量形式相等。
 
 \begin{solution}
 \[
-J=\operatorname{diag}(q)-qq^{\mathsf T}
+\mat{J}=\operatorname{diag}(\vect{q})-\vect{q}\vect{q}^{\mathrm{T}}
 =\begin{bmatrix}\frac{1}{4}&-\frac{1}{6}&-\frac{1}{12}\\-\frac{1}{6}&\frac{2}{9}&-\frac{1}{18}\\-\frac{1}{12}&-\frac{1}{18}&\frac{5}{36}\end{bmatrix}.
 \]
-每行和为零。任选 $v=(1,2,3)^{\mathsf T}$，$q^{\mathsf T}v=\frac{5}{3}$，故 $Jv=q\odot(v-\tfrac53\mathbf1)=(-\frac{1}{3},\frac{1}{9},\frac{2}{9})^{\mathsf T}$，与逐行矩阵乘法相同。题目未指定向量，这是一种可复核选择。
+每行和为零。任选 $\vect{v}=(1,2,3)^{\mathrm{T}}$，$\vect{q}^{\mathrm{T}}\vect{v}=\frac{5}{3}$，故 $\mat{J}\vect{v}=\vect{q}\odot(\vect{v}-\tfrac53\mathbf1)=(-\frac{1}{3},\frac{1}{9},\frac{2}{9})^{\mathrm{T}}$，与逐行矩阵乘法相同。题目未指定向量，这是一种可复核选择。
 \end{solution}
 \end{exercise}
 
-\begin{exercise}\optional 将目标改为权重向量 $y=(1,1,0)$，推导 $-\sum_jy_j\log q_j$ 的分数梯度。说明它为何不再等于 $q-y$，以及它与三个独立二元分类目标有何区别。
+\begin{exercise}\optional 将目标改为权重向量 $\vect{y}=(1,1,0)$，推导 $-\sum_jy_j\log q_j$ 的分数梯度。说明它为何不再等于 $\vect{q}-\vect{y}$，以及它与三个独立二元分类目标有何区别。
 
 \begin{solution}
-设 $s=\sum_jy_j$，展开损失为 $-\sum_jy_jz_j+s\log\sum_ke^{z_k}$，故梯度为 $sq-y$。本题 $s=2$，得到 $2q-(1,1,0)$。Softmax类别共享一个分母；三个独立二元任务使用各自Sigmoid，梯度是 $\sigma(z_j)-y_j$，不存在该互斥归一化约束。
+设 $s=\sum_jy_j$，展开损失为 $-\sum_jy_jz_j+s\log\sum_k\conste{}^{z_k}$，故梯度为 $s\vect{q}-\vect{y}$。本题 $s=2$，得到 $2\vect{q}-(1,1,0)$。Softmax类别共享一个分母；三个独立二元任务使用各自Sigmoid，梯度是 $\sigma(z_j)-y_j$，不存在该互斥归一化约束。
 \end{solution}
 \end{exercise}
 
@@ -52,7 +52,7 @@ $\overline b_{1j1}=\sum_{i=1}^2\sum_{k=1}^4\overline Z_{ijk}$，即对批量轴�
 \begin{solution}
 将 $W_{1,12}$ 增加 $t$，两个相关预激活变为 $1+t$ 与 $3-2t$。例如 $|t|<\frac{1}{2}$ 保证激活分支不变。正确类别分数差分别为 $2-t$、$3-2t$，故
 \[
-f(t)=\tfrac12\log(1+e^{-2+t})+\tfrac12\log(1+e^{-3+2t}),
+f(t)=\tfrac12\log(1+\conste{}^{-2+t})+\tfrac12\log(1+\conste{}^{-3+2t}),
 \quad f'(0)=\frac{a}{2}+b\approx0.1070273.
 \]
 求偏导时其他参数固定；同时更新其他参数将不再是这个单变量函数。

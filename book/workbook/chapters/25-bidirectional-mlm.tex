@@ -39,7 +39,7 @@
 \begin{exercise} 推导式\tbobject{eq:mlm-head}中共享词元表的输出路径梯度，并说明为什么还要加入损坏输入查表路径的梯度。
 
 \begin{solution}
-把监督位置收集为 $G\in\Real^{N_M\times d}$，目标独热矩阵Y，平均损失的分数梯度为 $D=\frac{Q-Y}{N_M}$。由 $U=GE^{\mathsf T}+b_V$ 得 $\overline E_{\mathrm{out}}=D^{\mathsf T}G$。损坏输入也通过查表使用E，因此总梯度还加按实际损坏后编号散射求和的输入梯度；输出目标是原词元，两条索引路径不同。
+把监督位置收集为 $\mat{G}\in\Real^{N_M\times d}$，目标独热矩阵Y，平均损失的分数梯度为 $\mat{D}=\frac{\mat{Q}-\mat{Y}}{N_M}$。由 $\mat{U}=\mat{G}\mat{E}^{\mathrm{T}}+\vect{b}_V$ 得 $\overline{\mat{E}}_{\mathrm{out}}=\mat{D}^{\mathrm{T}}\mat{G}$。损坏输入也通过查表使用E，因此总梯度还加按实际损坏后编号散射求和的输入梯度；输出目标是原词元，两条索引路径不同。
 \end{solution}
 \end{exercise}
 

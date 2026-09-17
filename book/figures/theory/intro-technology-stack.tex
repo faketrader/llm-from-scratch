@@ -1,0 +1,52 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex,amsmath,amssymb}
+\usetikzlibrary{arrows.meta,positioning,calc,fit,backgrounds}
+\input{diagram_styles.tex}
+
+\begin{document}
+\begin{tikzpicture}[lfs picture, node distance=5mm and 6mm]
+
+% 5层技术栈卡片定义
+% 第五层：应用智能体
+\node[interface, text width=128mm, minimum height=11mm] (l5) {
+  \textbf{应用智能体系统（第二篇）}\\[1mm]
+  \scriptsize 检索增强生成（RAG） \quad$\bullet$\quad 工具调用与沙箱执行 \quad$\bullet$\quad 任务规划与记忆状态 \quad$\bullet$\quad 垂直领域落地闭环
+};
+
+% 第四层：服务调度
+\node[compute, text width=128mm, minimum height=11mm, below=of l5] (l4) {
+  \textbf{模型服务与推理调度（第四篇）}\\[1mm]
+  \scriptsize 连续批处理（Continuous Batching） \quad$\bullet$\quad 分页增量 KV Cache \quad$\bullet$\quad Prefill/Decode 分离 \quad$\bullet$\quad 投机解码与算子融合
+};
+
+% 第三层：训练对齐
+\node[storage, text width=128mm, minimum height=11mm, below=of l4] (l3) {
+  \textbf{模型训练与对齐方法（第三篇）}\\[1mm]
+  \scriptsize 预训练规模定律（Scaling Laws） \quad$\bullet$\quad 监督微调（SFT） \quad$\bullet$\quad 参数高效微调（PEFT/LoRA） \quad$\bullet$\quad 人类偏好对齐（PPO/DPO/GRPO）
+};
+
+% 第二层：模型架构
+\node[block, text width=128mm, minimum height=11mm, below=of l3] (l2) {
+  \textbf{模型架构与表示基础（第一篇 / 第五篇）}\\[1mm]
+  \scriptsize 词元化与向量嵌入 \quad$\bullet$\quad 自注意力与 Transformer \quad$\bullet$\quad 混合专家模型（MoE） \quad$\bullet$\quad 旋转位置编码与长上下文
+};
+
+% 第一层：基础设施
+\node[neutral, text width=128mm, minimum height=11mm, below=of l2] (l1) {
+  \textbf{算力与数据基础设施（第四篇 / 第三篇）}\\[1mm]
+  \scriptsize AI 加速芯片与高带宽显存（HBM） \quad$\bullet$\quad 高速集合通信网络 \quad$\bullet$\quad 3D 混合分布式并行 \quad$\bullet$\quad 海量语料清洗流水线
+};
+
+% 层间流动箭头
+\draw[data arrow] ($(l1.north)+(0,0.5mm)$) -- ($(l2.south)+(0,-0.5mm)$);
+\draw[data arrow] ($(l2.north)+(0,0.5mm)$) -- ($(l3.south)+(0,-0.5mm)$);
+\draw[data arrow] ($(l3.north)+(0,0.5mm)$) -- ($(l4.south)+(0,-0.5mm)$);
+\draw[data arrow] ($(l4.north)+(0,0.5mm)$) -- ($(l5.south)+(0,-0.5mm)$);
+
+% 侧边标注
+\node[label text, rotate=90, left=4mm of $(l1)!0.5!(l2)$] {底座支撑};
+\node[label text, rotate=90, left=4mm of $(l3)!0.5!(l4)$] {工程落地};
+\node[label text, rotate=90, left=4mm of l5] {业务赋能};
+
+\end{tikzpicture}
+\end{document}

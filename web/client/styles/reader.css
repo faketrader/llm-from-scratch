@@ -1,0 +1,261 @@
+:root {
+  --paper: #fffefb;
+  --canvas: #f7f7f2;
+  --ink: #26352f;
+  --muted: #7b837c;
+  --accent: #2c5549;
+  --line: #e4e7dd;
+  --body-size: 17px;
+  color-scheme: light;
+}
+* {
+  box-sizing: border-box;
+}
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 100px;
+}
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family:
+    -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei",
+    sans-serif;
+}
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+button,
+input {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+  color: inherit;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+summary:focus-visible {
+  outline: 3px solid #b1c9b6;
+  outline-offset: 4px;
+}
+.topbar {
+  height: 82px;
+  padding: 0 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: 0.5px;
+}
+.brand:hover {
+  text-decoration: none;
+}
+.monogram {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 40px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+  font:
+    27px Georgia,
+    serif;
+}
+.brand-sub {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 2px;
+  margin-top: 4px;
+  display: block;
+  color: var(--muted);
+}
+.top-actions {
+  display: flex;
+  gap: 26px;
+  align-items: center;
+  font-size: 13px;
+}
+.top-actions button {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: transparent;
+  padding: 8px 12px;
+  color: #667168;
+}
+.top-actions kbd {
+  font-size: 11px;
+  color: #959d94;
+  margin-left: 28px;
+}
+.progress {
+  height: 2px;
+  background: var(--line);
+  position: sticky;
+  top: 82px;
+  z-index: 21;
+}
+#progress-fill {
+  height: 100%;
+  background: var(--accent);
+  width: 0;
+}
+.layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 780px) 160px;
+  gap: 58px;
+  max-width: 1460px;
+  padding: 0 44px;
+  margin: auto;
+}
+#sidebar {
+  height: calc(100vh - 112px);
+  position: sticky;
+  top: 108px;
+  overflow: auto;
+  padding-right: 13px;
+  scrollbar-width: thin;
+}
+.sidebar-intro {
+  padding: 24px 0 22px;
+}
+.eyebrow {
+  font-size: 10px;
+  letter-spacing: 1.8px;
+  font-weight: 650;
+  color: var(--muted);
+}
+.sidebar-intro p {
+  font-size: 13px;
+  margin: 12px 0 0;
+  color: #667168;
+}
+.chapter-current {
+  display: flex;
+  gap: 12px;
+  background: #ecf0e8;
+  padding: 13px 12px;
+  margin: 0 0 15px;
+  border-radius: 5px;
+  font-size: 14px;
+  color: var(--accent);
+}
+.chapter-current > span {
+  font:
+    15px Georgia,
+    serif;
+  opacity: 0.6;
+}
+nav ol {
+  padding: 0;
+  list-style: none;
+  margin: 0;
+}
+nav a {
+  display: flex;
+  gap: 10px;
+  font-size: 12px;
+  line-height: 1.7;
+  padding: 10px 9px;
+  color: #758076;
+  border-left: 2px solid transparent;
+}
+nav a.active {
+  color: var(--accent);
+  border-left-color: var(--accent);
+  font-weight: 650;
+  background: #f5f6f0;
+}
+nav a span {
+  font:
+    12px/1.7 Georgia,
+    serif;
+  color: #99a094;
+}
+nav a:hover {
+  background: #f1f3ec;
+  text-decoration: none;
+}
+.sidebar-bottom {
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+  margin-top: 20px;
+}
+.sidebar-bottom a {
+  display: flex;
+  justify-content: space-between;
+  padding: 9px;
+  font-size: 12px;
+}
+.sidebar-bottom small {
+  display: block;
+  font-size: 10px;
+  color: #9ba298;
+  margin: 24px 9px;
+}
+main {
+  min-width: 0;
+  padding: 40px 0 0;
+}
+.breadcrumb {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.3px;
+}
+.breadcrumb span {
+  margin: 0 12px;
+  color: #c1c7bd;
+}
+.chapter-heading {
+  padding: 47px 0 30px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 32px;
+}
+.chapter-heading .eyebrow {
+  color: var(--accent);
+  font-size: 11px;
+}
+h1 {
+  font-family: "Songti SC", "STSong", serif;
+  font-size: 48px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  margin: 17px 0 8px;
+}
+.chapter-subtitle {
+  font:
+    italic 23px Georgia,
+    serif;
+  color: #8a9587;
+  margin: 0 0 26px;
+}
+.chapter-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.chapter-meta span + span::before {
+  content: "·";
+  margin-right: 18px;
+  color: #abb3a6;
+}

@@ -1,5 +1,10 @@
 \NeedsTeXFormat{LaTeX2e}
 \ProvidesPackage{termindex}[2026/09/11 Bilingual textbook term indexes]
+% 网页术语索引由 \term 输出的语义标记生成，无需 MakeIndex 页码索引。
+\ifdefined\HCode
+  \NewDocumentCommand{\DeclareTermIndexKey}{mm}{}
+  \expandafter\endinput
+\fi
 \RequirePackage[noautomatic]{imakeidx}
 % 仅教材生成索引；独立章节复用导言区时不写索引文件。
 \ExplSyntaxOn

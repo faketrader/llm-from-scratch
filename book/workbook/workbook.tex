@@ -1,20 +1,23 @@
+\ifdefined\HCode
+  \PassOptionsToClass{fontset=none}{ctexbook}
+\fi
 \documentclass[UTF8,zihao=-4,twoside,openany]{ctexbook}
 \usepackage{subfiles}
 \input{../preamble.tex}
 \input{style.tex}
-\input{tb-numbers.generated.tex}
 \hypersetup{pdftitle={习题解析与实验指导},pdfauthor={\bookauthor}}
 
 \begin{document}
 
-\hypersetup{pageanchor=false}
-\input{cover.tex}
-\cleardoublepage
-
-\frontmatter
-\hypersetup{pageanchor=true}
-\input{preface.tex}
-\tableofcontents
+\ifdefined\HCode\else
+  \hypersetup{pageanchor=false}
+  \input{cover.tex}
+  \cleardoublepage
+  \frontmatter
+  \hypersetup{pageanchor=true}
+  \input{preface.tex}
+  \tableofcontents
+\fi
 
 \mainmatter
 \part{习题}
@@ -61,6 +64,10 @@
 \input{chapters/83-diffusion-probability.tex}
 \input{chapters/84-conditional-vision.tex}
 
+\ifdefined\HCode
+  \part{参考解析}
+  \input{answers.tex}
+\else
 \part{实验指导}
 \input{lab-guide.tex}
 \setcounter{chapter}{0}
@@ -99,5 +106,6 @@
 \printbibliography[heading=none]
 \clearpage
 \input{back-cover.tex}
+\fi
 
 \end{document}

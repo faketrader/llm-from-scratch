@@ -1,0 +1,25 @@
+\documentclass[tikz,border=6pt]{standalone}
+\usepackage{ctex}
+\begin{document}
+\begin{tikzpicture}[x=.48cm,y=.48cm]
+ \foreach \panel/\name in {0/全可见,6/因果可见,12/分段因果}{
+  \node[font=\small] at (\panel+2,1) {\name};
+  \foreach \i in {0,1,2,3}{\foreach \j in {0,1,2,3}{
+   \def\allowed{0}
+   \ifnum\panel=0 \def\allowed{1}\else
+    \ifnum\j>\i\else
+     \ifnum\panel=6 \def\allowed{1}\else
+      \ifnum\i<2 \ifnum\j<2 \def\allowed{1}\fi
+      \else \ifnum\j>1 \def\allowed{1}\fi
+      \fi
+     \fi
+    \fi
+   \fi
+   \ifnum\allowed=1 \fill[black!20] (\panel+\j,-\i) rectangle ++(1,-1);\fi
+   \draw (\panel+\j,-\i) rectangle ++(1,-1);
+  }}
+  \node[font=\small] at (\panel+2,-4.65) {键位置 $j$};
+ }
+ \node[rotate=90,font=\small] at (-.8,-2) {查询位置 $i$};
+\end{tikzpicture}
+\end{document}

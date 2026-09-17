@@ -1,0 +1,376 @@
+article,
+.exercise-section {
+  font-size: var(--body-size);
+  line-height: 1.95;
+  overflow-wrap: break-word;
+}
+article p {
+  margin: 18px 0;
+}
+article > p:first-child {
+  color: #58655a;
+}
+h2 {
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0.3px;
+  margin: 54px 0 22px;
+  padding-top: 14px;
+}
+h2 .section-number {
+  font:
+    22px Georgia,
+    serif;
+  color: #92a18b;
+  margin-right: 14px;
+}
+h3 {
+  font-size: 19px;
+  font-weight: 600;
+  margin: 32px 0 15px;
+}
+h4 {
+  font-size: 17px;
+  margin-top: 30px;
+}
+strong {
+  font-weight: 620;
+  color: #254c3f;
+}
+.term-en {
+  margin-inline: 0.2em;
+}
+.optional-marker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  margin: 4px 0 14px;
+  padding: 3px 9px;
+  border: 1px solid #bdcbb9;
+  border-radius: 999px;
+  background: #eef3e9;
+  color: #486653;
+  font-size: 0.72em;
+  font-style: normal;
+  font-weight: 650;
+  line-height: 1.45;
+  vertical-align: middle;
+}
+.optional-marker > [aria-hidden="true"] {
+  font-size: 0.9em;
+}
+article a:not(.footnote-ref) {
+  border-bottom: 1px solid #bdcdb9;
+}
+article a:hover {
+  text-decoration: none;
+  border-color: var(--accent);
+}
+article .math.display {
+  display: block;
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin: 24px 0;
+  padding: 7px 2px;
+  font-size: 1.02em;
+}
+.math.display mjx-container {
+  min-width: fit-content;
+}
+.math.display mjx-container[jax="CHTML"][display="true"] {
+  margin: 0 !important;
+}
+mjx-container {
+  outline: none;
+}
+mjx-assistive-mml {
+  max-width: 100%;
+}
+.equation-block {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0;
+  overflow-x: auto;
+}
+.equation-block .mathjax-equation {
+  min-width: 0;
+}
+.equation-block > a[id] {
+  display: none;
+}
+.equation-number {
+  color: #657168;
+  font-family: Georgia, serif;
+  font-size: 0.88em;
+  white-space: nowrap;
+}
+figure {
+  margin: 34px 0;
+  padding: 26px 22px;
+  background: #f7f8f3;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  text-align: center;
+}
+figure img {
+  max-width: 100%;
+  height: auto;
+  cursor: zoom-in;
+  max-height: 350px;
+}
+figcaption {
+  font-size: 12px;
+  color: #5f6c63;
+  line-height: 1.75;
+  margin: 18px auto 0;
+  text-align: left;
+  max-width: 600px;
+}
+figcaption .id {
+  color: var(--ink);
+  font-weight: 650;
+}
+.table-scroll {
+  overflow: auto;
+  margin: 28px 0;
+  border-top: 1px solid #bac8b6;
+  border-bottom: 1px solid #bac8b6;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 14px;
+  line-height: 1.6;
+}
+td,
+th {
+  padding: 9px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  min-width: 65px;
+}
+td > p,
+th > p {
+  margin: 0;
+}
+tr:first-child {
+  background: #f2f4ed;
+}
+tr:last-child td {
+  border-bottom: 0;
+}
+blockquote {
+  margin: 30px 0;
+  padding: 19px 24px;
+  border-left: 3px solid #7e9f81;
+  background: #f1f4ed;
+  font-size: 0.94em;
+  border-radius: 0 6px 6px 0;
+}
+blockquote p {
+  margin: 8px 0;
+}
+blockquote p:first-child strong {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+blockquote.admonition,
+.tcolorbox.admonition {
+  padding: 13px 18px;
+  border-radius: 0;
+  border-left-width: 4px;
+  background: #f6f8fa;
+}
+.tcolorbox.admonition .tcolorbox-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  margin-bottom: 7px;
+}
+.tcolorbox.admonition .tcolorbox-title strong {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  font-size: 14px;
+}
+.tcolorbox.admonition .tcolorbox-title strong::before {
+  width: 1.15em;
+  text-align: center;
+  font-size: 0.95em;
+}
+.tcolorbox.admonition .tcolorbox-content > p:first-child {
+  margin-top: 0;
+}
+.tcolorbox.admonition .tcolorbox-content > p:last-child {
+  margin-bottom: 0;
+}
+blockquote.admonition > p:first-child {
+  margin-top: 0;
+}
+blockquote.admonition > p:last-child {
+  margin-bottom: 0;
+}
+blockquote.admonition > p:first-child strong {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  margin-bottom: 7px;
+}
+blockquote.admonition > p:first-child strong::before {
+  width: 1.15em;
+  text-align: center;
+  font-size: 0.95em;
+}
+blockquote.admonition.note {
+  border-left-color: #0969da;
+  background: #eff6ff;
+}
+blockquote.admonition.note > p:first-child strong {
+  color: #0969da;
+}
+blockquote.admonition.note > p:first-child strong::before {
+  content: "ⓘ";
+}
+blockquote.admonition.tip {
+  border-left-color: #1a7f37;
+  background: #f0fff4;
+}
+blockquote.admonition.tip > p:first-child strong {
+  color: #1a7f37;
+}
+blockquote.admonition.tip > p:first-child strong::before {
+  content: "✦";
+}
+blockquote.admonition.important {
+  border-left-color: #8250df;
+  background: #f6f0ff;
+}
+blockquote.admonition.important > p:first-child strong {
+  color: #8250df;
+}
+blockquote.admonition.important > p:first-child strong::before {
+  content: "◆";
+}
+blockquote.admonition.warning {
+  border-left-color: #9a6700;
+  background: #fff8c5;
+}
+blockquote.admonition.warning > p:first-child strong {
+  color: #9a6700;
+}
+blockquote.admonition.warning > p:first-child strong::before {
+  content: "⚠";
+}
+blockquote.admonition.caution {
+  border-left-color: #cf222e;
+  background: #fff1f0;
+}
+blockquote.admonition.caution > p:first-child strong {
+  color: #cf222e;
+}
+blockquote.admonition.caution > p:first-child strong::before {
+  content: "⛔";
+}
+.tcolorbox.admonition.note {
+  border-left-color: #0969da;
+  background: #eff6ff;
+}
+.tcolorbox.admonition.note .tcolorbox-title strong { color: #0969da; }
+.tcolorbox.admonition.note .tcolorbox-title strong::before { content: "ⓘ"; }
+.tcolorbox.admonition.tip {
+  border-left-color: #1a7f37;
+  background: #f0fff4;
+}
+.tcolorbox.admonition.tip .tcolorbox-title strong { color: #1a7f37; }
+.tcolorbox.admonition.tip .tcolorbox-title strong::before { content: "✦"; }
+.tcolorbox.admonition.important {
+  border-left-color: #8250df;
+  background: #f6f0ff;
+}
+.tcolorbox.admonition.important .tcolorbox-title strong { color: #8250df; }
+.tcolorbox.admonition.important .tcolorbox-title strong::before { content: "◆"; }
+.tcolorbox.admonition.warning {
+  border-left-color: #9a6700;
+  background: #fff8c5;
+}
+.tcolorbox.admonition.warning .tcolorbox-title strong { color: #9a6700; }
+.tcolorbox.admonition.warning .tcolorbox-title strong::before { content: "⚠"; }
+.tcolorbox.admonition.caution {
+  border-left-color: #cf222e;
+  background: #fff1f0;
+}
+.tcolorbox.admonition.caution .tcolorbox-title strong { color: #cf222e; }
+.tcolorbox.admonition.caution .tcolorbox-title strong::before { content: "⛔"; }
+section.algorithm {
+  margin: 30px 0;
+  padding: 0 18px 15px;
+  overflow: hidden;
+  border: 1px solid #c9d5c6;
+  border-left: 3px solid #547b6c;
+  background: #f8faf6;
+  font-size: 0.9em;
+}
+section.algorithm .algorithm-title {
+  margin: 0 -18px 12px;
+  padding: 11px 18px;
+  color: #244e42;
+  background: #e8eee8;
+  border-bottom: 1px solid #c9d5c6;
+  font-weight: 700;
+  font-size: 0.95em;
+}
+section.algorithm .algorithm-steps {
+  margin: 12px 0;
+}
+section.algorithm dl.enumerate-enumitem {
+  display: grid;
+  grid-template-columns: 2em minmax(0, 1fr);
+  gap: 6px 4px;
+  margin: 0;
+  padding: 0;
+}
+section.algorithm dt.enumerate-enumitem {
+  grid-column: 1;
+  margin: 0;
+  color: #617068;
+  text-align: right;
+}
+section.algorithm dd.enumerate-enumitem {
+  grid-column: 2;
+  min-width: 0;
+  margin: 0;
+}
+section.algorithm dl dl.enumerate-enumitem {
+  margin: 6px 0 0 1.1em;
+  padding-left: 12px;
+  border-left: 1px solid #ccd7ce;
+}
+article li {
+  padding-left: 5px;
+  margin: 10px 0;
+}
+code {
+  font-size: 0.85em;
+  padding: 2px 5px;
+  border-radius: 3px;
+  background: #edf1e8;
+}
+pre {
+  overflow: auto;
+  background: #f1f3ec;
+  padding: 18px;
+  border-radius: 5px;
+}
+.footnotes {
+  border-top: 1px solid var(--line);
+  margin-top: 50px;
+  font-size: 13px;
+  color: #727c70;
+}
+.footnotes .footnote-mark {
+  margin-right: 0.45em;
+}

@@ -26,5 +26,5 @@ for my $lfs_source (@lfs_sources) {
 die "Build each textbook, workbook or chapter entry separately.\n"
     if keys(%lfs_output_dirs) > 1;
 ($out_dir) = keys %lfs_output_dirs if %lfs_output_dirs;
-my $lfs_cn_index_style = $lfs_root . '/book/term-index-cn.ist';
-$makeindex = 'makeindex -r -s "' . $lfs_cn_index_style . '" %O -o %D %S';
+my $lfs_term_index_style = $lfs_root . '/book/term-index.ist';
+$makeindex = 'makeindex -r -s "' . $lfs_term_index_style . '" %O -o %D %S';

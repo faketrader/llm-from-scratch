@@ -1,9 +1,0 @@
-flowchart LR
-    Q["新请求"] --> R{"Response Cache 命中？"}
-    R -->|"是"| O["直接返回受控缓存响应"]
-    R -->|"否"| P{"Prefix Cache 命中？"}
-    P -->|"是"| K["复用公共前缀 KV Blocks"]
-    P -->|"否"| F["Prefill 构建 KV Cache"]
-    F --> K
-    K --> D["逐 token Decode<br/>持续追加 KV"]
-    D --> O

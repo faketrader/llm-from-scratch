@@ -5,13 +5,13 @@
 \begin{document}
 \begin{tikzpicture}[lfs picture]
 
-\node[storage] (x) {$x$\\\scriptsize $[B,N+1,d]$};
+\node[storage] (x) {$\vect{x}$\\\scriptsize $[B,N+1,d]$};
 \node[compute, right=of x] (ln1) {LayerNorm};
 \node[compute, right=of ln1] (msa) {Multi-Head\\Self-Attention};
-\node[interface, right=of msa] (add1) {Add $\to x'$};
+\node[interface, right=of msa] (add1) {Add $\to \vect{x}'$};
 \node[compute, below=of add1] (ln2) {LayerNorm};
 \node[compute, left=of ln2] (mlp) {MLP\\\scriptsize Linear $\to$ GELU $\to$ Linear};
-\node[interface, left=of mlp] (add2) {Add $\to x''$};
+\node[interface, left=of mlp] (add2) {Add $\to \vect{x}''$};
 \node[storage, left=of add2] (out) {输出 Token\\\scriptsize $[B,N+1,d]$};
 \draw[data arrow] (x) -- (ln1) -- (msa) -- (add1) -- (ln2) -- (mlp) -- (add2) -- (out);
 \draw[residual] (x.south) -- ++(0,-5mm) -| node[label text, below]{identity} (add1.south);

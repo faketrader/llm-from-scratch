@@ -50,7 +50,7 @@
 \begin{exercise}\optional 推导恒定失效风险率下的新鲜度衰减，并举出两个不适合使用该模型的记忆类型。
 
 \begin{solution}
-恒定风险率给$P(T>t+h\mid T>t)=1-\lambda h+o(h)$，故$S'(t)=-\lambda S(t),S(0)=1$，解$S(t)=e^{-\lambda t}$。历史发生事实不因时间流逝而失效；按版本发布的配置通常跳变而非恒定随机失效。库存风险也可随业务周期变化，需非恒定风险或事件驱动更新。
+恒定风险率给$P(T>t+h\mid T>t)=1-\lambda h+o(h)$，故$S'(t)=-\lambda S(t),S(0)=1$，解$S(t)=\conste{}^{-\lambda t}$。历史发生事实不因时间流逝而失效；按版本发布的配置通常跳变而非恒定随机失效。库存风险也可随业务周期变化，需非恒定风险或事件驱动更新。
 \end{solution}
 \end{exercise}
 
