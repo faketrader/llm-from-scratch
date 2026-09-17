@@ -27,7 +27,13 @@ jobs:
           node-version: '24'
       - name: Install pnpm
         run: npm install --global pnpm@12.4.2
+      - name: Install PDF conversion backend
+        run: |
+          apt-get update
+          apt-get install --yes --no-install-recommends mupdf-tools
       - name: Build and validate
+        env:
+          DVISVGM_PDF_PROC: mutool
         run: |
           make web/node_modules/.lfs-installed
           pnpm --dir web typecheck
