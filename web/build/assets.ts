@@ -1,7 +1,7 @@
 import { cpSync, existsSync, readdirSync, readFileSync, statSync, rmSync, writeFileSync } from "node:fs";
 import { basename, extname, join, resolve } from "node:path";
 import { WEB, ROOT, OUT, CACHE, CLIENT } from "./paths.ts";
-import { inputFingerprint, run } from "./files.ts";
+import { inputFingerprint } from "./files.ts";
 import { createHash } from "node:crypto";
 
 // The explicit order preserves the reader cascade, then adds book and home rules.
@@ -63,15 +63,13 @@ export function copyVendorAssets(): void {
   writeFileSync(stamp, fingerprint);
 }
 
-/** Convert TeX4ht's PDF image placeholder to a delivered SVG. */
+/** Replace TeX4ht's PDF image placeholder with the SVG built from the same TikZ source. */
 export function publishFigure(source: string): string {
   if (!source.endsWith("-.png")) return source;
   const pdf = resolve(ROOT, "book/textbook", source.slice(0, -"-.png".length) + ".pdf");
   if (!existsSync(pdf)) return source;
   const target = `${basename(pdf, ".pdf")}.svg`;
   const output = join(OUT, target);
-  if (!existsSync(output) || statSync(pdf).mtimeMs > statSync(output).mtimeMs) {
-    run("dvisvgm", ["--pdf", "--page=1", `--output=${output}`, pdf]);
-  }
+  if (!existsSync(output)) throw new Error(`Missing web figure ${target}; run make web-figures first`);
   return target;
 }
