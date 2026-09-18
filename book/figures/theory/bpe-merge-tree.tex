@@ -5,15 +5,15 @@
 \input{diagram_styles.tex}
 
 \begin{document}
-\begin{tikzpicture}[lfs picture, >=Latex, node distance=10mm]
+\begin{tikzpicture}[my picture, >=Latex, node distance=10mm]
 
 % Style definitions
 \tikzset{
-  leaf/.style={draw=LFSBlue, fill=LFSBlueSoft, rounded corners=2pt, font=\small\ttfamily, inner sep=4pt, minimum width=9mm, minimum height=7mm},
-  intermediate/.style={draw=LFSPurple, fill=LFSPurpleSoft, rounded corners=2pt, font=\small\ttfamily, inner sep=4pt, minimum width=14mm, minimum height=7mm},
-  root/.style={draw=LFSGreen, fill=LFSGreenSoft, rounded corners=3pt, font=\small\bfseries, inner sep=5pt, minimum height=8mm},
-  rulebox/.style={draw=LFSOrange, fill=LFSOrangeSoft, rounded corners=2pt, font=\footnotesize, align=left, inner sep=6pt},
-  stage/.style={font=\small\bfseries, text=LFSGray}
+  leaf/.style={draw=MyBlue, fill=MyBlueSoft, rounded corners=2pt, font=\small\ttfamily, inner sep=4pt, minimum width=9mm, minimum height=7mm},
+  intermediate/.style={draw=MyPurple, fill=MyPurpleSoft, rounded corners=2pt, font=\small\ttfamily, inner sep=4pt, minimum width=14mm, minimum height=7mm},
+  root/.style={draw=MyGreen, fill=MyGreenSoft, rounded corners=3pt, font=\small\bfseries, inner sep=5pt, minimum height=8mm},
+  rulebox/.style={draw=MyOrange, fill=MyOrangeSoft, rounded corners=2pt, font=\footnotesize, align=left, inner sep=6pt},
+  stage/.style={font=\small\bfseries, text=MyGray}
 }
 
 % Left: Merge rule hierarchy table / box
@@ -43,30 +43,30 @@
 
 % First level merges
 \node[intermediate] (m1) at (4.1, 0.9) {'lo'};
-\draw[->, draw=LFSPurple, line width=0.8pt] (c1) -- (m1) node[midway, left, font=\tiny, text=LFSOrange] {R1};
-\draw[->, draw=LFSPurple, line width=0.8pt] (c2) -- (m1);
+\draw[->, draw=MyPurple, line width=0.8pt] (c1) -- (m1) node[midway, left, font=\tiny, text=MyOrange] {R1};
+\draw[->, draw=MyPurple, line width=0.8pt] (c2) -- (m1);
 
 \node[intermediate] (m2) at (8.9, 0.9) {'er'};
-\draw[->, draw=LFSPurple, line width=0.8pt] (c5) -- (m2) node[midway, left, font=\tiny, text=LFSOrange] {R2};
-\draw[->, draw=LFSPurple, line width=0.8pt] (c6) -- (m2);
+\draw[->, draw=MyPurple, line width=0.8pt] (c5) -- (m2) node[midway, left, font=\tiny, text=MyOrange] {R2};
+\draw[->, draw=MyPurple, line width=0.8pt] (c6) -- (m2);
 
 % Second level merge
 \node[intermediate] (m3) at (5.0, 1.8) {'low'};
-\draw[->, draw=LFSPurple, line width=0.8pt] (m1) -- (m3) node[midway, left, font=\tiny, text=LFSOrange] {R3};
-\draw[->, draw=LFSPurple, line width=0.8pt] (c3) -- (m3);
+\draw[->, draw=MyPurple, line width=0.8pt] (m1) -- (m3) node[midway, left, font=\tiny, text=MyOrange] {R3};
+\draw[->, draw=MyPurple, line width=0.8pt] (c3) -- (m3);
 
 % Third level merge
 \node[intermediate] (m4) at (6.0, 2.7) {'low\_'};
-\draw[->, draw=LFSPurple, line width=0.8pt] (m3) -- (m4) node[midway, left, font=\tiny, text=LFSOrange] {R4};
-\draw[->, draw=LFSPurple, line width=0.8pt] (c4) -- (m4);
+\draw[->, draw=MyPurple, line width=0.8pt] (m3) -- (m4) node[midway, left, font=\tiny, text=MyOrange] {R4};
+\draw[->, draw=MyPurple, line width=0.8pt] (c4) -- (m4);
 
 % Final merge
 \node[root] (m5) at (7.45, 3.6) {词元: \texttt{'lower'}};
-\draw[->, draw=LFSGreen, line width=1pt] (m4) -- (m5) node[midway, above left, font=\tiny, text=LFSOrange] {R5};
-\draw[->, draw=LFSGreen, line width=1pt] (m2) to[out=90, in=-50] (m5);
+\draw[->, draw=MyGreen, line width=1pt] (m4) -- (m5) node[midway, above left, font=\tiny, text=MyOrange] {R5};
+\draw[->, draw=MyGreen, line width=1pt] (m2) to[out=90, in=-50] (m5);
 
 % Annotation at bottom
-\node[font=\footnotesize, text=LFSGray, align=center] at (6.5, -0.9) {
+\node[font=\footnotesize, text=MyGray, align=center] at (6.5, -0.9) {
   原始序列由 6 个基础字符组成 $\xrightarrow{\text{5 轮合并}}$ 压缩为 1 个完整词元
 };
 

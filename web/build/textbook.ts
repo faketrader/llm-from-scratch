@@ -13,7 +13,7 @@ export function parseTextbook(path: string): {
   const chapters: Chapter[] = [];
   const extras = new Map<string, string>();
   let part = "";
-  let pendingMeta: { slug: string; label: string } | undefined;
+  let pendingMeta: { slug: string; label: string; kind: "chapter" | "appendix"; order?: number } | undefined;
   let current: Chapter | undefined;
   let currentExtra: string | undefined;
 
@@ -29,24 +29,34 @@ export function parseTextbook(path: string): {
       continue;
     }
 
-    const meta = element.is(".lfs-chapter-meta")
+    const meta = element.is(".my-chapter-meta")
       ? element
-      : element.find(".lfs-chapter-meta").first();
+      : element.find(".my-chapter-meta").first();
     if (meta.length > 0) {
+      const kind = meta.attr("data-kind") === "appendix" ? "appendix" : "chapter";
+      const order = Number(meta.attr("data-order"));
       pendingMeta = {
         slug: `${meta.attr("data-slug")}.html`,
         label: meta.attr("data-label") ?? "",
+        kind,
+        order: Number.isInteger(order) && order > 0 ? order : undefined,
       };
       continue;
     }
 
-    const chapterHeading = element.is(".chapterHead")
+    const unitHeading = element.is(".chapterHead, .appendixHead")
       ? element
-      : element.find(".chapterHead").first();
-    if (chapterHeading.length > 0 && pendingMeta) {
+      : element.find(".chapterHead, .appendixHead").first();
+    if (unitHeading.length > 0 && pendingMeta) {
+      const number = chapters.length + 1;
+      const displayNumber = pendingMeta.kind === "appendix"
+        ? String.fromCharCode(64 + (pendingMeta.order ?? 1))
+        : String(number);
       current = {
-        number: chapters.length + 1,
-        title: cleanHeading($, chapterHeading.get(0)!),
+        number,
+        displayNumber,
+        kind: pendingMeta.kind,
+        title: cleanHeading($, unitHeading.get(0)!),
         part,
         slug: pendingMeta.slug,
         label: pendingMeta.label,
@@ -72,7 +82,7 @@ export function parseTextbook(path: string): {
       continue;
     }
 
-    if (element.is(".lfs-bibliography-start") || element.find(".lfs-bibliography-start").length > 0) {
+    if (element.is(".my-bibliography-start") || element.find(".my-bibliography-start").length > 0) {
       current = undefined;
       currentExtra = undefined;
       continue;

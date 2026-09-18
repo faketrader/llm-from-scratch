@@ -1,0 +1,36 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[storage] (x0) {目标表示 $x_0$\\\scriptsize $[N,T,E]$};
+\node[compute, right=of x0] (ln1) {$\mathrm{LN}_1$};
+\node[compute, right=of ln1] (self) {Masked\\Self-Attention};
+\node[interface, right=of self] (add1) {Add $\to x_1$};
+\draw[data arrow] (x0) -- (ln1) -- (self) -- (add1);
+\draw[residual] (x0.south) -- ++(0,-5mm) -| (add1.south);
+\node[compute, below=13mm of add1] (ln2) {$\mathrm{LN}_2$};
+\node[compute, left=of ln2] (cross) {Cross-Attention};
+\node[interface, left=of cross] (add2) {Add $\to x_2$};
+\node[storage, above right=12mm and 14mm of add1] (mem) {Encoder memory\\\scriptsize $[N,S,E]$};
+\draw[data arrow] (add1) -- (ln2) -- (cross) -- (add2);
+\coordinate (kvroute) at ($(cross.south)+(0,-8mm)$);
+\draw[data arrow] (mem.south) -- node[label text, right, near start]{K, V} (mem.south |- kvroute)
+  -- (kvroute) -- (cross.south);
+\draw[residual] (add1.east) -- ++(5mm,0) |- (add2.south);
+\node[compute, below=13mm of add2] (ln3) {$\mathrm{LN}_3$};
+\node[compute, right=of ln3] (ffn) {FFN};
+\node[interface, right=of ffn] (add3) {Add $\to x_3$};
+\node[storage, right=of add3] (out) {Decoder 状态\\\scriptsize $[N,T,E]$};
+\draw[data arrow] (add2) -- (ln3) -- (ffn) -- (add3) -- (out);
+\draw[residual] (add2.south) -- ++(0,-5mm) -| (add3.south);
+\node[group, fit=(x0)(ln1)(self)(add1)(ln2)(cross)(add2)(ln3)(ffn)(add3)(out), label={[title]above:Decoder Layer}] {};
+
+\end{tikzpicture}
+\end{document}

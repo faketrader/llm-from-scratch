@@ -3,7 +3,7 @@
 \usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
 \input{diagram_styles.tex}
 \begin{document}
-\begin{tikzpicture}[lfs picture]
+\begin{tikzpicture}[my picture]
 
 \node[storage] (src) {源 Token IDs\\\scriptsize $[B,S]$};
 \node[compute, right=of src] (srcemb) {源 Embedding\\\scriptsize 缩放 + 正弦位置编码};

@@ -1,0 +1,28 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[storage] (tok) {Tokenizer};
+\node[compute, below=of tok] (embed) {Embedding + 位置编码};
+\node[interface, below=of embed] (mask) {Mask 协议};
+\node[block, right=20mm of embed] (core) {\texttt{nn.Transformer}\\\scriptsize Encoder--Decoder\\\scriptsize 特征主干};
+\node[compute, right=20mm of core] (head) {LM Head + Loss};
+\node[compute, above=of head] (gen) {自回归生成策略};
+\node[storage, below=of head] (out) {logits / token IDs};
+\draw[data arrow] (tok) -- (embed) -- (mask);
+\draw[data arrow] (embed) -- (core) -- (head) -- (out);
+\draw[control arrow] (mask) -- (core);
+\draw[control arrow] (head) -- (gen);
+\draw[data arrow] (gen) -- (out);
+\node[group, fit=(tok)(embed)(mask), label={[title]left:输入包装层}] {};
+\node[group, fit=(head)(gen)(out), label={[title]right:输出包装层}] {};
+
+\end{tikzpicture}
+\end{document}

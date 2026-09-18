@@ -1,0 +1,27 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[storage] (q) {$Q$\\\scriptsize $[N,L,E]$};
+\node[storage, below=of q] (k) {$K,V$\\\scriptsize $[N,S,E]$};
+\node[compute, right=of q] (qproj) {$QW_Q$\\\scriptsize $[N,L,E]$};
+\node[compute, right=of k] (kvproj) {$KW_K,\ VW_V$\\\scriptsize $[N,S,E]$};
+\node[compute, right=18mm of $(qproj)!0.5!(kvproj)$] (split) {拆成 $H$ 个头\\\scriptsize $Q_h:[N,H,L,E_h]$\\\scriptsize $K_h,V_h:[N,H,S,E_h]$};
+\node[compute, right=of split] (attn) {并行 Scaled Dot-Product\\\scriptsize $\mathrm{softmax}(Q_hK_h^T/\sqrt{E_h}+M)V_h$};
+\node[compute, below=of attn] (concat) {Concat heads\\\scriptsize $[N,L,E]$};
+\node[compute, left=of concat] (wo) {输出投影 $W_O$};
+\node[storage, left=of wo] (out) {$O$\\\scriptsize $[N,L,E]$};
+\draw[data arrow] (q) -- (qproj) -- (split);
+\draw[data arrow] (k) -- (kvproj) -- (split);
+\draw[data arrow] (split) -- (attn) -- (concat) -- (wo) -- (out);
+\node[group, fit=(attn)(concat), label={[title]right:每个 Head 独立检索}] {};
+
+\end{tikzpicture}
+\end{document}

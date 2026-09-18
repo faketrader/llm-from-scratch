@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -249,31 +249,32 @@ AdamW & $\vect{m}_k = \beta_1 \vect{m}_{k-1} + (1-\beta_1)\vect{g}_k$ & $\vect{v
 
 \begin{algorithm}[带验证集早停的小批量梯度下降]
 \label{alg:opt-sgd}
-\textbf{输入：}相互隔离的训练集和验证集、可微损失、学习率序列、批量大小、最大步数 $K$、验证间隔 $r$、耐心窗口 $M$、正则强度 $\lambda\ge0$ 和最小改善量 $\delta_{\min}\ge0$；验证损失越小越好。\textbf{输出：}验证指标最优的已保存参数。
-\begin{lfsalgorithmic}[1]
-\State 检查正整数验证间隔 $r$、耐心窗口 $M$ 及非负最大步数 $K$
-\State 初始化 $\vect{\theta}_0$；在固定评估模式下计算初始验证损失 $v_0$
-\State 保存 $\vect{\theta}_0$；$v_{\min}\gets v_0$，$v_{\mathrm{pat}}\gets v_0$，$h\gets0$
+\AlgoInput{互不相交的训练集与验证集、可微损失、学习率调度、批大小、最大步数 $K$、验证间隔 $r$、耐心值 $M$、正则化强度 $\lambda\ge0$ 和最小改进量 $\delta_{\min}\ge0$；验证损失越低越好。}
+\AlgoOutput{验证指标最优时保存的参数。}
+\begin{myalgorithmic}[1]
+\State Validate positive integers $r$ and $M$ and nonnegative integer $K$
+\State Initialize $\vect{\theta}_0$ and compute initial validation loss $v_0$ in a fixed evaluation mode
+\State Save $\vect{\theta}_0$; set $v_{\min}\gets v_0$, $v_{\mathrm{pat}}\gets v_0$, and $h\gets0$
 \For{$k=0,\ldots,K-1$}
-  \State 按明确抽样规则取训练批量，在 $\vect{\theta}_k$ 处求平均数据梯度 $\vect{g}_k$
-  \State $\vect{\theta}_{k+1}\gets\vect{\theta}_k-\eta_k(\vect{g}_k+\lambda\vect{\theta}_k)$，正则项只计一次
-  \If{$k+1$ 是 $r$ 的倍数，或 $k+1=K$}
-    \State 按固定口径计算验证数据损失 $v$，验证过程不反向、不更新预处理状态
+  \State Sample a training batch by the specified rule and compute mean data gradient $\vect{g}_k$ at $\vect{\theta}_k$
+  \State $\vect{\theta}_{k+1}\gets\vect{\theta}_k-\eta_k(\vect{g}_k+\lambda\vect{\theta}_k)$, counting regularization exactly once
+  \If{$k+1$ is a multiple of $r$, or $k+1=K$}
+    \State Compute validation data loss $v$ under the fixed protocol, without backpropagation or preprocessing-state updates
     \If{$v<v_{\min}$}
-      \State 保存 $\vect{\theta}_{k+1}$；$v_{\min}\gets v$
+      \State Save $\vect{\theta}_{k+1}$ and set $v_{\min}\gets v$
     \EndIf
     \If{$v_{\mathrm{pat}}-v>\delta_{\min}$}
-      \State $v_{\mathrm{pat}}\gets v$，$h\gets0$
+      \State $v_{\mathrm{pat}}\gets v$ and $h\gets0$
     \Else
       \State $h\gets h+1$
     \EndIf
     \If{$h\ge M$}
-      \State 终止训练循环
+      \State Terminate the training loop
     \EndIf
   \EndIf
 \EndFor
-\State \Return 已保存的最优参数；配置冻结后才使用封存测试集
-\end{lfsalgorithmic}
+\State \Return the best saved parameters; use the held-out test set only after configuration is frozen
+\end{myalgorithmic}
 批量损失的求导遵循\bookxref{ch:rev-tensors}[中的反向传播规则]。恢复后继续训练还必须保存随机状态、数据位置和优化器状态，仅保存用于预测的参数并不足以续训。
 \end{algorithm}
 
@@ -532,4 +533,4 @@ $\lambda>0$ 使原来可能奇异的正规方程变为正定系统。对 $\frac{
 
 
 \chapterreferences
-\lfsendchapterdocument
+\myendchapterdocument

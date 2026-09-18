@@ -4,7 +4,7 @@
 \usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
 \input{diagram_styles.tex}
 \begin{document}
-\begin{tikzpicture}[lfs picture]
+\begin{tikzpicture}[my picture]
   \node[interface] (policy) {Version / Schema Registry / Policy};
   \node[interface, right=17mm of policy] (orchestration) {Orchestration\\分区、调度、重试};
   \node[neutral, right=17mm of orchestration] (lineage) {Lineage / Metrics / Retry};

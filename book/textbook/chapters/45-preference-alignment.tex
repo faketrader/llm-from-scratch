@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -235,20 +235,22 @@ SimPO & 成对 $(y_w, y_l)$ & 无需（单模型） & 长度归一化奖励差�
 \end{figure}
 
 \begin{algorithm}[离线 DPO 的一次参数更新]
-\textbf{输入：}偏好对批次、固定参考、策略、$\beta>0$、版本化模板与分词器。\textbf{输出：}更新后的策略及目标统计。
-\begin{lfsalgorithmic}[1]
-\State 校验每对共享同一完整提示、标签有明确含义，两回答的目标跨度与终止协议有效；剔除或单独记录截断后失去偏好依据的记录。
-\State 在冻结参考上计算两条回答的目标词元对数概率和。若使用缓存，键必须绑定参考权重、模板、分词器及精确词元序列。
-\State 在当前策略上计算相同目标位置的对数概率和，依式\eqref{eq:pref-dpo}形成间隔与稳定的 Softplus 损失。
-\State 按事先声明的提示或偏好对权重聚合，反向仅更新策略；累积与并行归约保持该权重口径，词元平均是另一种口径。
-\State 记录损失、间隔、两回答对数概率、长度及有效对数；定期在独立提示上自由生成，并与冻结基线进行盲比较。
-\end{lfsalgorithmic}
+\AlgoInput{一批偏好对、固定参考模型、策略、$\beta>0$，以及带版本的模板和分词器。}
+\AlgoOutput{更新后的策略和目标统计量。}
+\begin{myalgorithmic}[1]
+\State Verify that each pair shares the same complete prompt, labels have defined semantics, and both response spans and termination protocols are valid; discard or separately record samples whose truncation destroys the preference basis
+\State Compute target-token log-probability sums for both responses under the frozen reference; if cached, bind the key to reference weights, template, tokenizer, and exact token sequences
+\State Compute log-probability sums over the same target positions under the current policy, then form the margin and numerically stable Softplus loss using Equation~\eqref{eq:pref-dpo}
+\State Aggregate using the declared prompt or pair weights and backpropagate only into the policy; preserve the same weighting under accumulation and parallel reduction, noting that token averaging defines a different objective
+\State Record loss, margin, both response log probabilities, lengths, and valid counts; periodically generate freely on independent prompts and compare blindly with the frozen baseline
+\end{myalgorithmic}
 \end{algorithm}
 
 参考概率缓存只有在输入与参考完全固定时才有效。使用共享基座与适配器实现参考时，关闭某个适配器得到的未必是预期参考版本；还需确认基座未被更新、适配器组合一致、随机层处于确定的评分模式。
 
 \begin{algorithm}[奖励模型与在线策略的分阶段更新]
-\textbf{输入：}比较数据、提示分布、初始策略及独立评估集；\textbf{输出：}带来源与评估记录的策略版本。
+\AlgoInput{比较数据、提示分布、初始策略及独立评估集。}
+\AlgoOutput{带来源与评估记录的策略版本。}
 \begin{enumerate}
 \item 按提示和来源划分比较数据，拟合奖励模型，并评估排序、校准及关键切片的误差。
 \item 固定本轮奖励和参考版本，从已标识的行为策略采样，保存回答、行为概率、终止原因和各奖励分量。
@@ -303,4 +305,4 @@ GRPO & 同提示成组奖励 & 策略、评分器、可选参考约束 & 省去�
 
 
 \chapterreferences
-\lfsendchapterdocument
+\myendchapterdocument

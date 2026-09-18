@@ -1,0 +1,40 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+  \node[interface] (entry) {全局入口\\鉴权、配额、超载拒绝};
+  \node[compute, above right=20mm and 22mm of entry] (ra) {Router A};
+  \node[neutral, right=11mm of ra] (qa) {有界队列 A};
+  \node[compute, above right=5mm and 12mm of qa] (a1) {Worker A1};
+  \node[compute, below right=5mm and 12mm of qa] (a2) {Worker A2};
+  \node[compute, below right=20mm and 22mm of entry] (rb) {Router B};
+  \node[neutral, right=11mm of rb] (qb) {有界队列 B};
+  \node[compute, above right=5mm and 12mm of qb] (b1) {Worker B1};
+  \node[compute, below right=5mm and 12mm of qb] (b2) {Worker B2};
+  \node[risk, right=16mm of a1] (fail) {A1 失败\\仅降低域 A 容量};
+
+  \draw[data arrow] (entry) |- (ra);
+  \draw[data arrow] (entry) |- (rb);
+  \draw[data arrow] (ra) -- (qa);
+  \draw[data arrow] (rb) -- (qb);
+  \draw[data arrow] (qa) -- (a1);
+  \draw[data arrow] (qa) -- (a2);
+  \draw[data arrow] (qb) -- (b1);
+  \draw[data arrow] (qb) -- (b2);
+  \draw[control arrow] (a1) -- (fail);
+  \coordinate (rejectpath) at ($(entry.north)+(0,10mm)$);
+  \draw[control arrow] (qa.south west) |- node[label text,below,near end]{队列满：拒绝} (rejectpath) -- (entry.north);
+
+  \begin{scope}[on background layer]
+    \node[group, fit=(ra)(qa)(a1)(a2)(fail), label={[title]above:故障域 A}] {};
+    \node[group, fit=(rb)(qb)(b1)(b2), label={[title]below:故障域 B：独立容量}] {};
+  \end{scope}
+\end{tikzpicture}
+\end{document}

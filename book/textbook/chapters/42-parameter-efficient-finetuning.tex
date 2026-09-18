@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -338,7 +338,9 @@ Prefix/深层提示 & 多层前缀状态 & 增加注意力状态与读取成本\
 \subsection{可训练集合与数据目标同时受控}
 \begin{algorithm}[冻结基座的适配训练]
 \label{alg:peft-training}
-\textbf{输入：}固定基座与分词协议、目标模块集合、适配方法配置、训练数据和停止预算。\textbf{输出：}任务参数与依赖清单。\textbf{状态：}适配参数、优化器状态、数据位置、有效标签累计量。
+\AlgoInput{固定基座与分词协议、目标模块集合、适配方法配置、训练数据和停止预算。}
+\AlgoOutput{任务参数与依赖清单。}
+\AlgoState{适配参数、优化器状态、数据位置、有效标签累计量。}
 \begin{enumerate}
 \item 加载基座，解析实际模块和形状；冻结基座参数。按方法注入并初始化适配变量，建立精确可训练名单。
 \item 优化器只接收该名单。对每批样本形成输入、边界与标签掩码；有效标签数为零的批次按预定策略处理。
@@ -364,7 +366,9 @@ Prefix/深层提示 & 多层前缀状态 & 增加注意力状态与读取成本\
 动态加载服务需要把请求绑定到具体适配器与组合配置。\term{适配器注册表}{Adapter Registry}{}记录依赖和发布状态，\term{适配器路由}{Adapter Routing}{}按服务端授权选择版本，租户由服务端判定。不同适配器通常会改变隐藏状态和键值缓存，因此缓存身份也必须包含影响其生成的模型与适配配置；切换后必须重建或隔离旧缓存。
 
 \begin{algorithm}[适配器发布与恢复]
-\textbf{输入：}适配器原件、依赖清单、批准的组合与部署模式。\textbf{输出：}可回滚的发布版本。\textbf{状态：}基座版本、适配器版本、路由版本及必要缓存命名空间。
+\AlgoInput{适配器原件、依赖清单、批准的组合与部署模式。}
+\AlgoOutput{可回滚的发布版本。}
+\AlgoState{基座版本、适配器版本、路由版本及必要缓存命名空间。}
 \begin{enumerate}
 \item 在干净基座上恢复完整训练变化，检查依赖和张量语义；拒绝不匹配版本，不静默跳过缺失模块。
 \item 在固定输入和明确精度条件下比较恢复前后的数值输出，再评估目标能力与原有能力保留。
@@ -408,4 +412,4 @@ Transformers与PEFT分别提供模型和适配器层接口\cite{HuggingfaceTrans
 需要直接研究训练目标和数据处理时，可先采用Transformers、PEFT与TRL的组合，使监督链条便于检查；需要重复管理多种数据格式与训练任务时，可采用集成框架，并保留同样的数据与数值验收。最终配置应满足参数预算、可训练范围和合并条件。
 
 \chapterreferences
-\lfsendchapterdocument
+\myendchapterdocument

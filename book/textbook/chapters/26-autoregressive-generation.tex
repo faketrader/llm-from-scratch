@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -145,14 +145,16 @@ $(\mathrm{BOS},\text{我},\text{学习},\text{模型},\mathrm{EOS})$，一个明
 
 \begin{algorithm}[移位目标的教师强制损失]
 \label{alg:ar-teacher}
-\textbf{输入：}各文档的词元序列、文档边界、填充标记和监督区域。\textbf{输出：}标量损失与有效目标数。\textbf{状态：}当前固定参数 $\theta$；本算法只计算一次目标，不推进优化器。
-\begin{lfsalgorithmic}[1]
- \State 在每个合法文档范围内建立输入位置 $x_t$ 与目标 $x_{t+1}$ 的对应关系；依据是否包含 BOS、EOS 明确首尾监督。
- \State 构造因果和填充可见性，标记有效目标 $m_t$。跨文档是否连接必须遵守事先定义的目标，不在批次边界临时决定。
- \State 运行因果网络，得到与输入位置对应的分数；确认移位仅在数据侧或损失侧执行一次。
- \State 累加有效位置的负对数概率和以及目标数 $N$；$N=0$ 时返回明确的无监督批次状态，不执行除零或伪造零梯度。
- \State 返回总和除以 $N$。各目标只能读取其前缀，填充位置不贡献监督，输入和目标索引保持图\ref{fig:ar-shift}的关系。
-\end{lfsalgorithmic}
+\AlgoInput{各文档的词元序列、文档边界、填充标志和监督区域。}
+\AlgoOutput{标量损失和有效目标数量。}
+\AlgoState{固定的当前参数 $\theta$；此过程只计算一次目标，不推进优化器。}
+\begin{myalgorithmic}[1]
+ \State Within each valid document span, pair input position $x_t$ with target $x_{t+1}$; define boundary supervision according to whether BOS and EOS are included
+ \State Build causal and padding visibility and mark valid target $m_t$; whether documents may connect follows the predefined objective rather than an ad hoc batch-boundary decision
+ \State Run the causal network to obtain scores aligned with input positions; ensure that shifting occurs exactly once, either in the data path or in the loss
+ \State Accumulate negative log-probability over valid positions and target count $N$; if $N=0$, return an explicit unsupervised-batch status without division by zero or a fabricated zero gradient
+ \State \Return the accumulated sum divided by $N$; each target may read only its prefix, padding positions contribute no supervision, and input--target indices follow Figure~\ref{fig:ar-shift}
+\end{myalgorithmic}
 \end{algorithm}
 
 \section{真实前缀与生成前缀}
@@ -347,7 +349,9 @@ $b,c,\mathrm{EOS}$ & $0.4\cdot0.1\cdot1=0.04$\\
 
 \begin{algorithm}[以原始对数概率评分的束搜索]
 \label{alg:ar-beam}
-\textbf{输入：}条件 $c$、束宽 $K$、EOS 集合、最大新增长度 $L_{\max}$ 和确定的并列规则。\textbf{输出：}一个完成候选及终止原因，或未完成候选及长度截断标记。\textbf{状态：}至多 $K$ 条记录，每条含前缀、累计分数、完成标记及其模型状态。
+\AlgoInput{条件 $c$、束宽 $K$、EOS 集合、最大新增长度 $L_{\max}$ 和确定的并列规则。}
+\AlgoOutput{一个完成候选及终止原因，或未完成候选及长度截断标记。}
+\AlgoState{至多 $K$ 条记录，每条含前缀、累计分数、完成标记及其模型状态。}
 \begin{enumerate}
  \item 初始化空响应候选，累计分数为零，状态与条件 $c$ 对应。
  \item 对每条未完成候选计算下一步分布，为每个有限分数词元生成扩展并累计式\eqref{eq:ar-beam-score}；若词元属于 EOS 集合，将该扩展标记完成。已完成候选原样进入候选池，不再追加词元或重复计分。
@@ -397,28 +401,30 @@ Min-$p$ 采样 & 截取概率大于 $p_{\max}\cdot p_{\text{base}}$ 候选 & 动
 \subsection{带明确状态的逐步生成}
 \begin{algorithm}[温度与核采样的有限生成过程]
 \label{alg:ar-sampling}
-\textbf{输入：}已经序列化的条件词元、词表与模板、温度 $\tau>0$、核阈值 $\rho$、EOS 和停止串、最大新增长度 $L_{\max}$。\textbf{输出：}响应词元、文本与停止原因。\textbf{状态：}当前前缀、随机数状态、可选键值缓存以及连续文本解码状态。
-\begin{lfsalgorithmic}[1]
-\State 检查 $\tau>0$、$0<\rho\le1$、非负整数 $L_{\max}$ 和条件位置范围；固定推理模式
-\State 当前前缀设为条件，响应置空；停止原因为长度截断
+\AlgoInput{序列化的条件词元、词表与模板、温度 $\tau>0$、核阈值 $\rho$、EOS 与停止字符串，以及最大新增词元数 $L_{\max}$。}
+\AlgoOutput{响应词元、文本和停止原因。}
+\AlgoState{当前前缀、随机状态、可选键值缓存和增量文本解码状态。}
+\begin{myalgorithmic}[1]
+\State Validate $\tau>0$, $0<\rho\le1$, nonnegative integer $L_{\max}$, and conditioning-position bounds; fix inference mode
+\State Set the current prefix to the conditioning tokens and the response to empty; initialize the stop reason to length truncation
 \For{$t=1,\ldots,L_{\max}$}
-  \State 计算当前末位置分数，施加已声明的硬约束
-  \If{允许候选集合为空}
-    \State 停止原因设为约束冲突，终止循环
+  \State Compute scores at the current final position and apply the declared hard constraints
+  \If{the allowed candidate set is empty}
+    \State Set the stop reason to constraint conflict and terminate the loop
   \EndIf
-  \State 以 $\frac{z}{\tau}$ 稳定归一化，按固定并列规则构造累计概率至少为 $\rho$ 的最小核
-  \State 核内重新归一化，按当前随机数状态抽取词元 $v$
-  \State 将 $v$ 追加到响应和前缀，同步缓存与逻辑位置
-  \If{$v$ 属于 EOS 集合}
-    \State 停止原因设为自然终止，终止循环
+  \State Normalize $\frac{z}{\tau}$ stably and construct the smallest nucleus with cumulative probability at least $\rho$ under the fixed tie-breaking rule
+  \State Renormalize within the nucleus and sample token $v$ using the current random state
+  \State Append $v$ to the response and prefix, synchronizing cache and logical positions
+  \If{$v$ belongs to the EOS set}
+    \State Set the stop reason to natural termination and terminate the loop
   \EndIf
-  \State 更新连续文本状态
-  \If{命中停止串}
-    \State 按协议处理停止串，记录原因并终止循环
+  \State Update the incremental text-decoding state
+  \If{a stop string matches}
+    \State Handle the stop string under the protocol, record the reason, and terminate the loop
   \EndIf
 \EndFor
-\State \Return 响应词元、连续解码文本及停止原因
-\end{lfsalgorithmic}
+\State \Return response tokens, incrementally decoded text, and the stop reason
+\end{myalgorithmic}
 贪心模式应使用独立的最大值选择分支，不将 $\tau=0$ 送入除法。Top-k、重复惩罚或其他处理器若参与执行，还必须说明硬约束、温度归一化与核选择的执行顺序。
 \end{algorithm}
 
@@ -454,4 +460,4 @@ Min-$p$ 采样 & 截取概率大于 $p_{\max}\cdot p_{\text{base}}$ 候选 & 动
 
 
 \chapterreferences
-\lfsendchapterdocument
+\myendchapterdocument

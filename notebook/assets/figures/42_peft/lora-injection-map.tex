@@ -1,0 +1,35 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[block] (root) {Transformer Block};
+\node[compute, below left=12mm and 28mm of root] (attn) {Self-Attention};
+\node[compute, below right=12mm and 28mm of root] (ffn) {FeedForward};
+\node[interface, below left=8mm and 20mm of attn] (q) {\texttt{q\_proj}\\\scriptsize 默认目标 $\ast$};
+\node[neutral, below left=8mm and 2mm of attn] (k) {\texttt{k\_proj}};
+\node[interface, below right=8mm and 2mm of attn] (v) {\texttt{v\_proj}\\\scriptsize 默认目标 $\ast$};
+\node[neutral, below right=8mm and 20mm of attn] (o) {\texttt{o\_proj}\\\scriptsize 按质量扩展};
+\node[neutral, below left=8mm and 14mm of ffn] (up) {\texttt{up\_proj}};
+\node[neutral, below=8mm of ffn] (gate) {\texttt{gate\_proj}};
+\node[neutral, below right=8mm and 14mm of ffn] (down) {\texttt{down\_proj}};
+\draw[data arrow] (root) -- (attn);
+\draw[data arrow] (root) -- (ffn);
+\draw[data arrow] (attn) -- (q);
+\draw[data arrow] (attn) -- (k);
+\draw[data arrow] (attn) -- (v);
+\draw[data arrow] (attn) -- (o);
+\draw[data arrow] (ffn) -- (up);
+\draw[data arrow] (ffn) -- (gate);
+\draw[data arrow] (ffn) -- (down);
+\node[group, fit=(q)(k)(v)(o), label={[title]below:Attention projections}] {};
+\node[group, fit=(up)(gate)(down), label={[title]below:FFN projections}] {};
+
+\end{tikzpicture}
+\end{document}

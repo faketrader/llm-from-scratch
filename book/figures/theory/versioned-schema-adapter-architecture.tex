@@ -4,7 +4,7 @@
 \usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
 \input{diagram_styles.tex}
 \begin{document}
-\begin{tikzpicture}[lfs picture]
+\begin{tikzpicture}[my picture]
   \node[storage] (raw) {JSONL / Parquet\\Arrow IPC / TAR Shard};
   \node[compute, right=14mm of raw] (reader) {Pinned Reader};
   \node[interface, right=14mm of reader] (registry) {Schema Registry\\显式版本与判别规则};

@@ -1,0 +1,28 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[storage] (records) {72 条 records\\\scriptsize 原始样本};
+\node[storage, right=of records] (jsonl) {\texttt{data.jsonl}\\\scriptsize UTF-8 权威资产};
+\node[block, right=of jsonl] (arrow) {Arrow Dataset\\\scriptsize 72 rows};
+\node[compute, right=of arrow] (quality) {质量变换\\\scriptsize row\_id / hash / length};
+\node[storage, above right=7mm and 16mm of quality] (train) {train\\\scriptsize 58 条};
+\node[storage, right=16mm of quality] (valid) {validation\\\scriptsize 7 条};
+\node[storage, below right=7mm and 16mm of quality] (test) {test\\\scriptsize 7 条};
+\draw[data arrow] (records) -- (jsonl);
+\draw[data arrow] (jsonl) -- node[label text, above]{类型化加载} (arrow);
+\draw[data arrow] (arrow) -- (quality);
+\draw[data arrow] (quality) -- node[label text, above, sloped]{稳定划分} (train);
+\draw[data arrow] (quality) -- (valid);
+\draw[data arrow] (quality) -- node[label text, below, sloped]{冻结后评估} (test);
+\node[group, fit=(train)(valid)(test), label={[title]above:DatasetDict：58 / 7 / 7}] {};
+
+\end{tikzpicture}
+\end{document}

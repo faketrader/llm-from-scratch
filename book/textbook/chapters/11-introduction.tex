@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -97,6 +97,13 @@ RNN / LSTM & 递归隐状态 $\vect{h}_t=f(\vect{h}_{t-1},x_t)$ & 串行依赖 &
 \bottomrule
 \end{tabularx}
 \end{table}
+
+\subsection{序列模型的局限性}
+把文本表示成序列，并不意味着模型能够同样有效地利用序列中的全部信息。固定窗口模型只读取预先规定的邻近位置，窗口之外的信息不能进入当前预测；扩大窗口又会增加输入维度和需要覆盖的上下文组合。RNN 用递归状态摆脱了固定窗口，却需要把不断增长的历史压缩到固定维度状态中。信息和梯度从早期位置传到远处位置时经过的变换随距离增加，因而容易出现记忆衰减、梯度消失或梯度爆炸。LSTM 的门控与加性记忆路径缓解了这些问题，但没有消除状态容量和长程训练信号的限制。
+
+递归结构还形成沿时间步的执行依赖：计算第 $t$ 个状态之前必须先得到第 $t-1$ 个状态，因此长序列训练难以充分并行。自注意力把任意两个可见位置之间的信息路径缩短为直接交互，并允许训练时同时计算多个位置；密集自注意力需要构造位置两两交互，其计算量和中间结果规模随序列长度呈二次增长。扩大上下文长度因此同时增加计算、显存和数据需求，模型能够接收更长输入，也不等于能够稳定提取其中每一处相关信息。
+
+因果语言模型还有训练与生成之间的并行性差异。训练时已知完整目标序列，可以在因果掩码下并行计算各位置的条件分布；生成时，第 $t$ 个词元的实际输入包含前面已经选出的词元，必须逐步作出决策。键值缓存能够避免重复计算历史位置，却不能消除这种决策依赖，缓存本身也随上下文增长并占用显存与访存带宽。因此，序列建模的限制需要分别从可见范围、状态容量、优化路径、执行依赖和资源代价考察，而不能只用“是否支持长上下文”概括。\bookxref{ch:rev-tokenization}进一步解释固定窗口、RNN 与 LSTM，\bookxref{ch:attention}推导注意力的计算和存储代价，\bookxref{ch:rev-transformer}与\bookxref{ch:incremental-decoding-cache}分别讨论因果训练和增量生成。
 
 \section{规模定律与涌现能力}
 
@@ -244,4 +251,4 @@ $p_\theta(x_t \mid x_{<t})$ & 条件概率分布 & 参数为 $\theta$ 的模型�
 \end{table}
 
 \chapterreferences
-\lfsendchapterdocument
+\myendchapterdocument

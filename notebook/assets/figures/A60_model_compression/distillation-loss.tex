@@ -1,0 +1,30 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[storage] (tl) {Teacher logits};
+\node[storage, below=18mm of tl] (sl) {Student logits};
+\node[compute, right=of tl] (td) {除以温度 $T$};
+\node[compute, right=of sl] (sd) {除以温度 $T$};
+\node[compute, right=of td] (softmax) {Softmax\\\scriptsize Teacher probability};
+\node[compute, right=of sd] (logsoft) {LogSoftmax\\\scriptsize Student log-prob};
+\node[compute, right=22mm of $(softmax)!0.5!(logsoft)$] (kl) {KL Divergence $\times T^2$};
+\node[storage, below=of sl] (labels) {真实标签};
+\node[compute, right=of labels] (ce) {Cross-Entropy};
+\node[compute, right=of kl] (total) {$\alpha$ 加权总损失};
+\draw[data arrow] (tl) -- (td) -- (softmax) -- (kl);
+\draw[data arrow] (sl) -- (sd) -- (logsoft) -- (kl);
+\draw[data arrow] (sl) |- (ce);
+\draw[data arrow] (labels) -- (ce);
+\draw[data arrow] (kl) -- (total);
+\draw[data arrow] (ce) -| (total.south);
+
+\end{tikzpicture}
+\end{document}

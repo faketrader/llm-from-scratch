@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -254,7 +254,8 @@ $M_{\mathrm{other}}$ 包含零点、未量化层、对齐和打包元数据。�
 
 \begin{algorithm}[构建资源可行情景]
 \label{alg:budget-scenarios}
-\textbf{输入：}模型配置、词元预算、长度与并发分布、精度、候选拓扑、期限和容量余量。\textbf{输出：}每个候选的分项预算、可行条件和仍待测量的系数。
+\AlgoInput{模型配置、词元预算、长度与并发分布、精度、候选拓扑、期限和容量余量。}
+\AlgoOutput{每个候选的分项预算、可行条件和仍待测量的系数。}
 \begin{enumerate}
 \item 按实际共享关系计数参数，分别建立总参数、执行矩阵和特殊状态清单。
 \item 对各拓扑计算权重、梯度、优化器、缓存、激活及峰值临时量；拒绝违反单设备容量约束的情景。
@@ -298,4 +299,4 @@ $M_{\mathrm{other}}$ 包含零点、未量化层、对齐和打包元数据。�
 
 
 \chapterreferences
-\lfsendchapterdocument
+\myendchapterdocument

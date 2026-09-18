@@ -1,0 +1,39 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[storage] (prompt) {Prompt};
+\node[compute, right=of prompt] (textenc) {Tokenizer + Text Encoder};
+\node[storage, right=of textenc] (context) {Text Context};
+\node[storage, below=22mm of prompt] (noise) {随机 Latent $x_T$};
+\node[storage, right=of noise] (xt) {当前 Latent $x_t$};
+\node[compute, right=of xt] (unet) {条件 U-Net\\\scriptsize Cross-Attention};
+\node[storage, right=of unet] (pred) {预测噪声 $\hat\epsilon$};
+\node[compute, below=of pred] (step) {Scheduler Step};
+\node[interface, below=of unet] (sched) {Scheduler\\\scriptsize timestep $t$};
+\node[compute, left=of sched] (vae) {VAE Decoder\\\scriptsize final $x_0$};
+\node[storage, left=of vae] (image) {生成图像};
+\draw[data arrow] (prompt) -- (textenc) -- (context);
+\draw[data arrow] (noise) -- (xt) -- (unet) -- (pred) -- (step);
+\draw[control arrow] (context) -| (unet.north);
+\draw[control arrow] (sched) -- (unet);
+\draw[control arrow] (sched) -- (step);
+\coordinate (loopright) at ($(step.south)+(0,-10mm)$);
+\coordinate (loopentry) at ($(xt.east)+(10mm,0)$);
+\coordinate (loopleft) at (loopentry |- loopright);
+\draw[data arrow] (step.south) -- (loopright)
+  -- node[label text, above]{迭代得到 $x_{t-1}$} (loopleft)
+  -- (loopentry) -- (xt.east);
+\draw[data arrow] (xt.south) -- node[label text, right]{最后 $x_0$} (vae.north);
+\draw[data arrow] (vae) -- (image);
+\node[group, fit=(xt)(unet)(pred)(step)(sched)(loopright)(loopleft)(loopentry), label={[title]above:潜空间迭代去噪}] {};
+
+\end{tikzpicture}
+\end{document}

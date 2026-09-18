@@ -5,17 +5,17 @@
 \input{diagram_styles.tex}
 
 \begin{document}
-\begin{tikzpicture}[lfs picture, >=Latex, node distance=7mm]
+\begin{tikzpicture}[my picture, >=Latex, node distance=7mm]
 
 \tikzset{
-  actor/.style={draw=LFSBlue, fill=LFSBlueSoft, rounded corners=2pt, font=\small\bfseries, align=center, inner sep=4pt, minimum width=24mm, minimum height=9mm},
-  attacker/.style={draw=LFSRed, fill=LFSRedSoft, rounded corners=2pt, font=\small\bfseries, align=center, inner sep=4pt, minimum width=24mm, minimum height=9mm},
-  danger/.style={draw=LFSRed, fill=LFSRedSoft, rounded corners=2pt, font=\scriptsize, align=center, inner sep=3pt, minimum width=28mm},
-  safe/.style={draw=LFSGreen, fill=LFSGreenSoft, rounded corners=2pt, font=\scriptsize, align=center, inner sep=3pt, minimum width=28mm},
-  module/.style={draw=LFSPurple, fill=LFSPurpleSoft, rounded corners=2pt, font=\small\bfseries, align=center, inner sep=4pt, minimum width=28mm, minimum height=10mm},
-  bound/.style={draw=LFSOrange, dashed, line width=1pt},
-  flow/.style={->, draw=LFSGray, line width=0.8pt},
-  badflow/.style={->, draw=LFSRed, line width=1pt}
+  actor/.style={draw=MyBlue, fill=MyBlueSoft, rounded corners=2pt, font=\small\bfseries, align=center, inner sep=4pt, minimum width=24mm, minimum height=9mm},
+  attacker/.style={draw=MyRed, fill=MyRedSoft, rounded corners=2pt, font=\small\bfseries, align=center, inner sep=4pt, minimum width=24mm, minimum height=9mm},
+  danger/.style={draw=MyRed, fill=MyRedSoft, rounded corners=2pt, font=\scriptsize, align=center, inner sep=3pt, minimum width=28mm},
+  safe/.style={draw=MyGreen, fill=MyGreenSoft, rounded corners=2pt, font=\scriptsize, align=center, inner sep=3pt, minimum width=28mm},
+  module/.style={draw=MyPurple, fill=MyPurpleSoft, rounded corners=2pt, font=\small\bfseries, align=center, inner sep=4pt, minimum width=28mm, minimum height=10mm},
+  bound/.style={draw=MyOrange, dashed, line width=1pt},
+  flow/.style={->, draw=MyGray, line width=0.8pt},
+  badflow/.style={->, draw=MyRed, line width=1pt}
 }
 
 % Actors & Inputs
@@ -57,18 +57,18 @@
 \draw[flow] (u_req) -| (llm.north);
 
 \draw[badflow] (attacker) -- (poison);
-\draw[badflow] (poison) -| (llm.south) node[midway, below, font=\tiny, text=LFSRed] {通过 RAG / 搜索被动读入};
+\draw[badflow] (poison) -| (llm.south) node[midway, below, font=\tiny, text=MyRed] {通过 RAG / 搜索被动读入};
 
-\draw[badflow] (llm) -- (tools) node[midway, above, font=\tiny, text=LFSRed] {控制流被劫持\\诱导越权调用};
+\draw[badflow] (llm) -- (tools) node[midway, above, font=\tiny, text=MyRed] {控制流被劫持\\诱导越权调用};
 \draw[badflow] (tools) -- (leak);
 
-\draw[flow, draw=LFSGreen, line width=1pt] (guard) -- (tools) node[midway, right, font=\tiny, text=LFSGreen] {拦截非法调用};
+\draw[flow, draw=MyGreen, line width=1pt] (guard) -- (tools) node[midway, right, font=\tiny, text=MyGreen] {拦截非法调用};
 
 % Trust boundary box
 \begin{scope}[on background layer]
-  \node[draw=LFSOrange, dashed, line width=0.8pt, fill=LFSOrangeSoft!20, rounded corners=4pt,
+  \node[draw=MyOrange, dashed, line width=0.8pt, fill=MyOrangeSoft!20, rounded corners=4pt,
         fit=(llm) (tools) (guard), inner sep=5mm] (t_box) {};
-  \node[font=\scriptsize\bfseries, text=LFSOrange, anchor=north west] at (t_box.north west) {受信执行环境内部};
+  \node[font=\scriptsize\bfseries, text=MyOrange, anchor=north west] at (t_box.north west) {受信执行环境内部};
 \end{scope}
 
 \end{tikzpicture}

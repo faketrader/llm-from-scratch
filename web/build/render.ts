@@ -24,28 +24,34 @@ function page(contentTemplate?: string): cheerio.CheerioAPI {
 
 export function renderChapter(chapter: Chapter, chapters: Chapter[]): string {
   const $ = page("chapter.html");
+  const designation = chapter.kind === "appendix"
+    ? `附录${chapter.displayNumber}`
+    : `第${chapter.displayNumber}章`;
+  const sidebarNumber = chapter.kind === "appendix"
+    ? chapter.displayNumber
+    : chapter.displayNumber.padStart(2, "0");
   $("title").text(`${chapter.title} · 大语言模型：从理论到实践`);
-  $("meta[name='description']").attr("content", `《大语言模型：从理论到实践》第${chapter.number}章${chapter.title}，含教材正文、公式图表和配套习题解析。`);
+  $("meta[name='description']").attr("content", `《大语言模型：从理论到实践》${designation}${chapter.title}，含教材正文、公式图表和配套材料。`);
   $(".sidebar-intro p").text(chapter.part);
-  $(".chapter-current span").text(String(chapter.number).padStart(2, "0"));
+  $(".chapter-current span").text(sidebarNumber);
   $(".chapter-current strong").text(chapter.title);
   $("#sidebar > nav").replaceWith(`<nav class="all-book-navigation" aria-label="全书目录">${bookNavigation(chapters, chapter)}</nav>`);
   $(".breadcrumb").html(`教材 <span>/</span> ${chapter.part}`);
-  $(".chapter-heading .eyebrow").text(`CHAPTER ${String(chapter.number).padStart(2, "0")}`);
+  $(".chapter-heading .eyebrow").text(chapter.kind === "appendix" ? `APPENDIX ${chapter.displayNumber}` : `CHAPTER ${sidebarNumber}`);
   $(".chapter-heading").attr("id", chapter.label);
   $(".chapter-heading h1").text(chapter.title);
   $(".chapter-heading .chapter-subtitle").remove();
   $("#chapter-content").html(chapter.content);
   const exercises = chapter.exercises.map((exercise) => {
     const optional = exercise.optional ? '<span class="optional">选修</span>' : "";
-    return `<div class="exercise" id="exercise-${exercise.number}"><div class="exercise-heading">习题 ${chapter.number}.${exercise.number}${optional}</div>${exercise.question}<details><summary>展开参考解析</summary><div class="answer">${exercise.answer}</div></details></div>`;
+    return `<div class="exercise" id="exercise-${exercise.number}"><div class="exercise-heading">习题 ${chapter.displayNumber}.${exercise.number}${optional}</div>${exercise.question}<details><summary>展开参考解析</summary><div class="answer">${exercise.answer}</div></details></div>`;
   });
   const exerciseSection = $("#exercises");
   exerciseSection.find(".exercise").remove();
   if (exercises.length > 0) exerciseSection.append(exercises.join(""));
   else {
     exerciseSection.remove();
-    $(".sidebar-bottom a[href='#exercises']").remove();
+    $(".sidebar-bottom a[href='#exercises'], .reading-tools a[href='#exercises']").remove();
   }
   if (chapter.references) $("#references").append(chapter.references);
   else {

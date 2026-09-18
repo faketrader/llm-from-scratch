@@ -4,7 +4,7 @@ import { publishFigure } from "./assets.ts";
 import { shiftHeadings } from "./dom.ts";
 export function normalizeContent(chapter: Chapter): void {
   const $ = cheerio.load(`<main>${chapter.content}</main>`, null, false);
-  $(".lfs-chapter-meta, .chapterHead").remove();
+  $(".my-chapter-meta, .chapterHead").remove();
   $("figure.figure:has(> figure.figure)").each((_, node) => {
     const outer = $(node);
     const inner = outer.children("figure.figure").first();
@@ -60,16 +60,17 @@ export function normalizeContent(chapter: Chapter): void {
     block.append(
       $("<span>")
         .addClass("equation-number")
-        .attr("aria-label", `公式 ${chapter.number}.${match[1]}`)
-        .text(`(${chapter.number}.${match[1]})`),
+        .attr("aria-label", `公式 ${chapter.displayNumber}.${match[1]}`)
+        .text(`(${chapter.displayNumber}.${match[1]})`),
     );
   });
   const admonitions = new Map([
-    ["NOTE", "注记"],
-    ["TIP", "提示"],
-    ["IMPORTANT", "重要"],
-    ["WARNING", "警告"],
-    ["CAUTION", "注意"],
+    ["note", "注记"],
+    ["tip", "提示"],
+    ["important", "重要"],
+    ["warning", "警告"],
+    ["caution", "注意"],
+    ["assumption", "前提"],
   ]);
   $(".algorithm-title").each((_, node) => {
     const title = $(node);
@@ -80,23 +81,35 @@ export function normalizeContent(chapter: Chapter): void {
     const title = box.find(".tcolorbox-title").first();
     const titleText = title.text().trim();
     for (const [kind, label] of admonitions) {
-      if (!titleText.startsWith(kind)) continue;
-      box.addClass(`admonition ${kind.toLowerCase()}`);
-      const detail = titleText.slice(kind.length).replace(/^：/, "").trim();
+      if (!box.hasClass(kind)) continue;
+      box.addClass(`admonition ${kind === "assumption" ? "important" : kind}`);
+      const detail = titleText.slice(label.length).replace(/^：/, "").trim();
       title.empty().append($("<strong>").text(label));
       if (detail) title.append($("<span>").text(detail));
       break;
     }
     if (titleText.startsWith("算法")) box.addClass("algorithm");
   });
-  $(".newtheorem:has(.lfs-example-label)").each((_, node) => {
-    const example = $(node);
-    example.find(".head").first().prepend("例 ");
-    example.find(".lfs-example-label").remove();
-    example.addClass("example");
+  const theoremKinds = new Map([
+    ["theorem", "定理"],
+    ["lemma", "引理"],
+    ["proposition", "命题"],
+    ["corollary", "推论"],
+    ["definition", "定义"],
+    ["example", "例"],
+    ["remark", "注"],
+  ]);
+  $(".newtheorem:has(.my-theorem-kind)").each((_, node) => {
+    const statement = $(node);
+    const marker = statement.find(".my-theorem-kind").first();
+    const kind = marker.attr("data-kind") ?? "";
+    const label = theoremKinds.get(kind);
+    if (label) statement.find(".head").first().prepend(`${label} `);
+    marker.remove();
+    if (kind) statement.addClass(kind);
   });
   shiftHeadings($);
-  $("h2[id^='section-']").each((_, node) => {
+  $("h2[id^='section-'], h3[id^='section-']").each((_, node) => {
     const heading = $(node);
     const id = heading.attr("id") ?? "";
     const number = id.slice("section-".length);
@@ -104,7 +117,23 @@ export function normalizeContent(chapter: Chapter): void {
     if (!heading.hasClass("unnumbered")) {
       heading.prepend(`<span class="section-number">${number}</span>`);
     }
-    chapter.toc.push({ id, number, title });
+    if (node.tagName === "h2") chapter.toc.push({ id, number, title });
+  });
+  // A marker at the start of a section applies to the entire section.
+  // Move only markers in the heading's immediate sibling paragraph.
+  $("h2, h3, h4").each((_, node) => {
+    const heading = $(node);
+    const paragraph = heading.next("p");
+    const marker = paragraph.children(".optional-marker").first();
+    if (!marker.length) return;
+    const contents = paragraph.contents();
+    const prefix = contents.slice(0, contents.toArray().indexOf(marker[0])).text();
+    if (prefix.trim()) return;
+    marker.attr("aria-label", "本节选读，含下属小节");
+    marker.attr("title", "本节正文及下属小节可延后阅读");
+    marker.children("span").last().text("本节选读");
+    heading.append(marker);
+    if (!paragraph.text().trim() && !paragraph.children().length) paragraph.remove();
   });
   const ids = new Set($("[id]").toArray().map((node) => $(node).attr("id")!));
   $("a[href^='#']").each((_, node) => {

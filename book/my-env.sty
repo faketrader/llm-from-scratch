@@ -1,0 +1,216 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{my-env}[2026/09/18 My book environments]
+
+\RequirePackage{amsthm}
+\RequirePackage[most]{tcolorbox}
+\RequirePackage{etoolbox}
+\RequirePackage{marginnote}
+\RequirePackage{algpseudocode}
+\RequirePackage{minted}
+\RequirePackage{manfnt}
+
+\newtheoremstyle{mystatement}{8pt}{8pt}{\normalfont}{}{\myheadingfont}{．}{.5em}{}
+\theoremstyle{mystatement}
+\newtheorem{theorem}{定理}[chapter]
+\newtheorem{lemma}[theorem]{引理}
+\newtheorem{proposition}[theorem]{命题}
+\newtheorem{corollary}[theorem]{推论}
+\newtheorem{definition}[theorem]{定义}
+\newtheorem{example}[theorem]{例}
+\newtheorem{remark}[theorem]{注}
+\renewcommand{\proofname}{证明}
+
+\setminted{fontsize=\small,breaklines,breakanywhere,autogobble,tabsize=4,style=friendly}
+% Pseudocode keeps the standard English algpseudocode vocabulary. Captions,
+% input/output contracts, and surrounding textbook explanations remain Chinese.
+% 颜色辅助识别，标题仍明确类别，保证灰度打印可读。
+\tcbset{
+  mybox/.style={
+    enhanced,breakable,colback=MyLight,
+    colframe=MyBorder,coltitle=MyNavy,colbacktitle=MyLight,
+    fonttitle=\myheadingfont,boxrule=.4pt,arc=1mm,left=2mm,right=2mm,
+    top=1.5mm,bottom=1.5mm,before skip=8pt,after skip=8pt
+  },
+  myalert/.style={
+    enhanced,breakable,frame hidden,boxrule=0pt,arc=0mm,
+    left=3mm,right=2.5mm,top=2mm,bottom=2mm,
+    fonttitle=\myheadingfont,toptitle=0mm,bottomtitle=1mm,
+    before skip=8pt,after skip=8pt
+  }
+}
+% TeX4ht emits the category directly to preserve CJK text in box titles.
+\NewDocumentCommand{\myalerttitle}{mm}{%
+  \ifdefined\HCode
+    \HCode{#1}\ifstrempty{#2}{}{\HCode{：}#2}%
+  \else
+    #1\ifstrempty{#2}{}{：#2}%
+  \fi}
+\newtcolorbox{note}[1][]{
+  myalert,colback=MyAlertNoteBack,colbacktitle=MyAlertNoteBack,
+  coltitle=MyAlertNote,title={\myalerttitle{注记}{#1}},
+  borderline west={1.5pt}{0pt}{MyAlertNote}}
+\newtcolorbox{tip}[1][]{
+  myalert,colback=MyAlertTipBack,colbacktitle=MyAlertTipBack,
+  coltitle=MyAlertTip,title={\myalerttitle{提示}{#1}},
+  borderline west={1.5pt}{0pt}{MyAlertTip}}
+\newtcolorbox{important}[1][]{
+  myalert,colback=MyAlertImportantBack,colbacktitle=MyAlertImportantBack,
+  coltitle=MyAlertImportant,title={\myalerttitle{重要}{#1}},
+  borderline west={1.5pt}{0pt}{MyAlertImportant}}
+\newtcolorbox{warning}[1][]{
+  myalert,colback=MyAlertWarningBack,colbacktitle=MyAlertWarningBack,
+  coltitle=MyAlertWarning,title={\myalerttitle{警告}{#1}},
+  borderline west={1.5pt}{0pt}{MyAlertWarning}}
+\newtcolorbox{caution}[1][]{
+  myalert,colback=MyAlertCautionBack,colbacktitle=MyAlertCautionBack,
+  coltitle=MyAlertCaution,title={\myalerttitle{注意}{#1}},
+  borderline west={1.5pt}{0pt}{MyAlertCaution}}
+\newtcolorbox{assumption}[1][]{
+  myalert,colback=MyAlertImportantBack,colbacktitle=MyAlertImportantBack,
+  coltitle=MyAlertImportant,title={\myalerttitle{前提}{#1}},
+  borderline west={1.5pt}{0pt}{MyAlertImportant}}
+\newcounter{algorithm}[chapter]
+\renewcommand{\thealgorithm}{\thechapter.\arabic{algorithm}}
+
+\ifdefined\HCode
+  % TeX4ht omits amsthm's localized environment names. Emit a semantic marker
+  % inside each theorem so the web normalizer can restore the visible label.
+  \NewDocumentCommand{\myhtmltheoremmarker}{m}{%
+    \HCode{<span class="my-theorem-kind" data-kind="#1"></span>}}
+  \let\myhtmltheorem\theorem
+  \let\myhtmlendtheorem\endtheorem
+  \RenewDocumentEnvironment{theorem}{o}{%
+    \IfNoValueTF{#1}{\myhtmltheorem}{\myhtmltheorem[#1]}%
+    \myhtmltheoremmarker{theorem}%
+  }{\myhtmlendtheorem}
+  \let\myhtmllemma\lemma
+  \let\myhtmlendlemma\endlemma
+  \RenewDocumentEnvironment{lemma}{o}{%
+    \IfNoValueTF{#1}{\myhtmllemma}{\myhtmllemma[#1]}%
+    \myhtmltheoremmarker{lemma}%
+  }{\myhtmlendlemma}
+  \let\myhtmlproposition\proposition
+  \let\myhtmlendproposition\endproposition
+  \RenewDocumentEnvironment{proposition}{o}{%
+    \IfNoValueTF{#1}{\myhtmlproposition}{\myhtmlproposition[#1]}%
+    \myhtmltheoremmarker{proposition}%
+  }{\myhtmlendproposition}
+  \let\myhtmlcorollary\corollary
+  \let\myhtmlendcorollary\endcorollary
+  \RenewDocumentEnvironment{corollary}{o}{%
+    \IfNoValueTF{#1}{\myhtmlcorollary}{\myhtmlcorollary[#1]}%
+    \myhtmltheoremmarker{corollary}%
+  }{\myhtmlendcorollary}
+  \let\myhtmldefinition\definition
+  \let\myhtmlenddefinition\enddefinition
+  \RenewDocumentEnvironment{definition}{o}{%
+    \IfNoValueTF{#1}{\myhtmldefinition}{\myhtmldefinition[#1]}%
+    \myhtmltheoremmarker{definition}%
+  }{\myhtmlenddefinition}
+  \let\myhtmlexample\example
+  \let\myhtmlendexample\endexample
+  \RenewDocumentEnvironment{example}{o}{%
+    \IfNoValueTF{#1}{\myhtmlexample}{\myhtmlexample[#1]}%
+    \myhtmltheoremmarker{example}%
+  }{\myhtmlendexample}
+  \let\myhtmlremark\remark
+  \let\myhtmlendremark\endremark
+  \RenewDocumentEnvironment{remark}{o}{%
+    \IfNoValueTF{#1}{\myhtmlremark}{\myhtmlremark[#1]}%
+    \myhtmltheoremmarker{remark}%
+  }{\myhtmlendremark}
+  \NewDocumentEnvironment{algorithm}{O{计算过程}}{%
+    \refstepcounter{algorithm}%
+    \HCode{<section class="algorithm"><div class="algorithm-title">}%
+    算法\thealgorithm\quad #1%
+    \HCode{</div>}%
+  }{\HCode{</section>}}
+\else
+  \NewDocumentEnvironment{algorithm}{O{计算过程}}{%
+    \refstepcounter{algorithm}%
+    \begin{tcolorbox}[mybox,title={算法\thealgorithm\quad #1}]%
+  }{\end{tcolorbox}}
+\fi
+% 算法契约使用语义命令，章节正文不直接编码标签字重或网页结构。
+\NewDocumentCommand{\AlgoContract}{mm}{%
+  \ifdefined\HCode
+    \HCode{<div class="algorithm-contract"><span class="algorithm-contract-label">}%
+    \HCode{#1：}%
+    \HCode{</span><span class="algorithm-contract-body">}#2%
+    \HCode{</span></div>}%
+  \else
+    \par\noindent\textbf{#1：}#2\par
+  \fi}
+\NewDocumentCommand{\AlgoInput}{m}{\AlgoContract{输入}{#1}}
+\NewDocumentCommand{\AlgoOutput}{m}{\AlgoContract{输出}{#1}}
+\NewDocumentCommand{\AlgoState}{m}{\AlgoContract{状态}{#1}}
+% 纸书保留 algorithmicx 的排版；网页使用项目自己的语义列表，避免把
+% algorithmicx 的行号盒模型带入 TeX4ht，同时保持英文伪代码词汇一致。
+\ifdefined\HCode
+  \newcommand{\mywebstate}{\item}
+  \newcommand{\mywebfor}[1]{\item \textbf{for} #1 \textbf{do}\begin{enumerate}}
+  \newcommand{\mywebendfor}{\end{enumerate}\item \textbf{end for}}
+  \newcommand{\mywebwhile}[1]{\item \textbf{while} #1 \textbf{do}\begin{enumerate}}
+  \newcommand{\mywebendwhile}{\end{enumerate}\item \textbf{end while}}
+  \newcommand{\mywebif}[1]{\item \textbf{if} #1 \textbf{then}\begin{enumerate}}
+  \newcommand{\mywebelse}{\end{enumerate}\item \textbf{else}\begin{enumerate}}
+  \newcommand{\mywebendif}{\end{enumerate}\item \textbf{end if}}
+  \newcommand{\mywebreturn}{\textbf{return} }
+  \NewDocumentEnvironment{myalgorithmic}{O{}}{%
+    \begingroup
+    \let\State\mywebstate
+    \let\For\mywebfor
+    \let\EndFor\mywebendfor
+    \let\While\mywebwhile
+    \let\EndWhile\mywebendwhile
+    \let\If\mywebif
+    \let\Else\mywebelse
+    \let\EndIf\mywebendif
+    \let\Return\mywebreturn
+    \HCode{<div class="algorithm-steps">}\begin{enumerate}%
+  }{%
+    \end{enumerate}\HCode{</div>}\endgroup
+  }
+\else
+  \NewDocumentEnvironment{myalgorithmic}{O{}}{\begin{algorithmic}[#1]}{\end{algorithmic}}
+\fi
+
+% 首次定义突出中文规范名；英文全称与缩写保持常规字重，避免整段过度加粗。
+% 缩写参数可空。不把英文术语堆进脚注。
+\DeclareRobustCommand{\term}[3]{%
+  \ifdefined\HCode
+    \HCode{<span class="term"><strong>}#1\HCode{</strong><span class="term-en">（}#2%
+    \if\relax\detokenize{#3}\relax\else ，#3\fi
+    \HCode{）</span></span>}%
+  \else
+    \textbf{#1}（#2\if\relax\detokenize{#3}\relax\else ，#3\fi）%
+  \fi}
+% 用于不属于术语定义、但需要读者记住的短结论；不得包裹整段正文。
+\DeclareRobustCommand{\keyconcept}[1]{\textbf{#1}}
+% 短边注为辅助提示，不承载公式前提、引用或不可缺失的论证。
+\newcommand{\bookmargin}[1]{\marginnote{\raggedright\footnotesize\color{MyNavy}#1}}
+
+% 教材与习题默认必修；仅选修内容显式调用统一标记，不预留额外间距。
+% 非浮动边注按实际页码选择外侧；左右页均靠近正文边界。
+% 稳定的底层排版宏允许配套册扩展 \optional 的语义，而不复制 xparse 命令入口。
+\newcommand{\myoptionalmark}{%
+  \marginnote[\raggedleft\small\textdbend]{\raggedright\small\textdbend}}
+\NewDocumentCommand{\optional}{}{%
+  \ifdefined\HCode
+    \HCode{<span class="optional-marker" role="note" aria-label="选修内容"><span aria-hidden="true">⚠</span><span>选修</span></span>}%
+  \else
+    \myoptionalmark
+  \fi}
+
+% 书末答案从对应题目标签取得章号、标题与题号；答案公式使用独立锚点。
+\newcommand*{\myanswerchapternumber}{}
+\NewDocumentCommand{\answerchapter}{m}{%
+  \edef\myanswerchapternumber{\getrefnumber{#1}}%
+  \section*{第\myanswerchapternumber{}章\texorpdfstring{\quad}{ }\nameref*{#1}}%
+  \phantomsection\label{ans:#1}%
+  \addcontentsline{toc}{section}{第\myanswerchapternumber{}章\texorpdfstring{\quad}{ }\nameref*{#1}}%
+  \setcounter{equation}{0}%
+  \renewcommand{\theequation}{答\myanswerchapternumber.\arabic{equation}}%
+  \renewcommand{\theHequation}{answer.\myanswerchapternumber.\arabic{equation}}}
+
+\endinput

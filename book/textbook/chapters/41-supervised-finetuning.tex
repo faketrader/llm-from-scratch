@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -293,15 +293,17 @@ SFT 可以更新全部参数，也可以只更新部分模块或附加参数。\
 训练过程应记录有效回答词元量、样本与任务配比、优化器更新数和实际消费的数据版本。训练损失窗口均值反映历史参数，与最终模型质量是两个量。完整恢复还需要优化器、调度器、随机状态和数据位置；只保存适配器或权重足以加载模型，描述原训练轨迹则不够。
 
 \begin{algorithm}[由会话构造条件监督批次]
-输入为结构化会话、目标轮次规则、固定模板与分词器；输出为输入、可见性掩码、目标标签及有效目标计数。状态包含会话身份和截断记录。
-\begin{lfsalgorithmic}[1]
-\State 校验角色顺序、必要字段及调用关联，确定允许监督的助手轮次与终止标记。
-\State 按完整会话语义选择窗口；无法保留必要条件或完整回答时隔离样本，不把截断答案伪装成完整示范。
-\State 用模板编码并保留消息和目标跨度，映射到词元级 $r_j$；若边界不能可靠对齐则停止该样本的构造。
-\State 动态填充或按独立会话装箱，生成真实位置与会话可见性掩码；填充位置的目标标记为零。
-\State 将位置 $t$ 的输出与位置 $t+1$ 的目标配对，令 $m_t=r_{t+1}$，同时排除跨会话配对。
-\State 汇总有效目标数；零目标样本不进入更新。输出计数、来源身份与掩码，供训练归一化使用。
-\end{lfsalgorithmic}
+\AlgoInput{结构化会话、目标轮次规则、固定模板和分词器。}
+\AlgoOutput{输入、可见性掩码、目标标签和有效目标数量。}
+\AlgoState{会话标识与截断记录。}
+\begin{myalgorithmic}[1]
+\State Validate role order, required fields, and call associations; identify assistant turns and termination markers eligible for supervision
+\State Select a window under complete-conversation semantics; quarantine samples that cannot retain necessary conditions or a complete response instead of presenting a truncated answer as a complete demonstration
+\State Encode with the template while retaining message and target spans, then map them to token-level $r_j$; stop constructing the sample if boundaries cannot be aligned reliably
+\State Pad dynamically or pack by independent conversation, generating true positions and conversation visibility masks; set target flags at padding positions to zero
+\State Pair the output at position $t$ with the target at position $t+1$, set $m_t=r_{t+1}$, and exclude cross-conversation pairs
+\State Aggregate the valid-target count; exclude zero-target samples from updates and emit counts, source identities, and masks for training normalization
+\end{myalgorithmic}
 不变量是每个被监督词元只由合法前缀预测，提示与填充不被误计为回答。长度为 $T$ 的跨度处理通常可线性完成；显式构造稠密可见性矩阵需要 $O(T^2)$ 空间，实际系统可采用等价的边界表示。
 \end{algorithm}
 
@@ -344,7 +346,8 @@ $\mat{H}_0$ 为旧损失的局部 Hessian。若两任务梯度内积为负，一
 \end{note}
 
 \begin{algorithm}[监督微调与模型选择]
-输入为冻结基座、指令训练集、验证集、任务指标与预算；输出为所选模型及绑定的数据和模板版本。
+\AlgoInput{冻结基座、指令训练集、验证集、任务指标与预算。}
+\AlgoOutput{所选模型及绑定的数据和模板版本。}
 \begin{enumerate}
 \item 在统一模板和生成条件下记录基座的任务与保持基线，冻结归一化规则和有效回答词元预算。
 \item 按指定配比构造合法批次，累计有效目标并形成相应的词元或样本加权梯度；执行参数更新并推进实际训练计数。
@@ -365,4 +368,4 @@ $\mat{H}_0$ 为旧损失的局部 Hessian。若两任务梯度内积为负，一
 
 
 \chapterreferences
-\lfsendchapterdocument
+\myendchapterdocument

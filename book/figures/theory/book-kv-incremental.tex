@@ -3,7 +3,7 @@
 \usetikzlibrary{arrows.meta,positioning}
 \input{diagram_styles.tex}
 \begin{document}
-\begin{tikzpicture}[lfs picture,node distance=9mm and 12mm]
+\begin{tikzpicture}[my picture,node distance=9mm and 12mm]
 \node[storage] (x) {新位置 $x_t$};
 \node[compute,right=of x] (qkv) {当前层投影\\$\vect{q}_t,\vect{k}_t,\vect{v}_t$};
 \node[storage,below=of qkv] (kv) {历史缓存追加\\$\mat{K}_{\le t},\mat{V}_{\le t}$};

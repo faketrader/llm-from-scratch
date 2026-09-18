@@ -63,13 +63,13 @@ export function initReading() {
   updateReading();
   let size = 17;
   try {
-    size = Number(localStorage.getItem("lfs-font-size")) || 17;
+    size = Number(localStorage.getItem("my-font-size")) || 17;
   } catch {}
   function setSize(value) {
     size = Math.max(15, Math.min(21, value));
     document.documentElement.style.setProperty("--body-size", `${size}px`);
     try {
-      localStorage.setItem("lfs-font-size", String(size));
+      localStorage.setItem("my-font-size", String(size));
     } catch {}
     if ($("#font-smaller")) $("#font-smaller").disabled = size === 15;
     if ($("#font-larger")) $("#font-larger").disabled = size === 21;

@@ -1,0 +1,30 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[storage] (prompt) {Prompt};
+\node[storage, below=of prompt] (resp) {Response};
+\node[compute, right=16mm of $(prompt)!0.5!(resp)$] (template) {会话模板};
+\node[compute, right=of template] (tok) {Tokenizer};
+\node[storage, above right=8mm and 16mm of tok] (ids) {\texttt{input\_ids}\\\texttt{attention\_mask}\\\scriptsize $[B,T]$};
+\node[storage, below right=8mm and 16mm of tok] (labels) {\texttt{labels}=\texttt{input\_ids}\\\scriptsize Prompt / padding $\mapsto-100$};
+\node[compute, right=22mm of $(ids)!0.5!(labels)$] (collator) {Data Collator};
+\node[storage, right=of collator] (batch) {训练 batch};
+\draw[data arrow] (prompt) -- (template);
+\draw[data arrow] (resp) -- (template);
+\draw[data arrow] (template) -- (tok);
+\draw[data arrow] (tok) -- (ids);
+\draw[data arrow] (tok) -- (labels);
+\draw[data arrow] (ids) -- (collator);
+\draw[data arrow] (labels) -- (collator);
+\draw[data arrow] (collator) -- (batch);
+
+\end{tikzpicture}
+\end{document}

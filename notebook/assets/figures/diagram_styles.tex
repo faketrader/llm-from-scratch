@@ -1,0 +1,103 @@
+% Shared visual language for project architecture diagrams.
+\definecolor{MyBlue}{HTML}{2563EB}
+\definecolor{MyBlueSoft}{HTML}{DBEAFE}
+\definecolor{MyGreen}{HTML}{15803D}
+\definecolor{MyGreenSoft}{HTML}{DCFCE7}
+\definecolor{MyOrange}{HTML}{C2410C}
+\definecolor{MyOrangeSoft}{HTML}{FFEDD5}
+\definecolor{MyRed}{HTML}{B91C1C}
+\definecolor{MyRedSoft}{HTML}{FEE2E2}
+\definecolor{MyPurple}{HTML}{7E22CE}
+\definecolor{MyPurpleSoft}{HTML}{F3E8FF}
+\definecolor{MyGray}{HTML}{475569}
+\definecolor{MyGraySoft}{HTML}{F1F5F9}
+
+\tikzset{
+  my picture/.style={
+    font=\small,
+    node distance=8mm and 12mm,
+    >=Latex,
+    every path/.style={line cap=round, line join=round}
+  },
+  block/.style={
+    draw=MyBlue,
+    fill=MyBlueSoft,
+    rounded corners=2pt,
+    line width=0.8pt,
+    align=center,
+    inner xsep=7pt,
+    inner ysep=5pt,
+    minimum height=10mm
+  },
+  compute/.style={
+    block,
+    draw=MyPurple,
+    fill=MyPurpleSoft
+  },
+  storage/.style={
+    block,
+    draw=MyGreen,
+    fill=MyGreenSoft
+  },
+  interface/.style={
+    block,
+    draw=MyOrange,
+    fill=MyOrangeSoft
+  },
+  risk/.style={
+    block,
+    draw=MyRed,
+    fill=MyRedSoft
+  },
+  neutral/.style={
+    block,
+    draw=MyGray,
+    fill=MyGraySoft
+  },
+  decision/.style={
+    diamond,
+    draw=MyOrange,
+    fill=MyOrangeSoft,
+    line width=0.8pt,
+    align=center,
+    inner sep=2pt,
+    aspect=2
+  },
+  group/.style={
+    draw=MyGray,
+    rounded corners=3pt,
+    dashed,
+    line width=0.7pt,
+    inner sep=6pt
+  },
+  arrow/.style={
+    -{Latex[length=2.4mm,width=1.6mm]},
+    draw=MyGray,
+    line width=0.9pt
+  },
+  data arrow/.style={
+    arrow,
+    draw=MyBlue
+  },
+  control arrow/.style={
+    arrow,
+    draw=MyOrange,
+    dashed
+  },
+  residual/.style={
+    arrow,
+    draw=MyGreen,
+    rounded corners=4pt
+  },
+  label text/.style={
+    font=\scriptsize,
+    text=MyGray,
+    fill=white,
+    inner sep=1.5pt
+  },
+  title/.style={
+    font=\bfseries,
+    text=MyGray,
+    align=center
+  }
+}

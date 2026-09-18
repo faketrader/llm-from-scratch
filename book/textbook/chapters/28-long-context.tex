@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -50,7 +50,7 @@ $Q(T,\rho,\eta)$ & 给定长度、证据位置和干扰条件下的任务质量�
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[>=Latex,font=\small,node distance=8mm and 9mm,
- box/.style={draw=LFSPrimary,fill=LFSLight,rounded corners,align=center,text width=28mm,minimum height=13mm}]
+ box/.style={draw=MyPrimary,fill=MyLight,rounded corners,align=center,text width=28mm,minimum height=13mm}]
 \node[box] (pos) {位置表示\\相位与频率范围};
 \node[box,right=of pos] (graph) {注意力连接\\可见性与信息路径};
 \node[box,right=of graph] (data) {长序列训练\\长度与任务分布};
@@ -127,7 +127,7 @@ $Q(T,\rho,\eta)$ & 给定长度、证据位置和干扰条件下的任务质量�
 \foreach \x/\top/\bottom in {0/0/0,1.5/4096/512,6/16384/2048,12/32768/4096}{
  \draw (\x,.92)--(\x,1.08) node[above=3mm]{\top};
  \draw (\x,-1.08)--(\x,-.92) node[below=3mm]{\bottom};
- \draw[->,LFSCyan] (\x,.65)--(\x,-.6);
+ \draw[->,MyCyan] (\x,.65)--(\x,-.6);
 }
 \node at (6,0) [fill=white] {$f(i)=\frac{i}{8}$；图中两轴各自缩放绘制};
 \end{tikzpicture}
@@ -252,8 +252,8 @@ LongRoPE & 进化算法搜索各频带非均匀缩放因数 & 可达 $64\times \
     \fi
    \fi
   \fi
-  \ifnum\allowed=1\fill[LFSPrimary!45] (\j,-\i) rectangle +(1,-1);\fi
-  \draw[LFSBorder] (\j,-\i) rectangle +(1,-1);
+  \ifnum\allowed=1\fill[MyPrimary!45] (\j,-\i) rectangle +(1,-1);\fi
+  \draw[MyBorder] (\j,-\i) rectangle +(1,-1);
  }}
  \node at (3.5,-9.2) {键位置 $j$};
  \node[rotate=90] at (-.8,-3.5) {查询位置 $i$};
@@ -279,12 +279,12 @@ LongRoPE & 进化算法搜索各频带非均匀缩放因数 & 可达 $64\times \
 \foreach \row/\txt/\start in {0/输入/0,1/第一层/3,2/第二层/6,3/第三层/9}{
  \node[anchor=east] at (-.55,\row) {\txt};
  \foreach \col in {0,...,9}{
-  \node[circle,draw=LFSBorder,fill=LFSLight,minimum size=4mm,inner sep=0pt] (r\row c\col) at (\col,\row) {};
+  \node[circle,draw=MyBorder,fill=MyLight,minimum size=4mm,inner sep=0pt] (r\row c\col) at (\col,\row) {};
  }
 }
-\foreach \col in {6,7,8,9}{\draw[->,LFSPrimary] (r2c\col)--(r3c9);}
-\foreach \col in {3,4,5,6}{\draw[->,LFSCyan] (r1c\col)--(r2c6);}
-\foreach \col in {0,1,2,3}{\draw[->,LFSTeal] (r0c\col)--(r1c3);}
+\foreach \col in {6,7,8,9}{\draw[->,MyPrimary] (r2c\col)--(r3c9);}
+\foreach \col in {3,4,5,6}{\draw[->,MyCyan] (r1c\col)--(r2c6);}
+\foreach \col in {0,1,2,3}{\draw[->,MyTeal] (r0c\col)--(r1c3);}
 \foreach \col in {0,...,9}{\node[below=2mm] at (\col,0) {\col};}
 \node[above=2mm,align=center] at (5,3) {每层最多向前跨三格；图中仅画一组达到最早位置的路径};
 \end{tikzpicture}
@@ -332,7 +332,9 @@ LongRoPE & 进化算法搜索各频带非均匀缩放因数 & 可达 $64\times \
 长文问答中大量输入是条件而不是监督目标。设输入词元数为 $T$、监督目标数为 $R$，监督密度为 $\frac{R}{T}$。比较训练效率时，长输入和少量回答可能形成很低的监督密度；仅报告处理了多少输入词元不足以说明训练信号充足。可以混合语言建模与长距离任务，但混合权重、标签位置和泄漏边界都应明确。
 
 \begin{algorithm}[长上下文适配训练]
-\textbf{输入：}基础模型、目标窗口、候选位置规则、分组隔离的长短训练集、开发集与计算预算。\textbf{输出：}经过适配的模型制品及其长度配置。\textbf{状态：}当前长度课程、优化器、累计有效词元和开发评价记录。
+\AlgoInput{基础模型、目标窗口、候选位置规则、分组隔离的长短训练集、开发集与计算预算。}
+\AlgoOutput{经过适配的模型制品及其长度配置。}
+\AlgoState{当前长度课程、优化器、累计有效词元和开发评价记录。}
 \begin{enumerate}
 \item 固定分词器、模板、位置频率、注意力结构及短任务基线；保存基础模型身份。
 \item 按规定的长度桶和任务配比构造批次，区分序列采样率与实际词元占比；保留文档边界和证据来源。
@@ -469,7 +471,9 @@ Context Parallel & 混合序列并行（TP + Ulysses + Ring） & 分层自适应
 参数记忆与上下文读取可通过替换事实、控制证据位置等对照区分。可使用明确置换的实体、唯一合成键或受控反事实材料，使答案必须依赖给定上下文；同时警惕构造任务过于机械而缺少真实难度。
 
 \begin{algorithm}[长度与证据位置的受控评估]
-\textbf{输入：}固定模型制品、独立任务模板、长度网格、证据位置网格、干扰等级及评分函数。\textbf{输出：}分条件质量与成本矩阵。\textbf{状态：}样例标识、来源记录、实际词元长度和逐条件结果。
+\AlgoInput{固定模型制品、独立任务模板、长度网格、证据位置网格、干扰等级及评分函数。}
+\AlgoOutput{分条件质量与成本矩阵。}
+\AlgoState{样例标识、来源记录、实际词元长度和逐条件结果。}
 \begin{enumerate}
 \item 为每项任务固定问题与必要证据，保留正确答案和来源；明确是否存在答案、需要几条证据。
 \item 按每个长度与位置组合插入完整证据，再用规定的干扰材料填充；分词后核对实际位置和总长度，避免静默截断。
@@ -496,4 +500,4 @@ Context Parallel & 混合序列并行（TP + Ulysses + Ring） & 分层自适应
 
 
 \chapterreferences
-\lfsendchapterdocument
+\myendchapterdocument

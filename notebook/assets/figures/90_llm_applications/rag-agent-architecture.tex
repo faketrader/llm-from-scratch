@@ -1,0 +1,45 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+  \node[storage] (docs) {版本化文档};
+  \node[compute, right=10mm of docs] (chunk) {切块};
+  \node[storage, right=10mm of chunk] (index) {BM25 索引};
+  \node[interface, below=17mm of docs] (question) {用户问题};
+  \node[compute, right=10mm of question] (retrieval) {检索\\Top-k / 阈值};
+  \node[storage, right=10mm of retrieval] (evidence) {证据包\\片段与来源};
+
+  \node[interface, below=15mm of evidence] (tool) {只读工具\\固定 Schema};
+  \node[compute, right=18mm of evidence] (controller) {Agent 控制器\\预算、Trace、停止条件};
+  \node[compute, above right=8mm and 15mm of controller] (workflow) {固定 Workflow\\步骤已知};
+  \node[compute, below right=8mm and 15mm of controller] (react) {ReAct 循环\\路径依 Observation 变化};
+  \node[compute, right=19mm of controller] (generation) {带引用生成};
+  \node[interface, right=14mm of generation] (evaluation) {基础评测\\检索、引用、拒答};
+
+  \draw[data arrow] (docs) -- (chunk);
+  \draw[data arrow] (chunk) -- (index);
+  \draw[data arrow] (index) |- (retrieval);
+  \draw[data arrow] (question) -- (retrieval);
+  \draw[data arrow] (retrieval) -- (evidence);
+  \draw[data arrow] (evidence) -- (controller);
+  \draw[data arrow] (tool.east) -| (controller.south);
+  \draw[control arrow] (controller) -- (workflow);
+  \draw[control arrow] (controller) -- (react);
+  \draw[data arrow] (workflow) -- (generation);
+  \draw[data arrow] (react) -- (generation);
+  \draw[data arrow] (generation) -- (evaluation);
+
+  \begin{scope}[on background layer]
+    \node[group, fit=(docs)(chunk)(index)(question)(retrieval)(evidence), label={[title]above:RAG 数据与检索边界}] {};
+    \node[group, fit=(tool)(controller)(workflow)(react), label={[title]below:有界执行边界}] {};
+    \node[group, fit=(generation)(evaluation), label={[title]above:输出与验收边界}] {};
+  \end{scope}
+\end{tikzpicture}
+\end{document}

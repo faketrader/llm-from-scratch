@@ -1,0 +1,10 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{my-book}[2026/09/18 My book style]
+
+% Public facade: keep module order stable because later layers extend earlier ones.
+\RequirePackage{subfiles}
+\RequirePackage{\subfix{../my-math}}
+\RequirePackage{\subfix{../my-format}}
+\RequirePackage{\subfix{../my-env}}
+
+\endinput

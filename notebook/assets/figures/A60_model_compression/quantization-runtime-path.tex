@@ -1,0 +1,23 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[storage] (fp) {Floating Weight};
+\node[compute, right=of fp] (obs) {Observer / Calibration};
+\node[storage, right=of obs] (meta) {Scale / Zero-point};
+\node[storage, below=of meta] (int) {Integer Weight};
+\node[interface, left=of int] (kernel) {Supported Kernel\\\scriptsize dtype + layout + hardware};
+\node[storage, left=of kernel] (gain) {Latency / Throughput Gain};
+\draw[data arrow] (fp) -- (obs) -- (meta) -- (int) -- (kernel) -- (gain);
+\node[risk, below=of kernel] (risk) {仅文件变小\\不代表推理加速};
+\draw[control arrow] (risk) -- (kernel);
+
+\end{tikzpicture}
+\end{document}

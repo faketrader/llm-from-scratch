@@ -1,5 +1,7 @@
 export type Chapter = {
   number: number;
+  displayNumber: string;
+  kind: "chapter" | "appendix";
   title: string;
   part: string;
   slug: string;

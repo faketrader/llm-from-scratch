@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -115,4 +115,4 @@
 比较全参数微调、LoRA 和 QLoRA 及其并行组合时，记录验证质量、全局有效监督词元吞吐、各设备峰值显存、总更新次数、墙钟时间和设备时。分布式执行还应核对数据分片、梯度同步、全局归一化、非有限值跳步与恢复一致性。检查点应包含适配器或完整参数、基座身份、优化器状态、学习率进度、随机状态与数据游标；分片检查点还需明确恢复所需的并行配置或重分片能力。发布时核对适配器合并、量化转换与服务模板造成的质量变化。
 
 \chapterreferences
-\lfsendchapterdocument
+\myendchapterdocument

@@ -3,7 +3,7 @@
 \usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
 \input{diagram_styles.tex}
 \begin{document}
-\begin{tikzpicture}[lfs picture]
+\begin{tikzpicture}[my picture]
 
 \node[storage] (ds) {\texttt{DatasetDict}\\\scriptsize 文档与 split};
 \node[compute, right=of ds] (tok) {Tokenizer\\\scriptsize 文本 $\to$ token IDs};

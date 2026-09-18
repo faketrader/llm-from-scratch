@@ -69,7 +69,7 @@ export function buildOwners(chapters: Chapter[]): Map<string, Chapter> {
 
 export function rewriteBookReferences($: cheerio.CheerioAPI, chapters: Chapter[]): void {
   const chapterByLabel = new Map(chapters.map((chapter) => [chapter.label, chapter]));
-  $(".lfs-bookxref[data-label]").each((_, node) => {
+  $(".my-bookxref[data-label]").each((_, node) => {
     const link = $(node);
     const target = chapterByLabel.get(link.attr("data-label") ?? "");
     if (!target) return;
@@ -89,7 +89,10 @@ export function rewriteBookReferences($: cheerio.CheerioAPI, chapters: Chapter[]
     }
     const reference = link.text() + text.join("");
     const title = reference.includes(target.title) ? `《${target.title}》` : "";
-    link.text(`第${target.number}章${title}`);
+    const designation = target.kind === "appendix"
+      ? `附录${target.displayNumber}`
+      : `第${target.displayNumber}章`;
+    link.text(`${designation}${title}`);
     link.attr("href", `${target.slug}#${target.label}`);
     link.removeAttr("data-label");
   });

@@ -1,0 +1,48 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning,calc}
+\input{diagram_styles.tex}
+
+\begin{document}
+\begin{tikzpicture}[
+  my picture,
+  node distance=7mm and 10mm,
+  stage/.style={block,text width=31mm,minimum height=11mm},
+  endpoint/.style={neutral,text width=17mm,minimum height=11mm}
+]
+
+\node[storage,text width=29mm,minimum height=15mm] (artifact) {压缩权重\\与元数据};
+
+\node[interface,text width=30mm,minimum height=11mm, right=14mm of artifact, yshift=20mm]
+  (load-restore) {加载时完整恢复};
+\node[storage,stage,right=of load-restore] (resident) {驻留高精度权重};
+\node[compute,stage,right=of resident] (load-gemm) {浮点矩阵乘法};
+
+\node[interface,text width=30mm,minimum height=11mm, right=14mm of artifact]
+  (forward-restore) {每次前向完整恢复};
+\node[storage,stage,right=of forward-restore] (temporary) {高精度临时张量};
+\node[compute,stage,right=of temporary] (forward-gemm) {浮点矩阵乘法};
+
+\node[interface,text width=30mm,minimum height=11mm, right=14mm of artifact, yshift=-20mm]
+  (fused-decode) {分块解码与乘法融合};
+\node[storage,stage,right=of fused-decode] (on-chip) {寄存器或片上\\中间状态};
+\node[compute,stage,right=of on-chip] (fused-compute) {融合计算};
+
+\node[endpoint,right=13mm of forward-gemm] (output) {输出};
+
+\draw[data arrow] (artifact.east) -- ++(5mm,0) |- (load-restore.west);
+\draw[data arrow] (artifact.east) -- (forward-restore.west);
+\draw[data arrow] (artifact.east) -- ++(5mm,0) |- (fused-decode.west);
+\draw[data arrow] (load-restore) -- (resident) -- (load-gemm);
+\draw[data arrow] (forward-restore) -- (temporary) -- (forward-gemm);
+\draw[data arrow] (fused-decode) -- (on-chip) -- (fused-compute);
+\draw[data arrow] (load-gemm.east) -- ++(5mm,0) |- (output.north);
+\draw[data arrow] (forward-gemm) -- (output);
+\draw[data arrow] (fused-compute.east) -- ++(5mm,0) |- (output.south);
+
+\node[label text,above=1mm of resident] {加载后长期驻留};
+\node[label text,above=1mm of temporary] {每次计算产生完整中间量};
+\node[label text,above=1mm of on-chip] {不写回完整恢复张量};
+
+\end{tikzpicture}
+\end{document}

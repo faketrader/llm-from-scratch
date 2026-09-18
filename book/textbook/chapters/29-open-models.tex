@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -224,7 +224,7 @@ DeepSeek-V4.1-Flash将图像与文本作为输入，自回归地产生文本，�
 
 V4.1 Flash采用两个Engram模块，分别位于从零计数的第1层和第14层，合计196B参数。每个模块使用2、3、4阶片段，每阶8个哈希头、合计2048维嵌入，每头表容量约1600万项，取不同素数；嵌入表及键值投影采用FP8。相较原始Engram，该版本省去短因果卷积，并调整嵌入优化方法。因此解释该制品时应以V4.1报告为准，早期论文的对应结构在此已有改动\cite{deepseek2026v41flash}。
 
-表地址由词元确定，可以提前计算，并从主机内存预取，使传输与网络计算重叠；收益取决于带宽、批量与调度。仅按196B表参数每参数一字节估算，存储已约为196GB，另需尺度和运行状态。Engram保存训练得到的参数化记忆，RAG访问外部文档，KV缓存保存本次前缀的中间状态；三者的更新方式、来源可追溯性和存储生命周期各不相同。
+表地址由词元确定，可以提前计算，并从主机内存预取\footnote{预取（prefetching），也称预读取。}，使传输与网络计算重叠；收益取决于带宽、批量与调度。仅按196B表参数每参数一字节估算，存储已约为196GB，另需尺度和运行状态。Engram保存训练得到的参数化记忆，RAG访问外部文档，KV缓存保存本次前缀的中间状态；三者的更新方式、来源可追溯性和存储生命周期各不相同。
 
 \subsection{CSA2 与缓存精度}
 \term{压缩稀疏注意力第二代}{Compressed Sparse Attention 2}{CSA2}进一步沿层维度复用全局缓存和稀疏位置选择。Full模式生成缓存并执行索引；Reindex模式复用先前的缓存，以本层索引查询重新选择位置；Reuse模式连同已选位置一起复用。各层仍保留自己的全局查询与局部窗口缓存。解码器的分层稀疏索引还把后续索引的搜索范围限制在较早层产生的候选池中\cite{deepseek2026v41flash}。
@@ -439,7 +439,8 @@ Safetensors 的元数据读取与需要通用对象反序列化的格式不同�
 \subsection{身份清单的伪代码}
 \begin{algorithm}[建立模型结构与协议清单]
 \label{alg:open-manifest}
-\textbf{输入：}固定来源和版本的模型文件、声明文档、允许读取的格式与结构规则。\textbf{输出：}证据清单、确定冲突、仍不可判定的项目。
+\AlgoInput{固定来源和版本的模型文件、声明文档、允许读取的格式与结构规则。}
+\AlgoOutput{证据清单、确定冲突、仍不可判定的项目。}
 \begin{enumerate}
 \item 记录来源版本与文件路径；按字节流计算摘要，保留原始文档及获取时间，不执行模型代码。
 \item 读取配置，提取逐层类型、维度、头数、专家布局、位置机制、量化声明和处理器依赖。
@@ -475,4 +476,4 @@ Safetensors 的元数据读取与需要通用对象反序列化的格式不同�
 
 
 \chapterreferences
-\lfsendchapterdocument
+\myendchapterdocument

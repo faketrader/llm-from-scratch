@@ -19,7 +19,7 @@ make serve-web
 
 ## 构建过程
 
-教材和习题由 make4ht 分别转换到 `build/web-work/`，TypeScript 构建程序通过 DOM 读取 TeX4ht 生成的章节、题目、解析、图表和引用结构。所有构建默认增量执行：PDF 由 latexmk 的依赖数据库判断是否重编译，网页转换按教材、习题及 TeX4ht 配置的内容指纹分别复用，前端供应商资源按锁文件复用。普通构建保留这些缓存；`make clean` 显式清理 `build/` 中的中间状态并保留 `dist/` 交付产物，`make clean -- --all` 同时清理两者。
+教材和习题由 make4ht 分别转换到 `build/web-work/`，TypeScript 构建程序通过 DOM 读取 TeX4ht 生成的章节、题目、解析、图表和引用结构。`make web` 在公共图源准备完成后并行执行两册 PDF 构建与网页转换，待两条流程均成功后组装 `dist/web/`、复制 PDF 并完成校验。PDF 内部仍按教材、习题的依赖顺序构建。所有构建默认增量执行：PDF 由 latexmk 的依赖数据库判断是否重编译，网页转换按教材、习题及 TeX4ht 配置的内容指纹分别复用，前端供应商资源按锁文件复用。普通构建保留这些缓存；`make clean` 显式清理 `build/` 中的中间状态并保留 `dist/` 交付产物，`make clean -- --all` 同时清理两者。
 
 `web/tex4ht/tex4ht.cfg` 配置 HTML 语义标签、脚注与 XeLaTeX 的 CJK Unicode 输出；`web/tex4ht/make4ht.mk4` 编排 LaTeX/Biber 编译。
 
@@ -51,7 +51,7 @@ web/
 └── tex4ht/               # TeX4ht 语义配置与 make4ht 编译流程
 ```
 
-`build.ts` 依次执行转换、提取、引用绑定、渲染、资源发布与校验。构建模块通过 `types.ts` 共享数据结构；浏览器模块只依赖浏览器 API。首页、章节和附加页各自从公共布局生成。
+`convert.ts` 提前生成可缓存的 TeX4ht 转换结果；`build.ts` 复用转换结果，依次执行提取、引用绑定、渲染、资源发布与校验。构建模块通过 `types.ts` 共享数据结构；浏览器模块只依赖浏览器 API。首页、章节和附加页各自从公共布局生成。
 
 样式按 `assets.ts` 中声明的顺序合并成一个 `styles.css`，保持层叠顺序。浏览器使用原生 ES 模块，构建时为入口及其导入加上内容版本号。发布文件名与页面地址由构建层统一生成。
 

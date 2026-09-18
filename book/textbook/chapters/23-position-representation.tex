@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -206,22 +206,22 @@
 高维旋转通常可以逐对计算，无需物化 $d_k\times d_k$ 稠密矩阵。每个位置只需线性数量的乘加。相邻配对与前后半段配对可以通过固定的坐标置换建立等价关系，但同时必须变换投影权重的布局。只替换旋转程序而不处理已有权重，会得到不同函数。
 
 \begin{algorithm}[逐对执行 RoPE]\label{alg:pos-rope}
-\textbf{输入：}查询或键张量 $\mat{Z}\in\Real^{B\times T\times d_k}$，位置编号 $\mat{I}\in\mathbb Z^{B\times T}$，偶数旋转宽度 $d_r\le d_k$，频率 $\omega_0,\ldots,\omega_{\frac{d_r}{2}-1}$；各维度均为有限长度。此处采用相邻坐标配对。
-
-\textbf{输出：}同形张量 $\widetilde{\mat{Z}}$。\textbf{状态：}输出数组和当前二维原始分量 $a,b$，二者在写回前均须保存。
-\begin{lfsalgorithmic}[1]
-\State 检查 $d_r$ 为非负偶数、$d_r\le d_k$，位置、频率和张量形状符合输入约定
-\State $\widetilde{\mat{Z}}\gets \mat{Z}$，保留所有未旋转坐标
-\For{样本 $b_0=1,\ldots,B$ 和位置列 $t=0,\ldots,T-1$}
+\AlgoInput{查询或键张量 $\mat{Z}\in\Real^{B\times T\times d_k}$、位置索引 $\mat{I}\in\mathbb Z^{B\times T}$、不超过 $d_k$ 的偶数旋转宽度 $d_r$，以及频率 $\omega_0,\ldots,\omega_{\frac{d_r}{2}-1}$；所有维度均有限，相邻坐标两两配对。}
+\AlgoOutput{与 $\mat{Z}$ 形状相同的张量 $\widetilde{\mat{Z}}$。}
+\AlgoState{输出数组，以及回写前保存的当前原始二维分量 $a,b$。}
+\begin{myalgorithmic}[1]
+\State Validate that $d_r$ is nonnegative and even, $d_r\le d_k$, and all positions, frequencies, and tensor shapes satisfy the input contract
+\State Set $\widetilde{\mat{Z}}\gets \mat{Z}$ to preserve every unrotated coordinate
+\For{sample $b_0=1,\ldots,B$ and position $t=0,\ldots,T-1$}
   \State $m\gets \mat{I}_{b_0t}$
   \For{$r=0,\ldots,\frac{d_r}{2}-1$}
-    \State $\theta\gets m\omega_r$，$c\gets\cos\theta$，$s\gets\sin\theta$
-    \State 保存原始分量 $a\gets \mat{Z}_{b_0,t,2r}$、$b\gets \mat{Z}_{b_0,t,2r+1}$
-    \State $\widetilde{\mat{Z}}_{b_0,t,2r}\gets ac-bs$，$\widetilde{\mat{Z}}_{b_0,t,2r+1}\gets as+bc$
+    \State Set $\theta\gets m\omega_r$, $c\gets\cos\theta$, and $s\gets\sin\theta$
+    \State Save original components $a\gets \mat{Z}_{b_0,t,2r}$ and $b\gets \mat{Z}_{b_0,t,2r+1}$
+    \State Set $\widetilde{\mat{Z}}_{b_0,t,2r}\gets ac-bs$ and $\widetilde{\mat{Z}}_{b_0,t,2r+1}\gets as+bc$
   \EndFor
 \EndFor
 \State \Return $\widetilde{\mat{Z}}$
-\end{lfsalgorithmic}
+\end{myalgorithmic}
 \textbf{不变量：}每对旋转前后平方和相同；未旋转坐标相同。对查询和键分别调用时，频率和配对必须一致，位置编号各取对应位置。
 
 按标量运算计，旋转计算量为 $O(BTd_r)$，输出存储为 $O(BTd_k)$；频率表为 $O(d_r)$。若预计算全部位置的三角函数，需另计表的存储。多头情况下对各头独立使用相同过程，并计入头数因子。
@@ -326,4 +326,4 @@
 验证应围绕具体性质展开：不含位置且可见性同步重排时满足等变关系；正弦位移满足式\eqref{eq:pos-sinusoidal-shift}；RoPE 保持范数、满足相对内积并在统一平移下保持该内积。最后再检查位置编号、频率配置与重载前后的输出一致性。这些检查确认位置计算与定义一致，长文本能力则通过相应任务评估。
 
 \chapterreferences
-\lfsendchapterdocument
+\myendchapterdocument

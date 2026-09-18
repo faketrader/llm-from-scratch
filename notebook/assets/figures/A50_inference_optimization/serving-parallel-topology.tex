@@ -1,0 +1,29 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[interface] (router) {全局 Router};
+\node[interface, above right=16mm and 20mm of router] (s1) {Replica 1 Scheduler};
+\node[interface, below right=16mm and 20mm of router] (s2) {Replica 2 Scheduler};
+\node[block, right=of s1] (g0) {GPU 0\\\scriptsize 权重分片};
+\node[block, right=of g0] (g1) {GPU 1\\\scriptsize 权重分片};
+\node[block, right=of s2] (g2) {GPU 2\\\scriptsize 权重分片};
+\node[block, right=of g2] (g3) {GPU 3\\\scriptsize 权重分片};
+\draw[data arrow] (router) -- (s1);
+\draw[data arrow] (router) -- (s2);
+\draw[data arrow] (s1) -- (g0);
+\draw[data arrow] (s2) -- (g2);
+\draw[control arrow, <->] (g0) -- node[label text, above]{Collective} (g1);
+\draw[control arrow, <->] (g2) -- node[label text, above]{Collective} (g3);
+\node[group, fit=(s1)(g0)(g1), label={[title]above:Replica 1：TP Group}] {};
+\node[group, fit=(s2)(g2)(g3), label={[title]below:Replica 2：TP Group}] {};
+
+\end{tikzpicture}
+\end{document}

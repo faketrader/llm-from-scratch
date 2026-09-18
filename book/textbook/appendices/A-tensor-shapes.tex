@@ -1,0 +1,168 @@
+\ifdefined\MyWebBook\else
+\documentclass[../textbook.tex]{subfiles}
+\begin{document}
+\fi
+\bookappendix{张量形状与常用运算速查}{app:tensor-shapes}{1}
+
+本附录集中列出正文中反复出现的张量形状。它用于核对轴的语义、矩阵乘法的公共轴、广播方向以及重排前后的元素对应关系；机制推导见\bookxref{ch:rev-tensors}、\bookxref{ch:attention}和\bookxref{ch:rev-transformer}。除非局部另行说明，序列张量采用 $[B,T,d]$，图像张量采用 $[B,C,H_{\mathrm{img}},W_{\mathrm{img}}]$，方括号按轴顺序给出逻辑形状。
+
+\section{通用轴与核对规则}
+
+\begin{longtable}{@{}p{.15\linewidth}p{.29\linewidth}p{.47\linewidth}@{}}
+\caption{常见张量轴的语义}\label{tab:appendix-shape-axes}\\
+\toprule
+符号 & 轴的含义 & 核对要点\\\midrule
+\endfirsthead
+\toprule
+符号 & 轴的含义 & 核对要点\\\midrule
+\endhead
+$B$ & 批量或并发请求数 & 训练批量、推理并发和束搜索候选数具有不同语义，不能只因长度相同就互换。\\
+$T,S$ & 查询或当前序列长度、源或缓存序列长度 & 自注意力常有 $T=S$；交叉注意力和增量解码通常为矩形 $T\times S$。\\
+$d$ & 模型隐藏宽度 & 残差相加的两个张量必须具有相同隐藏宽度及相同位置语义。\\
+$H_q,H_{kv}$ & 查询头数、键值头数 & MHA 中二者相等；GQA 中 $H_q$ 是 $H_{kv}$ 的整数倍；MQA 取 $H_{kv}=1$。\\
+$d_h,d_v$ & 单头查询键宽度、单头值宽度 & 常见配置取 $H_qd_h=d$ 且 $d_v=d_h$，这属于结构选择，不是注意力定义的必要条件。\\
+$d_f$ & 前馈中间宽度 & 普通前馈含一次上投影；门控前馈含两条宽度为 $d_f$ 的上投影。\\
+$V$ & 词表大小 & 词元编号位于 $[0,V)$；logits 的最后一轴通常为 $V$。\\
+$E,k$ & 专家总数、每词元选中的专家数 & 总参数按 $E$ 计，单次专家计算和中间激活主要按 $k$ 计。\\
+$N,F$ & 图像补丁数、每补丁展开宽度 & $N$ 由空间网格决定，$F=C P_hP_w$；两者分别对应序列轴与输入特征轴。\\
+\bottomrule
+\end{longtable}
+
+核对形状时可以依次执行以下四步：先给每个轴写出业务语义；再标出矩阵乘法中被归约的公共轴；随后检查广播只复制预期的轴；最后确认转置或重排没有把批量、位置、头和特征轴混在一起。元素总数相同只说明某次重塑在容量上可行，并不说明语义正确。
+
+\section{基础运算}
+
+\begin{table}[htbp]
+\centering
+\caption{序列网络中的基础形状变换}\label{tab:appendix-basic-shapes}
+\begin{tabularx}{\linewidth}{p{.23\linewidth}p{.31\linewidth}X}
+\toprule
+运算 & 输入与参数 & 输出及核对点\\\midrule
+词嵌入查表 & 编号 $[B,T]$，嵌入表 $[V,d]$ & $[B,T,d]$；查表不等于对 $Vd$ 参数执行一次稠密矩阵乘法。\\
+共享线性层 & $\mat X:[B,T,a]$，$\mat W:[a,b]$，$\vect b:[b]$ & $\mat X\mat W+\vect b:[B,T,b]$；线性层只变换最后一轴。\\
+逐位置归一化 & $\mat X:[B,T,d]$，缩放参数 $[d]$ & $[B,T,d]$；均值或均方通常沿最后一轴计算。\\
+残差相加 & 两个张量均为 $[B,T,d]$ & $[B,T,d]$；形状相同之外，还要确认两个位置轴一一对应。\\
+词表投影 & 隐状态 $[B,T,d]$，输出矩阵 $[d,V]$ & logits 为 $[B,T,V]$；训练可只在有效位置计算损失。\\
+下一词元标签 & 输入编号 $[B,T]$ & 常用配对为输入 $[:,0:T-1]$ 与标签 $[:,1:T]$，二者均为 $[B,T-1]$。\\
+批量展平 & $[B,T,d]\rightarrow[BT,d]$ & 只合并前两轴；恢复时必须保留原批量和位置顺序。\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+偏置 $[b]$ 加到 $[B,T,b]$ 时，会在批量轴与位置轴上广播。位置偏置 $[T,d]$ 加到 $[B,T,d]$ 时只在批量轴广播。两个广播都能通过形状检查，但表达的是不同共享关系，所以广播规则必须与参数语义一起核对。
+
+\section{注意力形状}
+
+\subsection{单头与矩形注意力}
+
+设查询、记忆输入分别为
+\begin{equation}
+ \mat X_q\in\Real^{B\times T\times d_q},\qquad
+ \mat X_m\in\Real^{B\times S\times d_m}.
+\end{equation}
+单头投影与汇总的完整形状链为
+\begin{align}
+ \mat Q&=\mat X_q\mat W_Q &&[B,T,d_h],\\
+ \mat K&=\mat X_m\mat W_K &&[B,S,d_h],\\
+ \mat V&=\mat X_m\mat W_V &&[B,S,d_v],\\
+ \mat U&=\frac{\mat Q\mat K^{\mathsf T}}{\sqrt{d_h}} &&[B,T,S],\\
+ \mat A&=\softmax(\mat U+\mat M) &&[B,T,S],\\
+ \mat O&=\mat A\mat V &&[B,T,d_v].
+\end{align}
+转置只作用于键的最后两个逻辑轴，使 $[B,S,d_h]$ 变为 $[B,d_h,S]$。Softmax 沿键位置轴 $S$ 归一化；沿查询轴归一化会得到另一种运算。自注意力令 $\mat X_q=\mat X_m$，但增量解码中仍可能有 $T=1,S>1$。
+
+常见掩码可以先广播到 $[B,H_q,T,S]$。仅描述可见性的二维掩码可为 $[T,S]$；每个样本长度不同的填充掩码常由 $[B,S]$ 扩展；同时区分查询头时才需要显式头轴。广播后的形状相同不保证语义相同，因果性应依据查询与键的绝对位置判断。
+
+\subsection{MHA、GQA 与 MQA}
+
+批量多头注意力常采用以下布局：
+\begin{equation}
+ \mat Q:[B,H_q,T,d_h],\qquad
+ \mat K,\mat V:[B,H_{kv},S,d_h].
+\end{equation}
+标准多头注意力取 $H_{kv}=H_q$。分组查询注意力取组大小 $g=\frac{H_q}{H_{kv}}$，第 $h$ 个查询头读取键值头 $\lfloor h/g\rfloor$；逻辑上将键值共享到查询头后，分数和权重均为 $[B,H_q,T,S]$。多查询注意力是 $H_{kv}=1$ 的特例。
+
+各查询头输出为 $[B,H_q,T,d_v]$。先交换头轴与位置轴得到 $[B,T,H_q,d_v]$，再把最后两轴合并为 $[B,T,H_qd_v]$，最后乘输出投影 $[H_qd_v,d]$，返回 $[B,T,d]$。直接把 $[H_q,T]$ 两轴重塑而不先交换，会保持元素总数却打乱每个位置所对应的头特征。
+
+\begin{table}[htbp]
+\centering
+\caption{注意力结构的关键逻辑形状}\label{tab:appendix-attention-shapes}
+\begin{tabularx}{\linewidth}{p{.22\linewidth}p{.28\linewidth}X}
+\toprule
+对象 & 形状 & 主要检查\\\midrule
+打包查询投影 & $[B,T,H_qd_h]$ & 重排为 $[B,H_q,T,d_h]$ 前先分出头轴。\\
+打包键值投影 & $[B,S,H_{kv}d_h]$ & GQA/MQA 的键值头数不随查询头数复制存储。\\
+注意力分数与权重 & $[B,H_q,T,S]$ & 最后一轴为被读取的键位置，Softmax 沿该轴。\\
+单层 KV 缓存 & K、V 各 $[B,H_{kv},S,d_h]$ & 新位置追加在 $S$ 轴，不能追加在头轴或特征轴。\\
+全部层 KV 缓存 & K、V 各 $[L,B,H_{kv},S,d_h]$ & 实现可改变物理布局；元素数及每层、每请求的归属保持不变。\\
+交叉注意力 & 查询 $[B,H_q,T,d_h]$，键值 $[B,H_{kv},S,d_h]$ & 输出长度为 $T$，不会因源长度为 $S$ 而改变。\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Transformer 块与常见扩展}
+
+\subsection{前馈网络}
+
+普通两矩阵前馈的形状链为
+\begin{equation}
+ [B,T,d]\xrightarrow{[d,d_f]}[B,T,d_f]
+ \xrightarrow{[d_f,d]}[B,T,d].
+\end{equation}
+SwiGLU 一类门控前馈使用两条上投影：
+\begin{equation}
+ \mat G,\mat U:[B,T,d_f],\qquad
+ \operatorname{SiLU}(\mat G)\odot\mat U:[B,T,d_f],\qquad
+ \mat Y:[B,T,d].
+\end{equation}
+逐元素门控要求两条分支同形。若两条上投影被打包为 $[B,T,2d_f]$，拆分轴是最后一轴，不能把位置轴一分为二。
+
+\subsection{低秩适配}
+
+采用行向量约定时，基座线性层为
+\begin{equation}
+ \mat X:[n,d_{\mathrm{in}}],\quad
+ \mat W:[d_{\mathrm{in}},d_{\mathrm{out}}],\quad
+ \mat X\mat W:[n,d_{\mathrm{out}}].
+\end{equation}
+秩为 $r$ 的 LoRA 分支可写为
+\begin{equation}
+ \mat A:[d_{\mathrm{in}},r],\qquad
+ \mat B:[r,d_{\mathrm{out}}],\qquad
+ (\mat X\mat A)\mat B:[n,d_{\mathrm{out}}].
+\end{equation}
+因此增量 $\mat A\mat B$ 必须与 $\mat W$ 同形。框架若把线性权重存为 $[d_{\mathrm{out}},d_{\mathrm{in}}]$，参数命名与乘法方向可能相反，迁移时应以实际前向公式为准；完整机制见\bookxref{ch:parameter-efficient-finetuning}。
+
+\subsection{混合专家}
+
+路由器输入为 $[B,T,d]$，专家 logits 为 $[B,T,E]$，Top-$k$ 选择结果的专家编号与权重均为 $[B,T,k]$。把有效词元轴合并为 $N_{\mathrm{tok}}$ 后，每个词元复制或分派到 $k$ 个专家，分派条目总数为 $kN_{\mathrm{tok}}$；按专家排序后，每个专家接收的条目数可以不同。
+
+每个门控专家把 $[n_e,d]$ 映射为 $[n_e,d_f]$ 再返回 $[n_e,d]$，其中 $n_e$ 是该专家实际接收的条目数。专家输出按原词元索引聚合回 $[B,T,d]$。只检查最终形状无法发现词元排列错误，还要验证分派索引、专家权重和逆置换彼此一致。容量与路由机制见\bookxref{ch:rev-moe}。
+
+\subsection{视觉补丁与多模态序列}
+
+对图像 $[B,C,H_{\mathrm{img}},W_{\mathrm{img}}]$，无重叠补丁大小为 $P_h\times P_w$ 时，
+\begin{equation}
+ G_h=\frac{H_{\mathrm{img}}}{P_h},\quad
+ G_w=\frac{W_{\mathrm{img}}}{P_w},\quad
+ N=G_hG_w,\quad F=CP_hP_w.
+\end{equation}
+补丁化得到 $[B,N,F]$，乘投影 $[F,d]$ 后得到视觉词元 $[B,N,d]$。若加入一个分类词元，序列长度变为 $N+1$。卷积实现常先产生 $[B,d,G_h,G_w]$，需要按固定空间顺序重排为 $[B,N,d]$；对应关系见\bookxref{ch:vision-transformer}。
+
+多模态模型把视觉表示接入语言模型前，投影后的最后一轴必须匹配语言隐藏宽度 $d$。拼接发生在序列轴时，$[B,T_{\mathrm{text}},d]$ 与 $[B,T_{\mathrm{vision}},d]$ 得到 $[B,T_{\mathrm{text}}+T_{\mathrm{vision}},d]$；位置编号、掩码和标签屏蔽也必须扩展到同一组合序列。
+
+\section{形状故障的最短检查表}
+
+\begin{enumerate}
+ \item 为每个轴写出名称，不只写尺寸；特别区分批量、位置、头、专家与特征。
+ \item 对每次矩阵乘法标出被归约的轴，确认两侧长度和语义都一致。
+ \item 对每次 Softmax 写明归一化轴，并检查全屏蔽行、填充位置和无效查询。
+ \item 对每次广播说明哪些轴共享参数，避免合法广播掩盖错误的共享关系。
+ \item 对每次 \texttt{reshape}、\texttt{view} 或展平，先确认轴已按目标顺序排列；转置与重塑不能互相替代。
+ \item 对拼接写明拼接轴；在特征轴拼接多头，在序列轴拼接模态或上下文片段。
+ \item 对缓存记录追加轴、绝对位置和有效长度；物理块布局可以变化，逻辑位置关系必须保持。
+ \item 最后检查同形张量是否具有相同语义。残差、损失和逐元素门控都要求元素一一对应，而不只是形状相同。
+\end{enumerate}
+
+\chapterreferences
+\myendchapterdocument

@@ -5,15 +5,15 @@
 \input{diagram_styles.tex}
 
 \begin{document}
-\begin{tikzpicture}[lfs picture, >=Latex]
+\begin{tikzpicture}[my picture, >=Latex]
 
 \tikzset{
-  m_weight/.style={draw=LFSBlue, fill=LFSBlueSoft, minimum width=24mm, inner sep=3pt, font=\scriptsize, align=center},
-  m_grad/.style={draw=LFSOrange, fill=LFSOrangeSoft, minimum width=24mm, inner sep=3pt, font=\scriptsize, align=center},
-  m_opt/.style={draw=LFSRed, fill=LFSRedSoft, minimum width=24mm, inner sep=3pt, font=\scriptsize, align=center},
-  m_act/.style={draw=LFSPurple, fill=LFSPurpleSoft, minimum width=24mm, inner sep=3pt, font=\scriptsize, align=center},
-  m_lora/.style={draw=LFSGreen, fill=LFSGreenSoft, minimum width=24mm, inner sep=3pt, font=\scriptsize, align=center},
-  coltitle/.style={font=\small\bfseries, text=LFSGray, align=center}
+  m_weight/.style={draw=MyBlue, fill=MyBlueSoft, minimum width=24mm, inner sep=3pt, font=\scriptsize, align=center},
+  m_grad/.style={draw=MyOrange, fill=MyOrangeSoft, minimum width=24mm, inner sep=3pt, font=\scriptsize, align=center},
+  m_opt/.style={draw=MyRed, fill=MyRedSoft, minimum width=24mm, inner sep=3pt, font=\scriptsize, align=center},
+  m_act/.style={draw=MyPurple, fill=MyPurpleSoft, minimum width=24mm, inner sep=3pt, font=\scriptsize, align=center},
+  m_lora/.style={draw=MyGreen, fill=MyGreenSoft, minimum width=24mm, inner sep=3pt, font=\scriptsize, align=center},
+  coltitle/.style={font=\small\bfseries, text=MyGray, align=center}
 }
 
 % -------------------------------------------------------------
@@ -28,8 +28,8 @@
   \node[m_opt, minimum height=22mm, above=0mm of g1] (o1) {AdamW 状态\\56 GB (FP32 矩)};
   \node[m_act, minimum height=12mm, above=0mm of o1] (a1) {中间激活与临时\\$\approx$ 16 GB};
 
-  \node[font=\footnotesize\bfseries, text=LFSRed, above=2mm of a1] {总计: $\approx$ 100 GB};
-  \node[font=\tiny, text=LFSGray, below=2mm of w1] {需多卡 A100/H100 训练};
+  \node[font=\footnotesize\bfseries, text=MyRed, above=2mm of a1] {总计: $\approx$ 100 GB};
+  \node[font=\tiny, text=MyGray, below=2mm of w1] {需多卡 A100/H100 训练};
 \end{scope}
 
 % -------------------------------------------------------------
@@ -44,8 +44,8 @@
   \node[m_lora, minimum height=6mm, above=0mm of lg2] (lo_opt2) {LoRA 优化器\\0.4 GB};
   \node[m_act, minimum height=12mm, above=0mm of lo_opt2] (a2) {中间激活与临时\\$\approx$ 16 GB};
 
-  \node[font=\footnotesize\bfseries, text=LFSOrange, above=2mm of a2] {总计: $\approx$ 31 GB};
-  \node[font=\tiny, text=LFSGray, below=2mm of w2] {单卡 A10/A100 (40GB) 可训};
+  \node[font=\footnotesize\bfseries, text=MyOrange, above=2mm of a2] {总计: $\approx$ 31 GB};
+  \node[font=\tiny, text=MyGray, below=2mm of w2] {单卡 A10/A100 (40GB) 可训};
 \end{scope}
 
 % -------------------------------------------------------------
@@ -60,8 +60,8 @@
   \node[m_lora, minimum height=6mm, above=0mm of lg3] (lo_opt3) {分页优化器状态\\0.4 GB};
   \node[m_act, minimum height=8mm, above=0mm of lo_opt3] (a3) {激活重计算\\$\approx$ 4 GB};
 
-  \node[font=\footnotesize\bfseries, text=LFSGreen, above=2mm of a3] {总计: $\approx$ 8.5 GB};
-  \node[font=\tiny, text=LFSGray, below=2mm of w3] {消费级单卡 (如 RTX 4090) 即可运行};
+  \node[font=\footnotesize\bfseries, text=MyGreen, above=2mm of a3] {总计: $\approx$ 8.5 GB};
+  \node[font=\tiny, text=MyGray, below=2mm of w3] {消费级单卡 (如 RTX 4090) 即可运行};
 \end{scope}
 
 \end{tikzpicture}

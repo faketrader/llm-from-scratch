@@ -3,7 +3,7 @@
 \usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
 \input{diagram_styles.tex}
 \begin{document}
-\begin{tikzpicture}[lfs picture]
+\begin{tikzpicture}[my picture]
 
 \node[storage] (repo) {对象存储 / 模型仓库\\\scriptsize 不可变权重、Tokenizer、Config};
 \node[storage, below=of repo] (areg) {Adapter Registry\\\scriptsize 租户 / 任务版本};

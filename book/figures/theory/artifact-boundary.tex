@@ -4,7 +4,7 @@
 \usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
 \input{diagram_styles.tex}
 \begin{document}
-\begin{tikzpicture}[lfs picture]
+\begin{tikzpicture}[my picture]
   \node[interface] (manifest) {制品清单与签名\\唯一加载入口};
   \node[storage, right=17mm of manifest, yshift=18mm] (weights) {模型权重\\结构配置};
   \node[storage, below=6mm of weights] (tokenizer) {Tokenizer\\特殊 Token};

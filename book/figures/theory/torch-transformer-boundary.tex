@@ -3,7 +3,7 @@
 \usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
 \input{diagram_styles.tex}
 \begin{document}
-\begin{tikzpicture}[lfs picture]
+\begin{tikzpicture}[my picture]
 
 \node[storage] (tok) {Tokenizer\\\scriptsize IDs $[N,S]$, $[N,T]$};
 \node[compute, right=of tok] (pre) {调用方输入包装\\\scriptsize Embedding + 位置编码\\\scriptsize Mask 协议};

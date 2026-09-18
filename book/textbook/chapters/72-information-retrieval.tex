@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -263,7 +263,9 @@ s(C)&=\frac{1}{13}\approx0.07692,\qquad s(D)=\frac{1}{12}\approx0.08333.
 \end{figure}
 
 \begin{algorithm}[具有版本边界的混合检索]
-\textbf{输入：}查询、已认证身份、一致索引快照、候选深度与排序配置。\textbf{输出：}有序可访问对象及来源。\textbf{状态：}合法过滤条件、各路候选、融合结果。
+\AlgoInput{查询、已认证身份、一致索引快照、候选深度与排序配置。}
+\AlgoOutput{有序可访问对象及来源。}
+\AlgoState{合法过滤条件、各路候选、融合结果。}
 \begin{enumerate}
 \item 解析访问条件与时间范围，选择匹配的分析器和查询编码器；拒绝不兼容版本。
 \item 在授权过滤语义下分别执行词法与向量检索，记录真实候选深度及超时状态。
@@ -318,4 +320,4 @@ DCG 为 $\frac{3}{\log_2 3}+\frac{7}{\log_2 5}\approx1.8928+3.0147=4.9075$。理
 
 % END GENERATED INTERVIEWS
 \chapterreferences
-\lfsendchapterdocument
+\myendchapterdocument

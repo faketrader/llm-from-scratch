@@ -1,0 +1,26 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[storage] (w) {权重矩阵 $W$\\\scriptsize $[out,in]$};
+\node[decision, right=of w] (gran) {Scale 粒度};
+\node[compute, above right=10mm and 20mm of gran] (tensor) {Per-tensor\\\scriptsize 整张矩阵 1 个 scale};
+\node[compute, right=20mm of gran] (channel) {Per-channel\\\scriptsize 每个输出通道 1 个 scale};
+\node[compute, below right=10mm and 20mm of gran] (group) {Per-group\\\scriptsize 每组若干列 1 个 scale};
+\node[neutral, right=of tensor] (ttrade) {元数据最少\\\scriptsize 离群值误差通常更大};
+\node[neutral, right=of channel] (ctrade) {误差通常更小\\\scriptsize Kernel 需支持};
+\node[neutral, right=of group] (gtrade) {精度 / 元数据 / Kernel 折中};
+\draw[data arrow] (w) -- (gran);
+\draw[data arrow] (gran) -- (tensor) -- (ttrade);
+\draw[data arrow] (gran) -- (channel) -- (ctrade);
+\draw[data arrow] (gran) -- (group) -- (gtrade);
+
+\end{tikzpicture}
+\end{document}

@@ -10,7 +10,10 @@ export function bookNavigation(chapters: Chapter[], current?: Chapter): string {
       groups.push(`<details class="book-part" open><summary>${part}</summary><ol>`);
     }
     const active = chapter === current ? ' class="current" aria-current="page"' : "";
-    groups.push(`<li><a href="${chapter.slug}"${active}><span>${String(chapter.number).padStart(2, "0")}</span>${chapter.title}</a>`);
+    const displayNumber = chapter.kind === "appendix"
+      ? chapter.displayNumber
+      : chapter.displayNumber.padStart(2, "0");
+    groups.push(`<li><a href="${chapter.slug}"${active}><span>${displayNumber}</span>${chapter.title}</a>`);
     if (chapter === current && chapter.toc.length > 0) {
       groups.push('<nav class="chapter-toc" aria-label="本章目录"><ol>');
       for (const item of chapter.toc) {

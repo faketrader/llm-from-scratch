@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -227,7 +227,8 @@ $\epsilon$ 的位置属于算法定义。$\sqrt{\vect{v}}+\epsilon$ 与 $\sqrt{\
 \section{训练算法与诊断}
 
 \begin{algorithm}[具有明确跳步语义的训练更新]
-\textbf{输入：}固定版本数据与初始状态，成功更新预算 $S$，裁剪阈值 $c$，连续无监督批次上限 $U_{\max}>0$。\textbf{输出：}最终训练状态与已提交检查点。本算法选择“溢出批次已消费但不更新”的策略，并分别记录三种计数。
+\AlgoInput{固定版本数据与初始状态，成功更新预算 $S$，裁剪阈值 $c$，连续无监督批次上限 $U_{\max}>0$。}
+\AlgoOutput{最终训练状态与已提交检查点。本算法选择“溢出批次已消费但不更新”的策略，并分别记录三种计数。}
 \begin{enumerate}
 \item 在一致性边界恢复状态；若为新训练，初始化参数、矩、随机生成器及数据游标，令 $t=a=n=0$；初始化或恢复连续无监督批次计数 $u$。
 \item 当 $t<S$ 且尚有允许消费的数据时，构造完整更新所需的微批次，记录有效目标总数 $N$。若 $N=0$，不执行除法或参数更新，记录原因及已消费的数据位置，令 $u\leftarrow u+1$；达到 $U_{\max}$ 时保存诊断并停止，否则继续。取得正监督量时令 $u\leftarrow0$。
@@ -273,4 +274,4 @@ $\epsilon$ 的位置属于算法定义。$\sqrt{\vect{v}}+\epsilon$ 与 $\sqrt{\
 
 
 \chapterreferences
-\lfsendchapterdocument
+\myendchapterdocument

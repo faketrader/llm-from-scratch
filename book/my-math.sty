@@ -1,0 +1,41 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{my-math}[2026/09/18 My mathematical notation]
+\RequirePackage{amsmath,amssymb,mathtools}
+\RequirePackage[math-style=TeX,bold-style=TeX]{unicode-math}
+\NewDocumentCommand{\mat}{m}{\symbfit{#1}}
+\NewDocumentCommand{\vect}{m}{\symbfit{#1}}
+
+% 行内公式采用展示式大小。
+\everymath{\displaystyle}
+
+% 数学常数使用正体；变量及索引沿用原有数学字形。
+\NewDocumentCommand{\constpi}{}{\symup{\pi}}
+\NewDocumentCommand{\conste}{}{\symup{e}}
+\NewDocumentCommand{\consti}{}{\symup{i}}
+
+% 统一增加分数线两端的留白。
+\let\my@standardfrac\frac
+\renewcommand*{\frac}[2]{%
+  \my@standardfrac{\mkern3mu#1\mkern3mu}{\mkern3mu#2\mkern3mu}%
+}
+
+% 使用 \dif x 表示直立微分符号。
+\newcommand*{\dif}{\mathop{}\!\mathrm{d}}
+\newcommand*{\Real}{\mathbb{R}}
+\DeclareMathOperator{\softmax}{softmax}
+\DeclareMathOperator*{\argmin}{arg\,min}
+% 比较符号统一使用斜线下划线形式 ⩽ ⩾。正文写作 \le/\leq 与 \ge/\geq，
+% 由这里的语义映射决定字形，写作不需改用 \leqslant。
+% unicode-math 在 \begin{document} 时建立符号表，因此映射也在其后执行。
+\AtBeginDocument{%
+  \let\leq\leqslant
+  \let\le\leqslant
+  \let\geq\geqslant
+  \let\ge\geqslant
+}
+% 字面 Unicode 字符 ≤ ≥ 的映射
+\RequirePackage{newunicodechar}
+\newunicodechar{≤}{\ensuremath{\leqslant}}
+\newunicodechar{≥}{\ensuremath{\geqslant}}
+
+\endinput

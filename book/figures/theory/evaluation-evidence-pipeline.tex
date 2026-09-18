@@ -4,7 +4,7 @@
 \usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
 \input{diagram_styles.tex}
 \begin{document}
-\begin{tikzpicture}[lfs picture]
+\begin{tikzpicture}[my picture]
   \node[storage] (cases) {冻结评测样本\\输入、参考答案、切片、风险级别};
   \node[storage, below=10mm of cases] (preds) {冻结预测\\文本、分数、生成配置};
   \coordinate (inputmid) at ($(cases.east)!0.5!(preds.east)$);

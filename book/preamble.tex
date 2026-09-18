@@ -1,9 +1,262 @@
-\usepackage{\subfix{../mymath}}
-\usepackage{\subfix{../mybook}}
+\usepackage{\subfix{../my-book}}
+
+% 本项目的文档结构、引用与术语索引。
+\RequirePackage{subfiles}
+\RequirePackage{currfile}
+\RequirePackage{etoolbox}
+
+\ifdefined\HCode
+  % 网页整书直接读取章节正文；章节仍由同一主文件清单决定。
+  \RenewDocumentCommand{\subfile}{m}{\input{#1}}
+\fi
+
+\setcounter{tocdepth}{1}
+% 两册采用 openany 让章只换页；篇仍须从右页开始。
+\AddToHook{cmd/part/before}{\cleardoublepage}
+\RequirePackage[backend=biber,style=numeric,sorting=none]{biblatex}
+\newif\ifchaptercitations
+\AtEveryCitekey{\global\chaptercitationstrue}
+% 允许长网址在字母与数字间断行，保留完整可点击地址。
+\RequirePackage{xurl}
+\RequirePackage[unicode]{hyperref}
+\RequirePackage{xr-hyper}
+\RequirePackage{refcount}
+\hypersetup{bookmarksnumbered=true,colorlinks=true,linkcolor=MyPrimary,citecolor=MyPrimary,urlcolor=MyPrimary}
+\RequirePackage{bookmark}
+% 引用整体两侧保留文字间距；标点前不追加空白，数学模式保持原排版。
+\RequirePackage{xspace}
+\xspaceaddexceptions{，。；：！？、）》】」』}
+\ifdefined\HCode\else
+  \AddToHook{begindocument/end}{%
+    \NewCommandCopy\myoriginalref\ref
+    \NewCommandCopy\myoriginaleqref\eqref
+    \RenewDocumentCommand\ref{s m}{%
+      \ifmmode
+        \IfBooleanTF{#1}{\myoriginalref*{#2}}{\myoriginalref{#2}}%
+      \else
+        \ifhmode\unskip\nobreakspace\fi
+        \IfBooleanTF{#1}{\myoriginalref*{#2}}{\myoriginalref{#2}}\xspace
+      \fi}
+    \RenewDocumentCommand\eqref{m}{%
+      \ifmmode
+        \myoriginaleqref{#1}%
+      \else
+        \ifhmode\unskip\nobreakspace\fi
+        {\let\ref\myoriginalref\myoriginaleqref{#1}}\xspace
+      \fi}
+  }
+\fi
+
+\ExplSyntaxOn
+\seq_new:N \l_my_book_chapter_anchor_seq
+\tl_new:N \l_my_book_chapter_anchor_tl
+\tl_new:N \l_my_book_chapter_anchor_type_tl
+\tl_new:N \l_my_book_chapter_number_tl
+\msg_new:nnn { my } { invalid-chapter-anchor }
+  { Expected~a~chapter~anchor~for~label~`#1',~got~`#2'. }
+\cs_new_protected:Npn \my_book_set_chapter_from_label:n #1
+  {
+    \tl_set:Nx \l_my_book_chapter_anchor_tl
+      { \getrefbykeydefault{my-textbook-#1}{anchor}{} }
+    \seq_set_split:NnV \l_my_book_chapter_anchor_seq {.}
+      \l_my_book_chapter_anchor_tl
+    \seq_pop_left:NN \l_my_book_chapter_anchor_seq
+      \l_my_book_chapter_anchor_type_tl
+    \seq_pop_left:NN \l_my_book_chapter_anchor_seq
+      \l_my_book_chapter_number_tl
+    \str_if_eq:VnTF \l_my_book_chapter_anchor_type_tl { chapter }
+      {
+        \setcounter{chapter}
+          { \int_eval:n { \l_my_book_chapter_number_tl - 1 } }
+      }
+      {
+        \msg_error:nnee { my } { invalid-chapter-anchor }
+          {#1} { \l_my_book_chapter_anchor_tl }
+      }
+  }
+\NewDocumentCommand{\mysetchapterfromlabel}{m}
+  { \my_book_set_chapter_from_label:n {#1} }
+\ExplSyntaxOff
+
+% 章间引用只写稳定标签；单章从教材 AUX 取得编号、标题与外部链接。
+% 纸书中，显式尾缀与引用装入同一水平盒，避免 PDF 链接边界后的句末标点落到行首。
+\NewDocumentCommand{\mybookxrefwithsuffix}{mm}{%
+  \ifstrempty{#2}{#1}{\mbox{#1#2}}}
+\NewDocumentCommand{\bookxref}{m O{}}{%
+  \ifdefined\HCode
+  \ifcsname r@#1\endcsname
+  \HCode{<a class="my-bookxref" data-label="#1">}第\getrefnumber{#1}章《\getrefbykeydefault{#1}{name}{#1}》\HCode{</a>}%
+  \else
+  \ifcsname r@my-textbook-#1\endcsname
+  \HCode{<a class="my-bookxref" data-label="#1">}第\getrefnumber{my-textbook-#1}章《\getrefbykeydefault{my-textbook-#1}{name}{#1}》\HCode{</a>}%
+  \else
+  \PackageWarning{my-book}{Unknown book cross-reference `#1'}\texttt{#1}%
+  \fi
+  \fi
+  \ifstrempty{#2}{}{#2}%
+  \else
+  \ifcsname r@#1\endcsname
+  \mybookxrefwithsuffix{\hyperref[#1]{第\ref*{#1}章《\nameref*{#1}》}}{#2}%
+  \else
+  \ifcsname r@my-textbook-#1\endcsname
+  \mybookxrefwithsuffix{\hyperref[my-textbook-#1]{第\ref*{my-textbook-#1}章《\nameref*{my-textbook-#1}》}}{#2}%
+  \else
+  \PackageWarning{my-book}{Unknown book cross-reference `#1'}%
+  \mybookxrefwithsuffix{\texttt{#1}}{#2}%
+  \fi
+  \fi
+  \fi}
+\NewDocumentCommand{\bookxrefshort}{m}{%
+  \ifdefined\HCode
+  \ifcsname r@#1\endcsname
+  \HCode{<a class="my-bookxref" data-label="#1">}第\getrefnumber{#1}章\HCode{</a>}%
+  \else
+  \ifcsname r@my-textbook-#1\endcsname
+  \HCode{<a class="my-bookxref" data-label="#1">}第\getrefnumber{my-textbook-#1}章\HCode{</a>}%
+  \else
+  \PackageWarning{my-book}{Unknown short book cross-reference `#1'}\texttt{#1}%
+  \fi
+  \fi
+  \else
+  \ifcsname r@#1\endcsname
+  \hyperref[#1]{第\ref*{#1}章}%
+  \else
+  \ifcsname r@my-textbook-#1\endcsname
+  \hyperref[my-textbook-#1]{第\ref*{my-textbook-#1}章}%
+  \else
+  \PackageWarning{my-book}{Unknown short book cross-reference `#1'}\texttt{#1}%
+  \fi
+  \fi
+  \fi}
+\NewDocumentCommand{\bookappendixref}{m}{%
+  \ifdefined\HCode
+  \ifcsname r@#1\endcsname
+  \HCode{<a class="my-bookxref" data-label="#1">}附录\getrefnumber{#1}\HCode{</a>}%
+  \else
+  \PackageWarning{my-book}{Unknown appendix cross-reference `#1'}\texttt{#1}%
+  \fi
+  \else
+  \ifcsname r@#1\endcsname
+  \hyperref[#1]{附录\ref*{#1}}%
+  \else
+  \PackageWarning{my-book}{Unknown appendix cross-reference `#1'}\texttt{#1}%
+  \fi
+  \fi}
+
+% 网页把脚注内容保留在引用位置，避免 TeX4ht 跨章节汇集脚注时生成失效锚点。
+\ifdefined\HCode
+  \RenewDocumentCommand{\footnote}{o +m}{%
+    \HCode{<span class="footnote-inline" role="note"><sup>注</sup><span>}#2\HCode{</span></span>}}
+\fi
+\pdfstringdefDisableCommands{\def\bookcode#1{#1}}
+
+% 章号统一使用阿拉伯数字；中西文边界间距交由 XeCJK 或网页排版引擎处理。
+\ctexset{chapter/number=\arabic{chapter}}
+
+% Standalone chapters derive their number from the current textbook AUX.
+\NewDocumentCommand{\bookchapter}{mm}{%
+  \ifSubfilesClassLoaded{%
+    \ifcsname r@my-textbook-#2\endcsname
+    \mysetchapterfromlabel{#2}%
+    \else
+    \PackageError{my-book}{Textbook chapter metadata is missing}{Use `make chapter CHAPTER=<filename-stem>` from the repository root.}%
+    \fi
+  }{}%
+\ifdefined\HCode
+  \begingroup
+  \edef\mywebchaptermeta{\noexpand\HCode{<div class="my-chapter-meta" data-slug="\currfilebase" data-label="#2"></div>}}%
+  \mywebchaptermeta
+  \endgroup
+\fi
+\chapter{#1}\label{#2}}
+\NewDocumentCommand{\bookappendix}{mmm}{%
+  \ifSubfilesClassLoaded{%
+    \appendix
+    \ctexset{chapter/name={附录,},chapter/number=\Alph{chapter}}%
+    \setcounter{chapter}{\numexpr#3-1\relax}%
+  }{}%
+\ifdefined\HCode
+  \begingroup
+  \edef\mywebchaptermeta{\noexpand\HCode{<div class="my-chapter-meta" data-slug="\currfilebase" data-label="#2" data-kind="appendix" data-order="#3"></div>}}%
+  \mywebchaptermeta
+  \endgroup
+\fi
+\chapter{#1}\label{#2}}
+\newcommand{\chapterreferences}{%
+  \ifdefined\HCode
+    % 在正常章节上下文中提交本章末页，避免文档结束阶段再触发分页输出。
+    \newpage
+  \else
+    \ifSubfilesClassLoaded{\ifchaptercitations\printbibliography[heading=subbibliography,title={参考文献}]\fi}{}%
+  \fi}
+% 章节文件用宏结束独立文档，避免在未闭合条件分支内执行 \end{document}。
+\ifdefined\MyWebBook
+  \newcommand{\myendchapterdocument}{}%
+\else
+  \newcommand{\myendchapterdocument}{\end{document}}%
+\fi
+
+% 中文术语按拼音排序，英文术语按字母排序；网页索引由语义标记生成。
+\ifdefined\HCode
+  \NewDocumentCommand{\DeclareTermIndexKey}{mm}{}
+\else
+  \RequirePackage[noautomatic]{imakeidx}
+  % 仅教材生成索引；独立章节复用导言区时不写索引文件。
+  \ExplSyntaxOn
+  \prop_new:N \g_my_index_sort_prop
+  \prop_new:N \g_my_index_seen_prop
+  \int_new:N \g_my_index_anchor_int
+  \msg_new:nnn {my} {missing-index-key}
+    {Missing~pinyin~sort~key~for~term:~#1.}
+  \NewDocumentCommand{\DeclareTermIndexKey}{mm}
+    {\prop_gput:Nnn \g_my_index_sort_prop {#1} {#2}}
+  \NewDocumentCommand{\TermIndexPage}{mm}{\hyperlink{#1}{#2}}
+  \cs_new_protected:Npn \my_write_index:nn #1#2
+    {\index[#1]{#2}}
+  \cs_new_protected:Npn \my_index_english:nn #1#2
+    {
+      \tl_set:Nx \l_tmpa_tl
+        {\tl_to_str:n {#1} @\exp_not:n {#1}|TermIndexPage{#2}}
+      \exp_args:NnV \my_write_index:nn {en} \l_tmpa_tl
+    }
+  \cs_new_protected:Npn \my_index_term:nnn #1#2#3
+    {
+      \prop_get:NnNTF \g_my_index_sort_prop {#1} \l_tmpa_tl
+        {
+          \tl_set:Nx \l_tmpb_tl {\thechapter / \tl_to_str:n {#1}}
+          \exp_args:NNV \prop_if_in:NnF \g_my_index_seen_prop \l_tmpb_tl
+            {
+              \exp_args:NNV \prop_gput:Nnn \g_my_index_seen_prop \l_tmpb_tl {}
+              \int_gincr:N \g_my_index_anchor_int
+              \tl_set:Nx \l_tmpb_tl {my-term-\int_use:N \g_my_index_anchor_int}
+              \exp_args:NV \hypertarget \l_tmpb_tl {}
+              \tl_set:Nx \l_tmpc_tl
+                {\l_tmpa_tl @\exp_not:n {#1}|TermIndexPage{\l_tmpb_tl}}
+              \exp_args:NnV \my_write_index:nn {cn} \l_tmpc_tl
+              \exp_args:NnV \my_index_english:nn {#2} \l_tmpb_tl
+            }
+        }
+        {\msg_error:nnn {my} {missing-index-key} {#1}}
+    }
+  \ifSubfilesClassLoaded{}
+    {
+      % 主入口已关闭 hyperref 默认的整页链接包装，改用术语锚点。
+      \makeindex[name=cn,title=中文术语索引,intoc,columns=2]
+      \makeindex[name=en,title=英文术语索引,intoc,columns=2]
+      \cs_new_eq:NN \my_index_original_term:nnn \term
+      \RenewDocumentCommand{\term}{mmm}
+        {
+          \my_index_term:nnn {#1}{#2}{#3}
+          \my_index_original_term:nnn {#1}{#2}{#3}
+        }
+    }
+  \ExplSyntaxOff
+\fi
+
+\newcommand{\practice}[1]{\par\medskip{\raggedright\small\noindent\textbf{关联实践：}\texttt{\detokenize{#1}}\par}}
 \ifSubfilesClassLoaded{%
-  \externaldocument[lfs-textbook-]{../../../build/textbook/textbook}%
+  \externaldocument[my-textbook-]{../../../build/textbook/textbook}%
 }{}
-\usepackage{\subfix{../termindex}}
 
 \addbibresource{\subfix{../references.bib}}
 \newcommand*{\bookauthor}{韩威}

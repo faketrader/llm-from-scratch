@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -219,7 +219,9 @@ P_{\mathrm{cand}}(s)=1-(1-s^r)^b.
 
 \begin{algorithm}[稳定代表去重]
 \label{alg:data-dedup}
-\textbf{输入：}类型一致的记录、固定规范化规则、相似度阈值 $\tau$、候选索引及稳定全序。\textbf{输出：}保留记录与删除依据。\textbf{状态：}保留集合 $R$，重复映射 $D$。
+\AlgoInput{类型一致的记录、固定规范化规则、相似度阈值 $\tau$、候选索引及稳定全序。}
+\AlgoOutput{保留记录与删除依据。}
+\AlgoState{保留集合 $R$，重复映射 $D$。}
 \begin{enumerate}
 \item 按治理资格、质量和稳定标识确定全序；初始化 $R=D=\varnothing$。
 \item 依次读取记录 $x$，从候选索引取得已在 $R$ 中的候选，按同一全序排列。
@@ -315,7 +317,9 @@ K_{\mathrm{pad}}=\lceil \frac{M}{T}\rceil,\qquad P=K_{\mathrm{pad}}T-M.
 仅插入结束词元并不阻断注意力。标签也必须隔离：若前一样本的末位置被要求预测下一样本的首词元，即使注意力已隔离，损失仍引入跨样本预测。可以在每个样本加入开始标记，由其预测本样本首词元，或屏蔽没有合法本样本前缀的预测位置。位置编号是否重置应写入布局规范。\footnote{打包后的注意力掩码在概念上可以是分块矩阵；物理实现可以使用段边界等紧凑表示。段边界可用于构造或执行相应的分块掩码。}
 
 \begin{algorithm}[保持来源的原子样本打包]
-\textbf{输入：}按确定顺序排列的已序列化样本，最大长度 $T$，超长与尾部策略。\textbf{输出：}词元块、标签掩码、样本段及来源跨度。\textbf{状态：}当前块 $B$、已用长度 $u$、跨度表 $S$。
+\AlgoInput{按确定顺序排列的已序列化样本，最大长度 $T$，超长与尾部策略。}
+\AlgoOutput{词元块、标签掩码、样本段及来源跨度。}
+\AlgoState{当前块 $B$、已用长度 $u$、跨度表 $S$。}
 \begin{enumerate}
 \item 初始化空块。读取下一样本，先执行已声明的超长策略，使进入打包器的原子样本长度不超过 $T$。
 \item 若 $u+L_i>T$，按尾部策略封存当前块，记录填充或丢弃量；重新建立空块。
@@ -345,7 +349,9 @@ K_{\mathrm{pad}}=\lceil \frac{M}{T}\rceil,\qquad P=K_{\mathrm{pad}}T-M.
 \term{发布清单}{Manifest}{}列出制品、摘要、记录与词元计数、来源范围、策略版本和必要血缘。中间文件先写入隔离的暂存空间，完整制品准备后才发布清单或更新可见指针。单一文件系统中的原子重命名与对象存储中的条件指针更新具有不同条件；把多个对象依次上传称为整体原子发布，与该词的含义不符。
 
 \begin{algorithm}[可重试的数据版本发布]
-\textbf{输入：}不可变源快照与完整构建规格。\textbf{输出：}可消费版本标识。\textbf{状态：}构建标识、暂存制品列表、阶段完成记录。
+\AlgoInput{不可变源快照与完整构建规格。}
+\AlgoOutput{可消费版本标识。}
+\AlgoState{构建标识、暂存制品列表、阶段完成记录。}
 \begin{enumerate}
 \item 计算构建标识；若已有已发布版本，比较规格与产物登记，匹配则复用，否则报告一致性冲突。
 \item 按阶段生成不可变制品，记录父对象与完成状态。重试只复用经过完整性确认的阶段结果，完成状态由内容完整性与阶段提交记录共同确认。
@@ -381,4 +387,4 @@ K_{\mathrm{pad}}=\lceil \frac{M}{T}\rceil,\qquad P=K_{\mathrm{pad}}T-M.
 \end{example}
 
 \chapterreferences
-\lfsendchapterdocument
+\myendchapterdocument

@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -6,7 +6,7 @@
 
 注意力算子解决位置之间如何交换信息，位置表示则使计算能够区分绝对或相对顺序，但二者尚未构成完整的语言模型。每个位置的表示还需要非线性变换，多层网络需要可训练的梯度路径，输入和输出需要与词元空间连接。Transformer 将这些职责组织为重复的网络层，并通过可见性规则定义信息能够沿什么方向传播。
 
-逐位置前馈网络、残差连接与归一化共同构成 Transformer 层。归一化位置、激活函数和前馈结构决定层内的计算顺序与参数形式；编码器、解码器及编码器—解码器结构则采用不同的信息可见性规则。注意力和位置表示的推导分别见\bookxref{ch:attention}与\bookxref{ch:position-representation}。
+逐位置前馈网络、残差连接与归一化共同构成 Transformer 层。归一化位置、激活函数和前馈结构决定层内的计算顺序与参数形式；编码器、解码器及编码器—解码器结构则采用不同的信息可见性规则。注意力和位置表示的推导分别见\bookxref{ch:attention}与\bookxref{ch:position-representation}[。]
 
 \section{网络层的职责与张量约定}
 
@@ -466,19 +466,23 @@ Transformer 特征主干接收连续表示并返回连续表示。完整语言�
 生成时用模型已选词元替代真实前缀。编码器记忆可复用，解码器逐步追加目标词元，并在 EOS 或长度上限处终止。缓存避免重复计算历史键值，自回归决策依赖仍然逐步串行。缓存正确性要求位置编号、掩码、精度和参数与完整前向一致。
 
 \begin{algorithm}[教师强制的训练前向]
-\textbf{输入：}源词元、含 EOS 的目标词元、模型参数、目标有效长度。\textbf{输出：}有效目标位置的平均损失。\textbf{状态：}源记忆、各目标层表示及监督位置集合。
-\begin{lfsalgorithmic}[1]
-\State 对源序列构造填充掩码，计算嵌入和位置表示，经编码器得到源记忆。
-\State 构造相对于目标右移一位的解码器输入：首位置为启动词元，其余位置取前一个真实目标；保持输入与目标逐位置配对。
-\State 构造目标因果掩码、目标填充掩码和交叉注意力源掩码，依次执行全部解码器层。
-\State 经规定的末端归一化及词表投影得到分数，只在选中目标位置累计交叉熵并按有效位置数归一化。
-\State 本次前向在全部目标位置处理完毕时结束；若有效监督数为零，跳过该批或按明确规则报告，而不进行零分母平均。
-\end{lfsalgorithmic}
+\AlgoInput{源词元、包含 EOS 的目标词元、模型参数和有效目标长度。}
+\AlgoOutput{有效目标位置上的平均损失。}
+\AlgoState{源记忆、目标层表示和受监督位置集合。}
+\begin{myalgorithmic}[1]
+\State Build a padding mask for the source sequence, compute embeddings and position representations, and encode them into source memory
+\State Build decoder input by shifting the target right by one position: place the start token first and the preceding ground-truth target elsewhere; preserve position-wise input--target pairing
+\State Build the target causal mask, target padding mask, and cross-attention source mask, then execute all decoder layers in order
+\State Apply the specified final normalization and vocabulary projection; accumulate cross-entropy only at selected target positions and normalize by the number of valid positions
+\State End after all target positions are processed; if there are no valid supervised positions, skip the batch or report it under the specified rule instead of averaging over a zero denominator
+\end{myalgorithmic}
 \textbf{不变量：}位置 $t$ 的预测只依赖源输入与 $y_{<t}$；显式右移与库内部的下一词元配对只能采用一套，重复移位会改变监督对象。
 \end{algorithm}
 
 \begin{algorithm}[条件生成的自回归执行]
-\textbf{输入：}源序列、启动与终止词元、最大生成长度、固定模型和词元选择策略。\textbf{输出：}每条样本的生成词元序列。\textbf{状态：}源记忆、已生成前缀、可选键值缓存、样本终止标志。
+\AlgoInput{源序列、启动与终止词元、最大生成长度、固定模型和词元选择策略。}
+\AlgoOutput{每条样本的生成词元序列。}
+\AlgoState{源记忆、已生成前缀、可选键值缓存、样本终止标志。}
 \begin{enumerate}
 \item 关闭训练随机性，编码源序列一次；将目标前缀初始化为启动词元，各样本标为未终止。
 \item 对未终止样本计算当前最后有效目标位置的分布。使用缓存时同步更新位置编号、可见性和当前层键值。
@@ -510,4 +514,4 @@ Transformer 特征主干接收连续表示并返回连续表示。完整语言�
 
 
 \chapterreferences
-\lfsendchapterdocument
+\myendchapterdocument

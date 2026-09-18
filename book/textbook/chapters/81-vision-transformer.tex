@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -316,17 +316,17 @@ ViT 的补丁投影具有局部性与权重共享的视觉先验。它的编码�
 发布时必须绑定权重、架构配置、图像处理器和标签映射。预处理中的通道顺序、像素范围、缩放插值、裁剪位置、均值与标准差共同定义输入分布。若训练使用 $x=\frac{\frac{p}{255}-\mu}{\sigma}$，部署直接把 $p$ 代入同一个归一化式，输入尺度将发生数量级变化。分类头还需使用与训练一致的标签映射：标签索引发生置换时，模型输出的数值可以完全合理，显示的类别却整体错误。
 
 \begin{algorithm}[视觉编码的确定性推理路径]
-\textbf{输入：}图像批量、固定预处理协议、补丁与位置网格配置、$T$ 层权重、分类标签映射。\par
-\textbf{输出：}类别概率，以及按需要保留的补丁表征。\par
-\textbf{状态：}有效区域、补丁网格 $(G_h,G_w)$、序列 $Z$、层计数 $t$。
-\begin{lfsalgorithmic}[1]
- \State 按声明的通道、范围、缩放与归一化处理图像；根据边界规则裁剪或填充，并记录有效区域。
- \State 由式\eqref{eq:vit-index}确定补丁次序，使用式\eqref{eq:vit-embedding}或等价卷积投影。保持权重排列与像素排列一致。
- \State 检查位置表的源网格；若目标网格不同，分离 CLS 后按声明的二维规则插值。若补丁投影尺寸不兼容，终止并报告配置错误。
- \State 加入 CLS 与位置嵌入，建立有效位置掩码。每个有效查询必须至少有一个可见键；不得将全屏蔽行直接送入普通 softmax。
- \State 对 $t=1,\ldots,T$ 执行式\eqref{eq:vit-block}，保持序列长度和隐藏维度不变；推理时停用训练期随机失活。
- \State 按固定的 CLS 或有效均值读出方式产生 $h$，计算分类分数与概率，并用绑定的标签映射解释输出。
-\end{lfsalgorithmic}
+\AlgoInput{图像批次、固定预处理协议、补丁与位置网格配置、$T$ 层权重和类别标签映射。}
+\AlgoOutput{类别概率，以及可选保留的补丁表示。}
+\AlgoState{有效区域、补丁网格 $(G_h,G_w)$、序列 $Z$ 和层计数器 $t$。}
+\begin{myalgorithmic}[1]
+ \State Process images using the declared channel order, range, scaling, and normalization; crop or pad under the boundary rule and record valid regions
+ \State Determine patch order using Equation~\eqref{eq:vit-index} and apply Equation~\eqref{eq:vit-embedding} or an equivalent convolutional projection; keep weight layout consistent with pixel layout
+ \State Check the source grid of the position table; if the target grid differs, separate CLS and interpolate under the declared two-dimensional rule; terminate with a configuration error if patch-projection dimensions are incompatible
+ \State Add CLS and position embeddings and build a valid-position mask; require every valid query to have at least one visible key and never pass an all-masked row directly to ordinary softmax
+ \State For $t=1,\ldots,T$, apply Equation~\eqref{eq:vit-block} while preserving sequence length and hidden dimension; disable training-time stochastic dropout during inference
+ \State Produce $h$ using the fixed CLS or valid-mean readout, compute class scores and probabilities, and interpret the result using the bound label mapping
+\end{myalgorithmic}
 \textbf{停止条件与不变量：}完成 $T$ 层与分类头后返回；每个补丁的序列位置始终对应同一空间位置。配置不兼容或无有效输入时显式终止，不静默更换预处理或读出策略。
 \end{algorithm}
 
@@ -342,4 +342,4 @@ ViT 的补丁投影具有局部性与权重共享的视觉先验。它的编码�
 
 % END GENERATED INTERVIEWS
 \chapterreferences
-\lfsendchapterdocument
+\myendchapterdocument

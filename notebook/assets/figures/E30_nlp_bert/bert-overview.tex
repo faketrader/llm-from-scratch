@@ -1,0 +1,27 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[storage] (text) {原始文本 / 句对};
+\node[compute, right=of text] (tok) {WordPiece + 特殊标记};
+\node[storage, right=of tok] (inputs) {IDs / attention mask /\\token type IDs\\\scriptsize $[B,T]$};
+\node[compute, below=of inputs] (emb) {Token + Position +\\Segment Embedding\\\scriptsize $[B,T,E]$};
+\node[block, left=of emb] (enc) {双向 Transformer\\Encoder $\times L$};
+\node[interface, left=of enc] (head) {任务头};
+\node[storage, above left=8mm and 18mm of head] (mlm) {MLM / NSP};
+\node[storage, left=18mm of head] (cls) {序列分类};
+\node[storage, below left=8mm and 18mm of head] (token) {Token 分类 / 问答};
+\draw[data arrow] (text) -- (tok) -- (inputs) -- (emb) -- (enc) -- (head);
+\draw[data arrow] (head) -- (mlm);
+\draw[data arrow] (head) -- (cls);
+\draw[data arrow] (head) -- (token);
+
+\end{tikzpicture}
+\end{document}

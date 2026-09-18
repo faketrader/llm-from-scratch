@@ -1,0 +1,27 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[storage] (ds) {\texttt{DatasetDict}\\\scriptsize 文档与 split};
+\node[compute, right=of ds] (tok) {Tokenizer\\\scriptsize 文本 $\to$ token IDs};
+\node[compute, right=of tok] (pack) {Packing\\\scriptsize token 流 $\to$ 定长 block};
+\node[storage, below=of pack] (record) {Dataset record\\\scriptsize IDs / labels / mask};
+\node[compute, left=of record] (collator) {Collator\\\scriptsize 样本列表 $\to$ batch};
+\node[storage, below left=7mm and 15mm of collator] (ids) {\texttt{input\_ids}\\\scriptsize $[B,T]$};
+\node[storage, below=7mm of collator] (labels) {\texttt{labels}\\\scriptsize $[B,T]$};
+\node[storage, below right=7mm and 15mm of collator] (mask) {\texttt{attention\_mask}\\\scriptsize $[B,T]$};
+\draw[data arrow] (ds) -- (tok) -- (pack) -- (record) -- (collator);
+\draw[data arrow] (collator) -- (ids);
+\draw[data arrow] (collator) -- (labels);
+\draw[data arrow] (collator) -- (mask);
+\node[group, fit=(ids)(labels)(mask), label={[title]below:训练批次张量}] {};
+
+\end{tikzpicture}
+\end{document}

@@ -5,12 +5,12 @@
 \input{diagram_styles.tex}
 
 \begin{document}
-\begin{tikzpicture}[lfs picture, >=Latex, node distance=8mm]
+\begin{tikzpicture}[my picture, >=Latex, node distance=8mm]
 
 \tikzset{
-  biasbox/.style={draw=LFSRed, fill=LFSRedSoft, rounded corners=3pt, font=\small\bfseries, align=center, inner sep=5pt, minimum width=46mm, minimum height=14mm},
-  fixbox/.style={draw=LFSGreen, fill=LFSGreenSoft, rounded corners=3pt, font=\small, align=center, inner sep=5pt, minimum width=46mm, minimum height=14mm},
-  title/.style={font=\normalsize\bfseries, text=LFSGray, align=center}
+  biasbox/.style={draw=MyRed, fill=MyRedSoft, rounded corners=3pt, font=\small\bfseries, align=center, inner sep=5pt, minimum width=46mm, minimum height=14mm},
+  fixbox/.style={draw=MyGreen, fill=MyGreenSoft, rounded corners=3pt, font=\small, align=center, inner sep=5pt, minimum width=46mm, minimum height=14mm},
+  title/.style={font=\normalsize\bfseries, text=MyGray, align=center}
 }
 
 \node[title] (t1) at (2.3, 4.5) {大模型裁判系统性偏置 (Systematic Biases)};
@@ -25,7 +25,7 @@
   \textbf{双向位置对调 (Position Swap)}\\
   \scriptsize 交换候选次序盲评，仅双向一致才采纳
 };
-\draw[->, draw=LFSOrange, line width=1pt] (b1) -- (f1);
+\draw[->, draw=MyOrange, line width=1pt] (b1) -- (f1);
 
 % Bias 2: Verbosity Bias
 \node[biasbox] (b2) at (2.3, 1.6) {
@@ -36,7 +36,7 @@
   \textbf{长度归一化与约束量表}\\
   \scriptsize 强制按事实论断原子切分，惩罚无意义冗余
 };
-\draw[->, draw=LFSOrange, line width=1pt] (b2) -- (f2);
+\draw[->, draw=MyOrange, line width=1pt] (b2) -- (f2);
 
 % Bias 3: Self-enhancement Bias
 \node[biasbox] (b3) at (2.3, 0.0) {
@@ -47,7 +47,7 @@
   \textbf{多模型裁判委员会 (Panel of LLMs)}\\
   \scriptsize 采用异构架构模型交叉打分与加权仲裁
 };
-\draw[->, draw=LFSOrange, line width=1pt] (b3) -- (f3);
+\draw[->, draw=MyOrange, line width=1pt] (b3) -- (f3);
 
 % Bias 4: Prompt Injection
 \node[biasbox] (b4) at (2.3, -1.6) {
@@ -58,7 +58,7 @@
   \textbf{输入结构隔离与沙箱化}\\
   \scriptsize 候选文本放入独立变量块，格式强校验
 };
-\draw[->, draw=LFSOrange, line width=1pt] (b4) -- (f4);
+\draw[->, draw=MyOrange, line width=1pt] (b4) -- (f4);
 
 \end{tikzpicture}
 \end{document}

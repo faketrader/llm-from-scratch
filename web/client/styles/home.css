@@ -50,7 +50,7 @@
   max-width: 650px;
   margin: 0;
   color: #536158;
-  font-family: "Songti SC", "STSong", serif;
+  font-family: var(--sans);
   font-size: 19px;
   line-height: 1.95;
 }
@@ -157,7 +157,7 @@
 }
 .home-cover-title {
   margin-top: 78px;
-  font-family: "Songti SC", "STSong", serif;
+  font-family: var(--sans);
   font-size: 37px;
   font-weight: 600;
   line-height: 1.35;
@@ -170,7 +170,7 @@
   background: #cfbe82;
 }
 .home-cover-en {
-  font: 9px/1.7 Georgia, serif;
+  font: 9px/1.7 var(--sans);
   letter-spacing: 1.4px;
   opacity: 0.62;
 }
@@ -179,7 +179,7 @@
   right: 25px;
   bottom: 22px;
   color: #f7f1dd17;
-  font: 150px/0.7 Georgia, serif;
+  font: 150px/0.7 var(--sans);
 }
 .home-cover-open {
   margin-top: auto;
@@ -201,7 +201,7 @@
 .home-section-heading h2 {
   margin: 9px 0 0;
   padding: 0;
-  font: 600 32px/1.4 "Songti SC", "STSong", serif;
+  font: 600 32px/1.4 var(--sans);
 }
 .home-section-heading > p {
   margin: 0;
@@ -222,7 +222,7 @@
 }
 .home-contents .book-part summary {
   padding: 0 0 10px;
-  font: 600 17px/1.6 "Songti SC", "STSong", serif;
+  font: 600 17px/1.6 var(--sans);
 }
 .home-contents .book-part a {
   padding: 7px 2px;

@@ -5,49 +5,49 @@
 \input{diagram_styles.tex}
 
 \begin{document}
-\begin{tikzpicture}[lfs picture, >=Latex]
+\begin{tikzpicture}[my picture, >=Latex]
 
 % Panel 1: Loss Spike Curve
 \begin{scope}[xshift=0cm]
-  \node[font=\small\bfseries, text=LFSGray] at (2.6, 4.2) {损失尖峰 (Loss Spike) 演进轨迹};
+  \node[font=\small\bfseries, text=MyGray] at (2.6, 4.2) {损失尖峰 (Loss Spike) 演进轨迹};
 
   \draw[->, line width=0.6pt] (0, 0) -- (5.6, 0) node[right, font=\tiny] {训练步数 $t$};
   \draw[->, line width=0.6pt] (0, 0) -- (0, 3.8) node[above, font=\tiny] {训练损失 $\mathcal{L}$};
 
   % Normal descent before spike
-  \draw[line width=1.1pt, draw=LFSBlue]
+  \draw[line width=1.1pt, draw=MyBlue]
     (0.2, 3.2) to[out=-30, in=170] (2.2, 1.4);
 
   % Spike
-  \draw[line width=1.2pt, draw=LFSRed]
-    (2.2, 1.4) -- (2.5, 3.5) node[above, font=\tiny\bfseries, text=LFSRed] {异常尖峰 (Spike)};
+  \draw[line width=1.2pt, draw=MyRed]
+    (2.2, 1.4) -- (2.5, 3.5) node[above, font=\tiny\bfseries, text=MyRed] {异常尖峰 (Spike)};
 
   % Divergence branch (dashed red)
-  \draw[line width=0.9pt, dashed, draw=LFSRed]
-    (2.5, 3.5) -- (4.8, 3.6) node[right, font=\tiny, text=LFSRed] {未抑制 $\to$ 训练发散崩溃};
+  \draw[line width=0.9pt, dashed, draw=MyRed]
+    (2.5, 3.5) -- (4.8, 3.6) node[right, font=\tiny, text=MyRed] {未抑制 $\to$ 训练发散崩溃};
 
   % Recovery branch (solid green)
-  \draw[line width=1.1pt, draw=LFSGreen]
+  \draw[line width=1.1pt, draw=MyGreen]
     (2.5, 3.5) to[out=-80, in=175] (3.2, 1.5) to[out=-5, in=180] (5.2, 1.1)
-    node[right, font=\tiny, text=LFSGreen] {自愈/回退 $\to$ 恢复正常收敛};
+    node[right, font=\tiny, text=MyGreen] {自愈/回退 $\to$ 恢复正常收敛};
 
-  \node[font=\scriptsize, text=LFSGray, align=center] at (2.6, -0.8) {
+  \node[font=\scriptsize, text=MyGray, align=center] at (2.6, -0.8) {
     伴随表象：梯度范数突增数十倍、注意力权重极端极化、\\
     动态损失缩放因子连续下溢减半。
   };
 \end{scope}
 
 % Separator
-\draw[dashed, draw=LFSGray!40, line width=0.5pt] (6.0, -1.2) -- (6.0, 4.4);
+\draw[dashed, draw=MyGray!40, line width=0.5pt] (6.0, -1.2) -- (6.0, 4.4);
 
 % Panel 2: Diagnostics & Recovery Flow
 \begin{scope}[xshift=6.6cm]
-  \node[font=\small\bfseries, text=LFSGray] at (2.8, 4.2) {尖峰处置与自愈机制决策树};
+  \node[font=\small\bfseries, text=MyGray] at (2.8, 4.2) {尖峰处置与自愈机制决策树};
 
   \tikzset{
-    box/.style={draw=LFSBlue, fill=LFSBlueSoft, rounded corners=2pt, font=\scriptsize, align=center, inner sep=3pt, minimum width=48mm},
-    alert/.style={draw=LFSRed, fill=LFSRedSoft, rounded corners=2pt, font=\scriptsize\bfseries, align=center, inner sep=3pt, minimum width=48mm},
-    act/.style={draw=LFSGreen, fill=LFSGreenSoft, rounded corners=2pt, font=\scriptsize, align=center, inner sep=3pt, minimum width=48mm}
+    box/.style={draw=MyBlue, fill=MyBlueSoft, rounded corners=2pt, font=\scriptsize, align=center, inner sep=3pt, minimum width=48mm},
+    alert/.style={draw=MyRed, fill=MyRedSoft, rounded corners=2pt, font=\scriptsize\bfseries, align=center, inner sep=3pt, minimum width=48mm},
+    act/.style={draw=MyGreen, fill=MyGreenSoft, rounded corners=2pt, font=\scriptsize, align=center, inner sep=3pt, minimum width=48mm}
   }
 
   \node[box] (n1) at (2.8, 3.2) {监测到损失或梯度范数突增超过阈值 $c$};
@@ -56,10 +56,10 @@
   \node[act, below=4mm of n3] (n4) {动态损失缩放调小：$s \leftarrow s / 2$};
   \node[box, below=4mm of n4] (n5) {若连续数步未恢复：回退前一健康检查点\\并跳过该数据批次 (Corrupted Batch)};
 
-  \draw[->, line width=0.7pt, draw=LFSGray] (n1) -- (n2);
-  \draw[->, line width=0.7pt, draw=LFSRed] (n2) -- node[right, font=\tiny, text=LFSRed] {是} (n3);
-  \draw[->, line width=0.7pt, draw=LFSGray] (n3) -- (n4);
-  \draw[->, line width=0.7pt, draw=LFSGray] (n4) -- (n5);
+  \draw[->, line width=0.7pt, draw=MyGray] (n1) -- (n2);
+  \draw[->, line width=0.7pt, draw=MyRed] (n2) -- node[right, font=\tiny, text=MyRed] {是} (n3);
+  \draw[->, line width=0.7pt, draw=MyGray] (n3) -- (n4);
+  \draw[->, line width=0.7pt, draw=MyGray] (n4) -- (n5);
 
 \end{scope}
 

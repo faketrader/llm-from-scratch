@@ -1,0 +1,29 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[storage] (x) {输入 Activation $x$};
+\node[neutral, above right=10mm and 18mm of x] (wq) {$W_q$：4-bit 冻结权重};
+\node[compute, right=of wq] (deq) {Kernel 解量化 + GEMM\\\scriptsize $x\,\mathrm{dequant}(W_q)^T$};
+\node[compute, below right=8mm and 18mm of x] (a) {LoRA $A$};
+\node[compute, right=of a] (b) {LoRA $B$\\\scriptsize BF16 / FP16 compute};
+\node[interface, right=24mm of $(deq)!0.5!(b)$] (add) {Add};
+\node[storage, right=of add] (y) {输出 $y$};
+\node[compute, below=of y] (loss) {Loss};
+\draw[data arrow] (x) -- (wq) -- (deq) -- (add);
+\draw[data arrow] (x) -- (a) -- (b);
+\draw[residual] (b) -- node[label text, below]{$\alpha/r$} (add);
+\draw[data arrow] (add) -- (y) -- (loss);
+\draw[control arrow] (loss) -| node[label text, below]{梯度只更新 $A,B$} (a);
+\node[group, fit=(wq)(deq), label={[title]above:量化冻结基座}] {};
+\node[group, fit=(a)(b), label={[title]below:可训练低秩分支}] {};
+
+\end{tikzpicture}
+\end{document}

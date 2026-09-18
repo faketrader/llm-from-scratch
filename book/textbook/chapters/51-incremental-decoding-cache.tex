@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -301,7 +301,8 @@ $j$ 为逻辑块编号，$o$ 为块内偏移，$\mathcal B$ 是请求页表。�
 \end{figure}
 
 \begin{algorithm}[前缀缓存的引用与追加]
-输入为计算身份、词元前缀、请求身份及所需新增容量；输出为请求页表和可继续执行的私有尾部。
+\AlgoInput{计算身份、词元前缀、请求身份及所需新增容量。}
+\AlgoOutput{请求页表和可继续执行的私有尾部。}
 \begin{enumerate}
 \item 在允许共享的命名空间内查找最长兼容完整前缀，逐块验证计算身份与有效范围，取得引用后固定映射。
 \item 为未命中部分分配块，执行预填充并提交有效长度；只有计算完成的内容可发布为可共享状态。
@@ -321,18 +322,22 @@ $j$ 为逻辑块编号，$o$ 为块内偏移，$\mathcal B$ 是请求页表。�
 \centering
 \small
 \setlength{\tabcolsep}{3.5pt}
+\renewcommand{\arraystretch}{1.18}
 \caption{大语言模型 KV 缓存压缩与显存优化技术全景对比}
 \label{tab:rev-kv-compression-taxonomy}
-\begin{tabularx}{\linewidth}{lp{22mm}ccX}
+\begin{tabularx}{\linewidth}{@{}
+  >{\raggedright\arraybackslash}p{40mm}
+  >{\raggedright\arraybackslash}p{47mm}
+  >{\raggedright\arraybackslash}X@{}}
 \toprule
-技术路线 & 代表方案 & 理论压缩比 & 精度影响 & 核心机制与工程权衡 \\
+技术路线与代表方案 & 压缩收益与精度影响 & 核心机制与工程权衡 \\
 \midrule
-头维度共享 & MQA / GQA & $2\times\sim 8\times$ & 极低（需预训） & 减少独立键值头数，极大降低访存带宽压力 \\
-低秩潜在投影 & MLA (DeepSeek) & 约 $4\times\sim 7\times$ & 极低（原生） & 潜变量投影结合解耦 RoPE，兼顾容量与显存 \\
-存储分页管理 & PagedAttention & 碎片降至 $<4\%$ & 无损 & 离散虚拟分页，彻底根除预留长度的显存碎片 \\
-低比特量化 & FP8 / INT4 KV & $2\times\sim 4\times$ & 需离群保护 & 词元/通道量化，大幅提升并发批处理吞吐 \\
-局部窗口截断 & StreamingLLM & 上限 $\mathcal{O}(W)$ & 损长程依赖 & 保留少量初始注意力沉点与局部滑动窗口 \\
-稀疏注意力 & H2O / SnapKV & 约 $2\times\sim 5\times$ & 取决于检索需求 & 依据注意力得分动态淘汰冗余历史键值 \\
+头维度共享\newline \mbox{MQA / GQA} & $2\times\sim 8\times$；极低（需预训练） & 减少独立键值头数，显著降低访存带宽压力 \\
+低秩潜在投影\newline \mbox{MLA（DeepSeek）} & 约 $4\times\sim 7\times$；极低（原生） & 潜变量投影结合解耦 RoPE，兼顾模型容量与缓存开销 \\
+存储分页管理\newline \mbox{PagedAttention} & 碎片率降至 $<4\%$；无损 & 离散虚拟分页，消除按最大长度预留造成的显存碎片 \\
+低比特量化\newline \mbox{FP8 / INT4 KV} & $2\times\sim 4\times$；需离群值保护 & 按词元或通道量化，提升并发批处理吞吐 \\
+局部窗口截断\newline \mbox{StreamingLLM} & 上限 $\mathcal{O}(W)$；损失长程依赖 & 保留少量初始注意力沉点与局部滑动窗口 \\
+稀疏注意力\newline \mbox{H2O / SnapKV} & 约 $2\times\sim 5\times$；取决于检索需求 & 根据注意力得分动态淘汰冗余历史键值 \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -369,7 +374,8 @@ $j$ 为逻辑块编号，$o$ 为块内偏移，$\mathcal B$ 是请求页表。�
 \section{增量执行过程}
 
 \begin{algorithm}[带缓存的自回归生成]
-输入为非空提示、冻结模型、生成上限 $G>0$、停止规则与空或兼容前缀缓存；输出为最多 $G$ 个词元及最终缓存进度。
+\AlgoInput{非空提示、冻结模型、生成上限 $G>0$、停止规则与空或兼容前缀缓存。}
+\AlgoOutput{最多 $G$ 个词元及最终缓存进度。}
 \begin{enumerate}
 \item 确定提示词元、逻辑位置和缓存身份，复用合法前缀并处理未缓存部分，取得提示末位置的输出分布。
 \item 根据生成策略选择下一个词元并记录输出；若达到结束条件或输出上限，终止生成。
@@ -390,4 +396,4 @@ $j$ 为逻辑块编号，$o$ 为块内偏移，$\mathcal B$ 是请求页表。�
 
 
 \chapterreferences
-\lfsendchapterdocument
+\myendchapterdocument

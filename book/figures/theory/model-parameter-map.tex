@@ -4,7 +4,7 @@
 \usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
 \input{diagram_styles.tex}
 \begin{document}
-\begin{tikzpicture}[lfs picture]
+\begin{tikzpicture}[my picture]
   \node[storage] (embedding) {Token Embedding\\$V\times d$};
   \node[compute, right=17mm of embedding] (attn) {Attention 投影\\Q / K / V / O};
   \node[compute, below=7mm of attn] (norm) {Norm 参数};

@@ -1,0 +1,28 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[storage] (repo) {对象存储 / 模型仓库\\\scriptsize 不可变权重、Tokenizer、Config};
+\node[storage, below=of repo] (areg) {Adapter Registry\\\scriptsize 租户 / 任务版本};
+\coordinate (autheast) at ($(repo.east)!0.5!(areg.east)$);
+\node[storage, anchor=west] (ssd) at ($(autheast)+(18mm,0)$) {节点本地 SSD Cache\\\scriptsize hash / version / LRU};
+\node[storage, right=of ssd] (cpu) {CPU Pinned Memory\\\scriptsize 预取 / 反序列化};
+\node[block, right=of cpu] (gpu) {GPU Worker\\\scriptsize 权重 / 热 Adapter / KV Block};
+\node[storage, below=of gpu] (kv) {KV Cache 层级\\\scriptsize GPU $\to$ CPU $\to$ NVMe / 远端};
+\draw[data arrow] (repo) -- (ssd);
+\draw[data arrow] (areg) -- (ssd);
+\draw[data arrow] (ssd) -- (cpu) -- (gpu) -- (kv);
+\draw[control arrow] (kv.west) -| node[label text, below]{回收 / 换入} (cpu.south);
+\node[group, fit=(repo)(areg), label={[title]above:权威持久化}] {};
+\node[group, fit=(ssd)(cpu), label={[title]above:节点冷启动与缓存层}] {};
+\node[group, fit=(gpu)(kv), label={[title]above:计算与热状态}] {};
+
+\end{tikzpicture}
+\end{document}

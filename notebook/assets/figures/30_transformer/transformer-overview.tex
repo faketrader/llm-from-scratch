@@ -1,0 +1,26 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[storage] (src) {源 Token IDs\\\scriptsize $[N,S]$};
+\node[compute, right=of src] (srcemb) {源 Embedding\\\scriptsize 缩放 + 正弦位置编码};
+\node[block, right=of srcemb] (encoder) {Encoder Stack $\times6$\\\scriptsize Self-Attention + FFN\\\scriptsize Post-LN / ReLU};
+\node[storage, right=of encoder] (memory) {memory\\\scriptsize $[N,S,E]$};
+\node[storage, below=24mm of src] (tgt) {右移目标 IDs\\\scriptsize $[N,T]$};
+\node[compute, right=of tgt] (tgtemb) {目标 Embedding\\\scriptsize 缩放 + 正弦位置编码};
+\node[block, right=of tgtemb] (decoder) {Decoder Stack $\times6$\\\scriptsize Masked Self-Attention\\\scriptsize Cross-Attention + FFN};
+\node[compute, right=of decoder] (head) {Linear\\\scriptsize $E\to V_{tgt}$};
+\node[storage, right=of head] (prob) {Softmax 概率\\\scriptsize $[N,T,V_{tgt}]$};
+\draw[data arrow] (src) -- (srcemb) -- (encoder) -- (memory);
+\draw[data arrow] (tgt) -- (tgtemb) -- (decoder) -- (head) -- (prob);
+\draw[data arrow] (memory.south) |- node[label text, near start]{Cross-Attention K/V} (decoder.north);
+
+\end{tikzpicture}
+\end{document}

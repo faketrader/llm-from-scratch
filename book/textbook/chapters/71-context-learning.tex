@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -97,7 +97,9 @@ p_\theta(y\mid x,D)=p_\theta(y\mid x,\pi(D))
 例如两标签的原概率为 $(0.6,0.4)$、偏好估计为 $(0.8,0.2)$，比值为 $(0.75,2)$，归一化后为 $(\frac{3}{11},\frac{8}{11})$。校正使标签排序反转。无内容输入是否能代表应扣除的偏好、是否需要平滑，以及真实类别先验是否本来就不均衡，都会影响适用性。校准系数应在开发数据上确定。
 
 \begin{algorithm}[预算内的示例构造]
-\textbf{输入：}问题、版本化示例库、选择策略、上下文上限与保留输出长度。\textbf{输出：}实际序列化上下文及示例清单。\textbf{状态：}可用词元预算、已选集合、覆盖状态。
+\AlgoInput{问题、版本化示例库、选择策略、上下文上限与保留输出长度。}
+\AlgoOutput{实际序列化上下文及示例清单。}
+\AlgoState{可用词元预算、已选集合、覆盖状态。}
 \begin{enumerate}
 \item 过滤不符合权限、任务与质量条件的候选；排除与保留评估样本不允许的家族重叠。
 \item 扣除指令、问题、必要背景、模板和输出预留，得到示例预算；预算不足时采用明确的缩减或失败策略。
@@ -238,7 +240,9 @@ N_{\mathrm{in}}=KL_C,\qquad N_{\mathrm{out}}=\sum_{i=1}^{K}L_i.
 该条件固定已有票数与规范化规则，保证最高票决策稳定；答案正确性由任务验证确定。若采用概率置信阈值提前停止，重复查看样本再套用固定样本置信区间会破坏覆盖率；应采用适用于序贯决策的方法，或把停止规则作为完整策略在独立数据上评价。
 
 \begin{algorithm}[有预算的候选聚合与验证]
-\textbf{输入：}固定上下文、解码策略、解析器、候选与词元上限、最低有效数、平票及验证规则。\textbf{输出：}答案、拒答或预算终止状态。\textbf{状态：}答案计数、失败计数、已用词元、验证记录。
+\AlgoInput{固定上下文、解码策略、解析器、候选与词元上限、最低有效数、平票及验证规则。}
+\AlgoOutput{答案、拒答或预算终止状态。}
+\AlgoState{答案计数、失败计数、已用词元、验证记录。}
 \begin{enumerate}
 \item 初始化计数。每次开始生成前，为候选最大输出和可能的验证预留预算；不足时停止追加。
 \item 独立采样候选并记录实际停止原因；按固定解析器转为规范答案或失败状态，不静默丢弃失败。
@@ -306,4 +310,4 @@ N_{\mathrm{in}}=KL_C,\qquad N_{\mathrm{out}}=\sum_{i=1}^{K}L_i.
 
 % END GENERATED INTERVIEWS
 \chapterreferences
-\lfsendchapterdocument
+\myendchapterdocument

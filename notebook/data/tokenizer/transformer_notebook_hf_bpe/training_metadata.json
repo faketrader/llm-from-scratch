@@ -1,0 +1,52 @@
+{
+  "format": "huggingface_fast_tokenizer",
+  "name": "transformer_notebook_hf_bpe",
+  "schema_version": 2,
+  "source_tiktoken": {
+    "file": "transformer_notebook_bpe.tiktoken",
+    "sha256": "a19e772187a1e5dd4cf35b2f8b2976ecd2bb06c04d70fa434d741f370fbc9dd6"
+  },
+  "special_tokens": {
+    "<bos>": 401,
+    "<eos>": 402,
+    "<pad>": 400,
+    "<sep>": 403
+  },
+  "tokenizer_files": {
+    "tokenizer.json": "ea635fdc3b2e599b3227436e2331af822c3de836358d3ad591b5d45071ef6a69",
+    "tokenizer_config.json": "64b8bb29d0b68f46c88b7d137f7e5f30c10223f70d8addbc2df8c782dc375a6c"
+  },
+  "training_contract": {
+    "dataset": {
+      "corpus_sizes": {
+        "holdout": 74,
+        "training": 885
+      },
+      "filename": "en-zh_CN.jsonl",
+      "id": "google/wmt24pp",
+      "implementation": {
+        "datasets_version": "4.0.0",
+        "download": "huggingface_hub.hf_hub_download",
+        "loader": "datasets.load_dataset('json')"
+      },
+      "jsonl_sha256": "984ec4da714800aae2b9ee6e2601d1cadb01a770e01ed385d5283ce7a0585287",
+      "license": "Apache-2.0",
+      "revision": "fd7405c06494bc66a57b25f55d217a72f96e60dc",
+      "selected_rows_sha256": "548e01a3c870a88a454d30f3cea889fd2f0327950b9aacc2eacde3d3bf2a876d",
+      "selection": {
+        "deduplicate_pairs": true,
+        "drop_is_bad_source": true,
+        "group_key": "document_id",
+        "holdout_document_count": 17,
+        "holdout_fraction_denominator": 10,
+        "holdout_method": "first_sha256_sorted_documents"
+      },
+      "training_rows": 885,
+      "training_rows_sha256": "47bd75e5b9237f0ef69727e27c0eb5c979ad0df067338272f031ad2b7eff05e6"
+    },
+    "sha256": "1b59611f78394157d9e1134f637d26e96e9717f981a887bfd54abbef923b7c13",
+    "source": "pinned WMT24++ document-grouped tokenizer training corpus and bidirectional instructions only",
+    "text_count": 3540
+  },
+  "vocab_size": 404
+}

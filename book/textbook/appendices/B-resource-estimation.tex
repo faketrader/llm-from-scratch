@@ -1,0 +1,225 @@
+\ifdefined\MyWebBook\else
+\documentclass[../textbook.tex]{subfiles}
+\begin{document}
+\fi
+\bookappendix{参数量、显存与算力估算}{app:resource-estimation}{2}
+
+本附录给出建立资源预算时可直接套用的公式和记录表。所有结果都应先声明模型结构、执行阶段、数值格式、批量与长度分布，再区分理论元素数、运行时峰值和实测值。公式的推导及系统边界见\bookxref{ch:resource-budget}，硬件供给、并行切分和服务测量分别见\bookxref{ch:compute-infrastructure}、\bookxref{ch:distributed-training}与\bookxref{ch:serving-architecture}。
+
+\section{先统一计量口径}
+
+\begin{table}[htbp]
+\centering
+\caption{资源估算中必须分开的计量对象}\label{tab:appendix-resource-units}
+\begin{tabularx}{\linewidth}{p{.22\linewidth}p{.28\linewidth}X}
+\toprule
+对象 & 常用单位 & 含义与换算\\\midrule
+参数数量 & 个参数，常写 M 或 B & $1\mathrm{M}=10^6$，$1\mathrm{B}=10^9$；参数数本身不是字节数。\\
+存储量 & B、MB、GB、MiB、GiB & $1\mathrm{GB}=10^9$ B，$1\mathrm{GiB}=2^{30}$ B；报告应保留原始字节数或明确换算。\\
+计算工作量 & FLOPs & 一次乘法和一次加法按本书口径计为两个浮点操作。\\
+计算速率 & FLOP/s & 完成工作量的速度；必须注明数值精度、稀疏性及峰值或实测口径。\\
+带宽 & B/s、GB/s & 单位时间可搬运的字节数；显存、互连、网络和存储带宽属于不同层级。\\
+延迟 & s、ms & 需声明起止边界、预热、并发、输入输出长度及分位数定义。\\
+吞吐 & token/s、request/s & 单请求、单设备和集群总吞吐不可混写；输入与输出词元可分别报告。\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+若一种数据类型或状态每元素占 $b$ 字节、共有 $N$ 个元素，则理想连续存储为
+\begin{equation}
+ M=Nb\quad\text{字节}.
+ \label{eq:appendix-elements-bytes}
+\end{equation}
+实际分配还可能包含对齐、填充、量化元数据、内存碎片、框架保留池和临时工作区。估算表应把式\eqref{eq:appendix-elements-bytes}得到的理论值与运行时附加项分列。
+
+\section{参数量速算}
+
+考虑层数 $L$、隐藏宽度 $d$、词表大小 $V$、查询头数 $H_q$、键值头数 $H_{kv}$、每头宽度 $d_h$ 和前馈宽度 $d_f$ 的自回归 Transformer。若 $H_qd_h=d$，单层注意力参数为
+\begin{equation}
+ P_{\mathrm{attn}}=2d^2+2dH_{kv}d_h.
+ \label{eq:appendix-attn-params}
+\end{equation}
+前两项中的一个 $d^2$ 来自查询投影、另一个来自输出投影，键和值各贡献 $dH_{kv}d_h$。标准 MHA 取 $H_{kv}=H_q$，此时注意力合计约 $4d^2$；GQA 和 MQA 只减少键值投影部分。
+
+设 $c_f=2$ 表示普通两矩阵前馈，$c_f=3$ 表示两条上投影加一条下投影的门控前馈，则
+\begin{equation}
+ P_{\mathrm{ffn}}=c_fdd_f.
+\end{equation}
+输入嵌入与输出词表投影共享时记 $\tau=1$，独立时记 $\tau=2$。忽略偏置并把归一化、位置参数和任务头单列，可写成
+\begin{equation}
+ P\approx \tau Vd+L\left(2d^2+2dH_{kv}d_h+c_fdd_f\right)
+ +P_{\mathrm{norm}}+P_{\mathrm{extra}}.
+ \label{eq:appendix-total-params}
+\end{equation}
+
+参数核算应逐项回答以下问题：输入输出是否共享；前馈是两矩阵还是门控三矩阵；键值头数是多少；是否含偏置、查询键归一化、位置表、专家、适配器或任务头；参数是否跨层共享。MoE 中总专家参数按专家总数 $E$ 计算，本次执行的专家矩阵主要按每词元激活数 $k$ 计算。
+
+\begin{table}[htbp]
+\centering
+\caption{常见模块的参数量}\label{tab:appendix-parameter-rules}
+\begin{tabularx}{\linewidth}{p{.25\linewidth}p{.27\linewidth}X}
+\toprule
+模块 & 参数量 & 适用条件\\\midrule
+线性层 $a\rightarrow b$ & $ab$；有偏置时加 $b$ & 参数存储方向不改变独立标量数量。\\
+嵌入表 & $Vd$ & 查表计算量不按一次完整 $Vd$ 矩阵乘法计算。\\
+普通前馈 & $2dd_f$ & 一次上投影、一次下投影。\\
+门控前馈 & $3dd_f$ & 两条上投影、一次下投影。\\
+LoRA 分支 & $r(d_{\mathrm{in}}+d_{\mathrm{out}})$ & 每个目标矩阵单独计算；缩放系数通常不是大项。\\
+门控专家集合 & $E\,3dd_e$ & 每个专家采用门控前馈且参数互不共享；共享专家与路由器另计。\\
+ViT 补丁投影 & $(CP_hP_w)d+d$ & 含偏置；与补丁数量 $N$ 无关。\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{权重与训练状态显存}
+
+推理权重的基础存储为
+\begin{equation}
+ M_w=Pb_w.
+\end{equation}
+若采用 $q$ 位分组量化、每 $g$ 个参数共享一个占 $b_s$ 字节的尺度，则近似为
+\begin{equation}
+ M_w\approx\frac{Pq}{8}+\frac{P}{g}b_s+M_{\mathrm{zero}}+M_{\mathrm{unquantized}}+M_{\mathrm{packing}}.
+ \label{eq:appendix-quant-memory}
+\end{equation}
+零点、未量化层、打包与对齐必须按实际格式加入；有些后端还在执行时建立反量化工作区。
+
+训练状态应从实际保存的数组求和：
+\begin{equation}
+ M_{\mathrm{state}}=P_wb_w+P_gb_g+\sum_jP_{o,j}b_{o,j}.
+ \label{eq:appendix-training-state}
+\end{equation}
+这里 $P_w,P_g,P_{o,j}$ 分别是权重、梯度与第 $j$ 个优化器状态的元素数。全参数训练时它们通常与 $P$ 同阶；冻结参数、分片参数和量化基座需要分别计数。
+
+\begin{table}[htbp]
+\centering
+\caption{一种混合精度 Adam 配置的每参数状态示例}\label{tab:appendix-adam-bytes}
+\begin{tabular}{lcc}
+\toprule
+状态 & 每元素字节 & 每参数贡献\\\midrule
+计算权重 & 2 & 2 B\\
+梯度 & 2 & 2 B\\
+高精度主权重 & 4 & 4 B\\
+一阶矩 & 4 & 4 B\\
+二阶矩 & 4 & 4 B\\\midrule
+合计 & — & 16 B\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+表\ref{tab:appendix-adam-bytes}只描述一种配置。若梯度以 FP32 累积、没有独立主权重、使用低精度优化器或采用不同分片策略，每参数字节数都会变化。LoRA/QLoRA 仍需保留基座权重，并为穿过冻结模块的反向路径保存或重算激活，不能把全参数训练显存简单乘以可训练参数比例。
+
+理想的数据并行状态驻留可以速记为
+\begin{align}
+ M_{\mathrm{DDP}}&=M_w+M_g+M_o,\\
+ M_{\mathrm{Z1}}&=M_w+M_g+\frac{M_o}{N_d},\\
+ M_{\mathrm{Z2}}&=M_w+\frac{M_g+M_o}{N_d},\\
+ M_{\mathrm{Z3}}&=\frac{M_w+M_g+M_o}{N_d},
+\end{align}
+其中 $N_d$ 是数据并行组大小。单设备峰值还需加入参数聚合、通信桶、预取、激活和工作区；这些项不应统一除以设备总数。
+
+\section{激活、KV 缓存与运行时峰值}
+
+训练激活可先用
+\begin{equation}
+ M_{\mathrm{act}}\approx c_aLBTdb_a
+ \label{eq:appendix-activation-memory}
+\end{equation}
+建立线性基线。系数 $c_a$ 表示每层每位置实际保存的隐藏宽度等效元素数，必须根据模型结构、融合算子、重计算策略和实测峰值校准。若显式保存注意力概率，还可能出现 $O(LBH_qT^2)$ 元素；分块注意力和激活重计算会改变保存集合。
+
+同构 GQA 的 KV 缓存对第 $i$ 个请求已处理长度 $T_i$ 的理论字节数为
+\begin{equation}
+ M_{\mathrm{KV}}=2LH_{kv}d_hb_c\sum_{i=1}^{B}T_i.
+ \label{eq:appendix-kv-memory}
+\end{equation}
+系数2对应键和值。所有请求等长时才可化为 $2LBTH_{kv}d_hb_c$。分页缓存还要把每条请求长度向块容量取整；共享前缀按物理页计一次，不能按逻辑引用数重复相加。
+
+训练峰值可组织为
+\begin{equation}
+ M_{\mathrm{train,peak}}=
+ M_{\mathrm{resident}}+M_{\mathrm{act}}+M_{\mathrm{gather}}
+ +M_{\mathrm{comm}}+M_{\mathrm{workspace}}+M_{\mathrm{reserve}}.
+ \label{eq:appendix-training-peak}
+\end{equation}
+推理峰值则通常包含权重、KV 缓存、当前批次激活、采样或束搜索状态、工作区和运行时保留。各项是否同时处于峰值应由执行时间线确认；保守初算可以先相加，测量后再收紧。
+
+\section{计算量与时间}
+
+矩阵 $[n,a]$ 乘 $[a,b]$ 的前向工作量约为
+\begin{equation}
+ F_{\mathrm{matmul}}\approx2nab.
+\end{equation}
+对应线性层的输入梯度和权重梯度各有一次同阶矩阵乘法，所以前向加反向约为 $6nab$。稠密 Transformer 训练常以
+\begin{equation}
+ F_{\mathrm{train}}\approx6PD
+ \label{eq:appendix-six-pd}
+\end{equation}
+作为矩阵计算基线，其中 $D$ 是处理词元数。该式未自动包含长序列注意力交互、激活重算、路由、Softmax、逐元素运算和优化器更新。
+
+常规密集注意力每层前向的两个交互矩阵乘法近似为
+\begin{equation}
+ F_{\mathrm{interaction}}\approx4BT^2d.
+ \label{eq:appendix-attention-flops}
+\end{equation}
+长上下文下应把它与线性投影工作量分别列出。因果掩码是否减少实际算术取决于内核是否跳过未来区域，仅在分数计算后写入负无穷不会省去矩阵乘法。
+
+已知模型工作量 $F$、设备数 $N$、单设备对应精度峰值速率 $R_{\mathrm{peak}}$ 和按同一工作量口径定义的有效利用率 $u$，墙钟时间估算为
+\begin{equation}
+ t\approx\frac{F}{NR_{\mathrm{peak}}u}.
+ \label{eq:appendix-runtime}
+\end{equation}
+若 $u$ 已由端到端墙钟时间反推，它已经吸收通信、等待和运行时开销；再次乘同一类折损系数会重复扣减。扩展设备数后，$u$ 通常随拓扑、批量和并行方案变化。
+
+带宽下界可与计算下界并列：若必须搬运 $Q$ 字节、有效带宽为 $\beta$，则
+\begin{equation}
+ t\geq\max\left(\frac{F}{R_{\mathrm{effective}}},\frac{Q}{\beta}\right).
+\end{equation}
+预填充通常具有较高矩阵复用，逐词元解码则常反复读取权重与缓存。两阶段应分别测量首词元时间、逐输出词元时间和吞吐。
+
+\section{一个快速算例}
+
+设模型有 $P=7\times10^9$ 个参数。两字节权重的理论存储为
+\begin{equation}
+ 7\times10^9\times2=\SI{14e9}{\byte}\approx\SI{13.04}{\gibi\byte}.
+\end{equation}
+若采用表\ref{tab:appendix-adam-bytes}的16字节训练状态配置，则未分片状态约为
+\begin{equation}
+ \SI{112e9}{\byte}\approx\SI{104.31}{\gibi\byte}.
+\end{equation}
+这两个结果都没有包含激活、通信缓冲、工作区和运行时保留。
+
+再设 $L=32,H_{kv}=8,d_h=128$，KV 缓存采用两字节元素。每请求每位置为
+\begin{equation}
+ 2(32)(8)(128)(2)=\SI{131072}{\byte}=\SI{128}{\kibi\byte}.
+\end{equation}
+单请求缓存8192个位置正好为1 GiB；16个同长请求为16 GiB。分页取整、共享前缀和分布式切分会改变物理驻留量，因此部署容量还要代入实际长度分布和缓存管理方式。
+
+\section{资源预算记录表}
+
+\begin{longtable}{@{}p{.25\linewidth}p{.27\linewidth}p{.39\linewidth}@{}}
+\caption{资源预算的最小记录字段}\label{tab:appendix-resource-worksheet}\\
+\toprule
+项目 & 填写值 & 口径与核对问题\\\midrule
+\endfirsthead
+\toprule
+项目 & 填写值 & 口径与核对问题\\\midrule
+\endhead
+模型身份 & 名称、版本、配置哈希 & 实际层数、宽度、词表、头数、前馈和共享关系是否与名称对应？\\
+执行阶段 & 训练、预填充、解码或评测 & 各阶段是否分别预算，是否包含反向与优化器更新？\\
+输入负载 & $B,T$ 或长度分布 & 填充、有效词元、并发、输出上限和长尾场景如何定义？\\
+数值格式 & 权重、梯度、状态、激活、缓存 & 位数之外是否存在尺度、零点、主权重及未量化层？\\
+参数与权重 & $P$；字节、GiB & 独立参数与执行参数是否分开，输入输出是否共享？\\
+训练状态 & 分项字节数 & 梯度、主权重和各优化器状态是否按实际精度计数？\\
+激活与缓存 & 公式值、校准系数 & 是否采用重计算、分块注意力、分页或前缀共享？\\
+临时与保留 & 聚合、通信、工作区、余量 & 是否记录了峰值同时性和框架内存保留？\\
+计算工作量 & FLOPs 与包含项 & 是否包含长度平方项、重计算和其他额外执行？\\
+硬件供给 & 数量、容量、峰值率、带宽、拓扑 & 峰值率是否对应实际精度，跨设备路径是否明确？\\
+时间估算 & $u$、估计秒数、期限 & 利用率口径从何而来，扩容后是否重新估计？\\
+实测校准 & 峰值显存、吞吐、延迟分位数 & 预热、采样窗口、同步边界和监控工具是否固定？\\
+\bottomrule
+\end{longtable}
+
+最终预算至少给出三个结果：容量是否可行、期限是否可行、哪些系数仍需在目标硬件上测量。参数量只能回答模型中有多少独立标量；显存、计算与时间必须沿实际执行路径分别建立模型。
+
+\chapterreferences
+\myendchapterdocument

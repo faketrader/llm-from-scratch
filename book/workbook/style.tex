@@ -5,110 +5,110 @@
 \ExplSyntaxOn
 % 同章题目与解析共同维护；题目出现时生成内部锚点，解析暂存时绑定该锚点，
 % 从而无需在章节源码中手填题序或维护题目—解析标签对。
-\seq_new:N \g_lfs_workbook_answers_seq
-\int_new:N \g_lfs_workbook_chapter_int
-\int_new:N \g_lfs_workbook_exercise_int
-\bool_new:N \g_lfs_workbook_answer_pending_bool
-\tl_new:N \g_lfs_workbook_chapter_label_tl
-\tl_new:N \g_lfs_workbook_question_label_tl
-\tl_new:N \g_lfs_workbook_answer_label_tl
-\tl_new:N \g_lfs_workbook_question_level_tl
+\seq_new:N \g_my_workbook_answers_seq
+\int_new:N \g_my_workbook_chapter_int
+\int_new:N \g_my_workbook_exercise_int
+\bool_new:N \g_my_workbook_answer_pending_bool
+\tl_new:N \g_my_workbook_chapter_label_tl
+\tl_new:N \g_my_workbook_question_label_tl
+\tl_new:N \g_my_workbook_answer_label_tl
+\tl_new:N \g_my_workbook_question_level_tl
 \RenewDocumentCommand{\optional}{}
   {
-    \bool_if:NT \g_lfs_workbook_answer_pending_bool
-      { \tl_gset:Nn \g_lfs_workbook_question_level_tl { optional } }
+    \bool_if:NT \g_my_workbook_answer_pending_bool
+      { \tl_gset:Nn \g_my_workbook_question_level_tl { optional } }
     \ifdefined\HCode
       \HCode{<span~class="optional-marker"~role="note"~aria-label="选修内容"><span~aria-hidden="true">⚠</span><span>选修</span></span>}
     \else
-      \lfsoptionalmark
+      \myoptionalmark
     \fi
   }
-\msg_new:nnn { lfs } { missing-workbook-answer }
+\msg_new:nnn { my } { missing-workbook-answer }
   { Each~exercise~must~be~followed~by~one~solution~environment. }
-\cs_new_protected:Npn \lfs_workbook_typeset_answer:nnnn #1#2#3#4
+\cs_new_protected:Npn \my_workbook_typeset_answer:nnnn #1#2#3#4
   {
     \ifdefined\HCode
-      \HCode{<div~class="lfs-solution"~data-question="#1"~data-answer="#2"~data-level="#3">}
+      \HCode{<div~class="my-solution"~data-question="#1"~data-answer="#2"~data-level="#3">}
       \par\noindent\textbf{解析}\quad\ignorespaces#4
       \HCode{</div>}
     \else
       \par\medskip
       \noindent\phantomsection\label{#2}
       \hyperref[#1]{\textbf{\ref*{#1}}}\quad
-      \str_if_eq:nnT {#3} { optional } { \lfsoptionalmark }
+      \str_if_eq:nnT {#3} { optional } { \myoptionalmark }
       \ignorespaces#4
     \fi
   }
-\cs_new_protected:Npn \lfs_workbook_store_bound_answer:n #1
+\cs_new_protected:Npn \my_workbook_store_bound_answer:n #1
   {
-    \seq_gput_right:Nx \g_lfs_workbook_answers_seq
+    \seq_gput_right:Nx \g_my_workbook_answers_seq
       {
-        \exp_not:N \lfs_workbook_typeset_answer:nnnn
-          { \exp_not:V \g_lfs_workbook_question_label_tl }
-          { \exp_not:V \g_lfs_workbook_answer_label_tl }
-          { \exp_not:V \g_lfs_workbook_question_level_tl }
+        \exp_not:N \my_workbook_typeset_answer:nnnn
+          { \exp_not:V \g_my_workbook_question_label_tl }
+          { \exp_not:V \g_my_workbook_answer_label_tl }
+          { \exp_not:V \g_my_workbook_question_level_tl }
           { \exp_not:n {#1} }
       }
   }
 \NewDocumentEnvironment{solution}{+b}
   {
-    \bool_if:NTF \g_lfs_workbook_answer_pending_bool
+    \bool_if:NTF \g_my_workbook_answer_pending_bool
       {
-        \lfs_workbook_store_bound_answer:n {#1}
-        \bool_gset_false:N \g_lfs_workbook_answer_pending_bool
+        \my_workbook_store_bound_answer:n {#1}
+        \bool_gset_false:N \g_my_workbook_answer_pending_bool
       }
-      { \msg_error:nn { lfs } { missing-workbook-answer } }
+      { \msg_error:nn { my } { missing-workbook-answer } }
   }
   {}
 \NewDocumentCommand{\printsolutions}{}
-  {\seq_map_inline:Nn \g_lfs_workbook_answers_seq {##1}}
+  {\seq_map_inline:Nn \g_my_workbook_answers_seq {##1}}
 \NewDocumentCommand{\workbookchapter}{m}
   {
     \chapter{#1}
-    \int_gincr:N \g_lfs_workbook_chapter_int
+    \int_gincr:N \g_my_workbook_chapter_int
     \ifdefined\HCode
-      \HCode{<div~class="lfs-workbook-chapter"~data-chapter="\int_use:N\g_lfs_workbook_chapter_int"></div>}
+      \HCode{<div~class="my-workbook-chapter"~data-chapter="\int_use:N\g_my_workbook_chapter_int"></div>}
     \fi
-    \tl_gset:Nx \g_lfs_workbook_chapter_label_tl
-      { lfs-workbook-chapter-\int_use:N \g_lfs_workbook_chapter_int }
-    \exp_args:NV \label \g_lfs_workbook_chapter_label_tl
-    \seq_gput_right:Nx \g_lfs_workbook_answers_seq
+    \tl_gset:Nx \g_my_workbook_chapter_label_tl
+      { my-workbook-chapter-\int_use:N \g_my_workbook_chapter_int }
+    \exp_args:NV \label \g_my_workbook_chapter_label_tl
+    \seq_gput_right:Nx \g_my_workbook_answers_seq
       {
         \exp_not:N \answerchapter
-          { \exp_not:V \g_lfs_workbook_chapter_label_tl }
+          { \exp_not:V \g_my_workbook_chapter_label_tl }
       }
   }
 \NewDocumentCommand{\tbobject}{m}
-  {\ifdefined\HCode\HCode{<span~class="lfs-textbook-ref"~data-label="#1">（教材对象）</span>}\else（\ref{tb-#1}）\fi}
+  {\ifdefined\HCode\HCode{<span~class="my-textbook-ref"~data-label="#1">（教材对象）</span>}\else（\ref{tb-#1}）\fi}
 \NewDocumentCommand{\tbnumberref}{m}
-  {\ifdefined\HCode\HCode{<span~class="lfs-textbook-ref"~data-label="#1">（教材对象）</span>}\else（\ref{tb-#1}）\fi}
+  {\ifdefined\HCode\HCode{<span~class="my-textbook-ref"~data-label="#1">（教材对象）</span>}\else（\ref{tb-#1}）\fi}
 \NewDocumentEnvironment{exercises}{}
   {\begin{enumerate}[labelwidth=3.2em,leftmargin=4em,labelsep=.6em,align=right]}
   {
-    \bool_if:NT \g_lfs_workbook_answer_pending_bool
-      { \msg_error:nn { lfs } { missing-workbook-answer } }
+    \bool_if:NT \g_my_workbook_answer_pending_bool
+      { \msg_error:nn { my } { missing-workbook-answer } }
     \end{enumerate}
   }
 \NewDocumentEnvironment{exercise}{}
   {
-    \bool_if:NT \g_lfs_workbook_answer_pending_bool
-      { \msg_error:nn { lfs } { missing-workbook-answer } }
-    \int_gincr:N \g_lfs_workbook_exercise_int
-    \tl_gset:Nx \g_lfs_workbook_question_label_tl
-      { lfs-workbook-question-\int_use:N \g_lfs_workbook_exercise_int }
-    \tl_gset:Nx \g_lfs_workbook_answer_label_tl
-      { lfs-workbook-answer-\int_use:N \g_lfs_workbook_exercise_int }
-    \tl_gset:Nn \g_lfs_workbook_question_level_tl { required }
+    \bool_if:NT \g_my_workbook_answer_pending_bool
+      { \msg_error:nn { my } { missing-workbook-answer } }
+    \int_gincr:N \g_my_workbook_exercise_int
+    \tl_gset:Nx \g_my_workbook_question_label_tl
+      { my-workbook-question-\int_use:N \g_my_workbook_exercise_int }
+    \tl_gset:Nx \g_my_workbook_answer_label_tl
+      { my-workbook-answer-\int_use:N \g_my_workbook_exercise_int }
+    \tl_gset:Nn \g_my_workbook_question_level_tl { required }
     \renewcommand{\theenumi}{\thechapter.\arabic{enumi}}
     \renewcommand{\labelenumi}
-      {\hyperref[\tl_use:N \g_lfs_workbook_answer_label_tl]{\theenumi.}}
+      {\hyperref[\tl_use:N \g_my_workbook_answer_label_tl]{\theenumi.}}
     \item\leavevmode
     \ifdefined\HCode
-      \HCode{<div~class="lfs-exercise"~data-exercise="\int_use:N\g_lfs_workbook_exercise_int">}
+      \HCode{<div~class="my-exercise"~data-exercise="\int_use:N\g_my_workbook_exercise_int">}
     \fi
     \phantomsection
-    \exp_args:NV \label \g_lfs_workbook_question_label_tl
-    \bool_gset_true:N \g_lfs_workbook_answer_pending_bool
+    \exp_args:NV \label \g_my_workbook_question_label_tl
+    \bool_gset_true:N \g_my_workbook_answer_pending_bool
   }
   {\ifdefined\HCode\HCode{</div>}\fi}
 \ExplSyntaxOff
@@ -122,13 +122,13 @@
 % 参考解析正文连续排版；章号、标题和公式前缀均取自对应习题章标签。
 \RenewDocumentCommand{\answerchapter}{m}{%
   \ifdefined\HCode
-    \HCode{<div~class="lfs-answer-chapter"~data-question-chapter="#1"></div>}%
+    \HCode{<div~class="my-answer-chapter"~data-question-chapter="#1"></div>}%
   \else
-    \edef\lfsanswerchapternumber{\getrefnumber{#1}}%
-    \section*{第\lfsanswerchapternumber 章\texorpdfstring{\quad}{ }\nameref*{#1}}%
+    \edef\myanswerchapternumber{\getrefnumber{#1}}%
+    \section*{第\myanswerchapternumber{}章\texorpdfstring{\quad}{ }\nameref*{#1}}%
     \phantomsection\label{ans:#1}%
-    \addcontentsline{toc}{chapter}{\protect\numberline{第\lfsanswerchapternumber 章}\nameref*{#1}}%
+    \addcontentsline{toc}{chapter}{\protect\numberline{第\myanswerchapternumber{}章}\nameref*{#1}}%
     \setcounter{equation}{0}%
-    \renewcommand{\theequation}{答\lfsanswerchapternumber.\arabic{equation}}%
-    \renewcommand{\theHequation}{answer.\lfsanswerchapternumber.\arabic{equation}}%
+    \renewcommand{\theequation}{答\myanswerchapternumber.\arabic{equation}}%
+    \renewcommand{\theHequation}{answer.\myanswerchapternumber.\arabic{equation}}%
   \fi}

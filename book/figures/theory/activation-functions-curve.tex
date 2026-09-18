@@ -6,7 +6,7 @@
 \input{diagram_styles.tex}
 
 \begin{document}
-\begin{tikzpicture}[lfs picture]
+\begin{tikzpicture}[my picture]
 \begin{axis}[
     width=115mm,
     height=66mm,
@@ -26,15 +26,15 @@
 ]
 
 % ReLU
-\addplot[domain=-3.2:3.2, samples=100, line width=1.1pt, color=LFSGray, dashed] {max(0, x)};
+\addplot[domain=-3.2:3.2, samples=100, line width=1.1pt, color=MyGray, dashed] {max(0, x)};
 \addlegendentry{ReLU: $\max(0, x)$}
 
 % GELU (tanh 近似)
-\addplot[domain=-3.2:3.2, samples=120, line width=1.3pt, color=LFSBlue] {0.5*x*(1 + tanh(sqrt(2/3.14159265)*(x + 0.044715*x^3)))};
+\addplot[domain=-3.2:3.2, samples=120, line width=1.3pt, color=MyBlue] {0.5*x*(1 + tanh(sqrt(2/3.14159265)*(x + 0.044715*x^3)))};
 \addlegendentry{GELU: $x\Phi(x)$}
 
 % SiLU / Swish
-\addplot[domain=-3.2:3.2, samples=120, line width=1.3pt, color=LFSGreen] {x / (1 + exp(-x))};
+\addplot[domain=-3.2:3.2, samples=120, line width=1.3pt, color=MyGreen] {x / (1 + exp(-x))};
 \addlegendentry{SiLU: $x\cdot\sigma(x)$}
 
 \node[label text, anchor=north] at (axis cs:-1.5, -0.15) {平滑负值下陷谷底};

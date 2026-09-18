@@ -3,7 +3,7 @@
 \usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
 \input{diagram_styles.tex}
 \begin{document}
-\begin{tikzpicture}[lfs picture]
+\begin{tikzpicture}[my picture]
 
 \node[storage] (xt) {Noisy Latent $\vect{x}_t$\\\scriptsize $[B,C,H,W]$};
 \node[compute, right=of xt] (down) {Down Block\\\scriptsize + time};

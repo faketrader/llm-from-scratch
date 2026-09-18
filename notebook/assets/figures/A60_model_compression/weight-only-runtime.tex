@@ -1,0 +1,26 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[storage] (fpw) {FP 权重};
+\node[compute, right=of fpw] (quant) {离线量化};
+\node[storage, right=of quant] (intw) {INT8 权重 + scales};
+\node[storage, below=of fpw] (act) {BF16 / FP16 激活};
+\node[interface, right=23mm of $(intw)!0.5!(act)$] (gemm) {Weight-only GEMM Kernel};
+\node[compute, right=of gemm] (acc) {浮点累加};
+\node[storage, right=of acc] (out) {输出 Activation};
+\node[neutral, below=of gemm] (support) {硬件 + dtype + layout 支持};
+\draw[data arrow] (fpw) -- (quant) -- (intw) -- (gemm);
+\draw[data arrow] (act) -- (gemm) -- (acc) -- (out);
+\draw[control arrow] (support) -- (gemm);
+\node[group, fit=(fpw)(quant)(intw), label={[title]above:离线压缩资产}] {};
+
+\end{tikzpicture}
+\end{document}

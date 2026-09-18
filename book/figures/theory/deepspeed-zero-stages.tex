@@ -3,7 +3,7 @@
 \usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
 \input{diagram_styles.tex}
 \begin{document}
-\begin{tikzpicture}[lfs picture]
+\begin{tikzpicture}[my picture]
 
 \node[block] (z0) {DDP / ZeRO-0\\\scriptsize P + G + O 全复制};
 \node[block, right=of z0] (z1) {ZeRO-1\\\scriptsize O 分片\\\scriptsize P、G 复制};

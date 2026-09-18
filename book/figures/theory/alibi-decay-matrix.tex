@@ -5,10 +5,10 @@
 \input{diagram_styles.tex}
 
 \begin{document}
-\begin{tikzpicture}[lfs picture, >=Latex]
+\begin{tikzpicture}[my picture, >=Latex]
 
 % Panel 1: ALiBi Penalty Matrix
-\node[font=\small\bfseries, text=LFSGray] at (2.2, 4.2) {ALiBi 线性衰减偏置矩阵 ($-\,m \cdot (i-j)$)};
+\node[font=\small\bfseries, text=MyGray] at (2.2, 4.2) {ALiBi 线性衰减偏置矩阵 ($-\,m \cdot (i-j)$)};
 
 % Draw 5x5 matrix
 \begin{scope}[yshift=0.5cm]
@@ -17,42 +17,42 @@
       \pgfmathtruncatemacro{\diff}{\i - \j}
       \ifnum \diff < 0
         % Masked
-        \fill[LFSGray!15] (\j*0.9, {-\i*0.7}) rectangle ++(0.8, 0.6);
-        \node[font=\tiny, text=LFSGray!60] at ({\j*0.9+0.4}, {-\i*0.7+0.3}) {$-\infty$};
+        \fill[MyGray!15] (\j*0.9, {-\i*0.7}) rectangle ++(0.8, 0.6);
+        \node[font=\tiny, text=MyGray!60] at ({\j*0.9+0.4}, {-\i*0.7+0.3}) {$-\infty$};
       \else
         \ifnum \diff = 0
-          \fill[LFSBlueSoft] (\j*0.9, {-\i*0.7}) rectangle ++(0.8, 0.6);
-          \node[font=\scriptsize\bfseries, text=LFSBlue] at ({\j*0.9+0.4}, {-\i*0.7+0.3}) {$0$};
+          \fill[MyBlueSoft] (\j*0.9, {-\i*0.7}) rectangle ++(0.8, 0.6);
+          \node[font=\scriptsize\bfseries, text=MyBlue] at ({\j*0.9+0.4}, {-\i*0.7+0.3}) {$0$};
         \else
-          \fill[LFSOrangeSoft] (\j*0.9, {-\i*0.7}) rectangle ++(0.8, 0.6);
-          \node[font=\scriptsize, text=LFSOrange] at ({\j*0.9+0.4}, {-\i*0.7+0.3}) {$-m\cdot\diff$};
+          \fill[MyOrangeSoft] (\j*0.9, {-\i*0.7}) rectangle ++(0.8, 0.6);
+          \node[font=\scriptsize, text=MyOrange] at ({\j*0.9+0.4}, {-\i*0.7+0.3}) {$-m\cdot\diff$};
         \fi
       \fi
-      \draw[draw=LFSGray!40, line width=0.4pt] (\j*0.9, {-\i*0.7}) rectangle ++(0.8, 0.6);
+      \draw[draw=MyGray!40, line width=0.4pt] (\j*0.9, {-\i*0.7}) rectangle ++(0.8, 0.6);
     }
   }
 
   % Row labels (Query positions i)
   \foreach \i in {0,...,4} {
-    \node[font=\tiny, text=LFSGray, left] at (-0.1, {-\i*0.7+0.3}) {$i=\i$};
+    \node[font=\tiny, text=MyGray, left] at (-0.1, {-\i*0.7+0.3}) {$i=\i$};
   }
   % Col labels (Key positions j)
   \foreach \j in {0,...,4} {
-    \node[font=\tiny, text=LFSGray, above] at ({\j*0.9+0.4}, 0.65) {$j=\j$};
+    \node[font=\tiny, text=MyGray, above] at ({\j*0.9+0.4}, 0.65) {$j=\j$};
   }
 \end{scope}
 
-\node[font=\footnotesize, text=LFSGray, align=center] at (2.2, -3.2) {
+\node[font=\footnotesize, text=MyGray, align=center] at (2.2, -3.2) {
   偏置直接加于未归一化注意力分数：\\
   $\displaystyle s_{ij} = \frac{\vect{q}_i^{\mathrm{T}}\vect{k}_j}{\sqrt{d_k}} - m \cdot (i - j)$
 };
 
 % Separator
-\draw[dashed, draw=LFSGray!40, line width=0.5pt] (5.2, -3.4) -- (5.2, 4.4);
+\draw[dashed, draw=MyGray!40, line width=0.5pt] (5.2, -3.4) -- (5.2, 4.4);
 
 % Panel 2: Multi-head geometric slopes
 \begin{scope}[xshift=6.2cm]
-  \node[font=\small\bfseries, text=LFSGray] at (3.0, 4.2) {不同注意头的斜率几何分布 ($m$)};
+  \node[font=\small\bfseries, text=MyGray] at (3.0, 4.2) {不同注意头的斜率几何分布 ($m$)};
 
   % Axes
   \draw[->, line width=0.6pt] (0, 0) -- (6.0, 0) node[right, font=\footnotesize] {相对距离 $i-j$};
@@ -60,18 +60,18 @@
 
   % Slope curves for different heads
   % Head 1: m = 2^(-1) = 0.5 (steep)
-  \draw[line width=1.0pt, draw=LFSRed] (0, 3.4) -- (5.5, 0.65)
-    node[right, font=\scriptsize, text=LFSRed] {Head 1 ($m=2^{-1}$ 局部聚焦)};
+  \draw[line width=1.0pt, draw=MyRed] (0, 3.4) -- (5.5, 0.65)
+    node[right, font=\scriptsize, text=MyRed] {Head 1 ($m=2^{-1}$ 局部聚焦)};
 
   % Head 4: m = 2^(-4) = 0.0625
-  \draw[line width=1.0pt, draw=LFSPurple] (0, 3.4) -- (5.5, 2.0)
-    node[right, font=\scriptsize, text=LFSPurple] {Head 4 ($m=2^{-4}$)};
+  \draw[line width=1.0pt, draw=MyPurple] (0, 3.4) -- (5.5, 2.0)
+    node[right, font=\scriptsize, text=MyPurple] {Head 4 ($m=2^{-4}$)};
 
   % Head 8: m = 2^(-8) = 0.0039 (gentle)
-  \draw[line width=1.0pt, draw=LFSGreen] (0, 3.4) -- (5.5, 3.1)
-    node[right, font=\scriptsize, text=LFSGreen] {Head 8 ($m=2^{-8}$ 全局长程)};
+  \draw[line width=1.0pt, draw=MyGreen] (0, 3.4) -- (5.5, 3.1)
+    node[right, font=\scriptsize, text=MyGreen] {Head 8 ($m=2^{-8}$ 全局长程)};
 
-  \node[font=\footnotesize, text=LFSGray, align=left] at (2.8, -1.8) {
+  \node[font=\footnotesize, text=MyGray, align=left] at (2.8, -1.8) {
     • 斜率按公比 $2^{-8/H}$ 呈几何级数衰减；\\
     • 大斜率头强制关注局部近邻词元；\\
     • 小斜率头保留长程跨度注意力分配；\\

@@ -1,0 +1,44 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[storage] (src) {源 Token IDs\\\scriptsize $[N,S]$};
+\node[compute, right=of src] (semb) {源 Embedding $\times\sqrt{d_{model}}$\\+ 正弦位置编码};
+\node[compute, right=of semb] (encattn) {Multi-Head\\Self-Attention};
+\node[interface, right=of encattn] (encnorm1) {Add \& Norm};
+\node[compute, below=13mm of encnorm1] (encffn) {Position-wise\\FFN (ReLU)};
+\node[interface, right=of encffn] (encnorm2) {Add \& Norm};
+\node[storage, right=of encnorm2] (memory) {Encoder memory\\\scriptsize $[N,S,E]$};
+\node[storage, below=32mm of src] (tgt) {右移目标 IDs\\\scriptsize $[N,T]$};
+\node[compute, right=of tgt] (temb) {目标 Embedding $\times\sqrt{d_{model}}$\\+ 正弦位置编码};
+\node[compute, right=of temb] (self) {Masked\\Self-Attention};
+\node[interface, right=of self] (dn1) {Add \& Norm};
+\node[compute, below=13mm of dn1] (cross) {Cross-Attention\\\scriptsize Q: target; K/V: memory};
+\node[interface, right=of cross] (dn2) {Add \& Norm};
+\node[compute, below=13mm of dn2] (dffn) {Position-wise\\FFN (ReLU)};
+\node[interface, right=of dffn] (dn3) {Add \& Norm};
+\node[compute, right=18mm of dn2] (linear) {Linear\\\scriptsize $E\to V_{tgt}$};
+\node[storage, right=of linear] (prob) {Softmax 概率\\\scriptsize $[N,T,V_{tgt}]$};
+\draw[data arrow] (src) -- (semb) -- (encattn) -- (encnorm1);
+\draw[data arrow] (encnorm1) -- (encffn);
+\draw[data arrow] (encffn) -- (encnorm2) -- (memory);
+\draw[data arrow] (tgt) -- (temb) -- (self) -- (dn1);
+\draw[data arrow] (dn1) -- (cross);
+\draw[data arrow] (cross) -- (dn2);
+\draw[data arrow] (dn2) -- (dffn);
+\draw[data arrow] (dffn) -- (dn3);
+\draw[data arrow] (dn3) -| (linear);
+\draw[data arrow] (linear) -- (prob);
+\draw[data arrow] (memory.south) -| node[label text, near start]{K, V} (cross.north);
+\node[group, fit=(encattn)(encffn)(encnorm1)(encnorm2), label={[title]above:Encoder Layer $\times 6$（Post-LN）}] {};
+\node[group, fit=(self)(cross)(dffn)(dn1)(dn2)(dn3), label={[title]below:Decoder Layer $\times 6$（Post-LN）}] {};
+
+\end{tikzpicture}
+\end{document}

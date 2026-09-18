@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -331,7 +331,9 @@ $\delta,\beta,\varepsilon$ & 裁剪宽度、KL 系数与标准差分母稳定项
 \end{figure}
 
 \begin{algorithm}[版本化组相对策略更新]
-输入：问题集、初始策略、冻结参考策略、验证器版本、$G$、生成预算、裁剪宽度、KL 方案与归约规则。输出：候选策略及与之对应的训练证据。状态：当前参数、行为版本、待处理候选和优化器状态。
+\AlgoInput{问题集、初始策略、冻结参考策略、验证器版本、$G$、生成预算、裁剪宽度、KL 方案与归约规则。}
+\AlgoOutput{候选策略及与之对应的训练证据。}
+\AlgoState{当前参数、行为版本、待处理候选和优化器状态。}
 \begin{enumerate}
 \item 固定一轮行为策略及其实际采样分布，对每题独立生成 $G$ 条候选，保存有效词元、停止原因、行为对数概率与版本。
 \item 在隔离环境中验证候选，保存奖励分量和无法判定原因；不得把验证器异常自动解释为候选正确。
@@ -465,4 +467,4 @@ $\delta,\beta,\varepsilon$ & 裁剪宽度、KL 系数与标准差分母稳定项
 
 
 \chapterreferences
-\lfsendchapterdocument
+\myendchapterdocument

@@ -50,10 +50,10 @@
   border-radius: 4px;
 }
 .book-part a span {
-  font:
-    12px/1.65 Georgia,
-    serif;
   color: #9aa391;
+  font-family: var(--sans);
+  font-size: 12px;
+  line-height: 1.65;
 }
 .book-part a.current {
   background: #eaf0e5;

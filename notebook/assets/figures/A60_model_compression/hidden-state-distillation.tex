@@ -1,0 +1,24 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[neutral] (teacher) {Teacher layers\\\scriptsize $h_1,\ldots,h_L$};
+\node[block, below=18mm of teacher] (student) {Student layers\\\scriptsize $s_1,\ldots,s_l$};
+\node[compute, right=of teacher] (map) {选择并映射教师层};
+\node[compute, right=of student] (proj) {可训练投影\\\scriptsize $d_s\to d_t$};
+\node[interface, right=22mm of $(map)!0.5!(proj)$] (align) {对齐 Token / Mask};
+\node[compute, right=of align] (loss) {MSE / Cosine /\\Attention Loss};
+\node[compute, right=of loss] (joint) {与 Logit Loss\\联合优化};
+\draw[data arrow] (teacher) -- (map) -- (align);
+\draw[data arrow] (student) -- (proj) -- (align);
+\draw[data arrow] (align) -- (loss) -- (joint);
+
+\end{tikzpicture}
+\end{document}

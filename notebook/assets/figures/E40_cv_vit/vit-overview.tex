@@ -1,0 +1,24 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[storage] (img) {图像\\\scriptsize $[N,C,H,W]$};
+\node[compute, right=of img] (patch) {Patchify\\\scriptsize $[N,N_p,C P^2]$};
+\node[compute, right=of patch] (proj) {Patch Linear Projection\\\scriptsize $[N,N_p,E]$};
+\node[interface, below=of proj] (tokens) {加入 CLS Token + 位置编码\\\scriptsize $[N,N_p+1,E]$};
+\node[block, left=of tokens] (enc) {Pre-LN Transformer\\Block $\times L$};
+\node[storage, left=of enc] (cls) {CLS Hidden State\\\scriptsize $[N,E]$};
+\node[compute, below=of cls] (head) {分类头};
+\node[storage, right=of head] (logits) {类别 logits\\\scriptsize $[N,K]$};
+\draw[data arrow] (img) -- (patch) -- (proj) -- (tokens) -- (enc) -- (cls) -- (head) -- (logits);
+\node[group, fit=(patch)(proj)(tokens), label={[title]above:图像 $\to$ Token 序列}] {};
+
+\end{tikzpicture}
+\end{document}

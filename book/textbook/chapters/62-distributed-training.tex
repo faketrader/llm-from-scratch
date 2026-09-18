@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -302,7 +302,8 @@ $B_\mu,T,d$ & 微批量、序列长度和隐藏维数。\\
 分布式检查点将\bookxref{ch:training-stability}的一致性边界扩展到整个逻辑模型。清单应记录每片的逻辑参数名、全局形状、偏移范围、数据类型与摘要，以及数据组和随机状态。恢复时先验证全部必需片段，再按目标布局读取。改变分片布局是张量重分布；改变数据并行度还可能改变样本次序、归约顺序和批量语义，两者属于不同操作。
 
 \begin{algorithm}[按全局有效目标执行同步更新]
-\textbf{输入：}固定模型与资产、合法通信组、一个累积窗口；\textbf{输出：}各逻辑参数的一致新版本。
+\AlgoInput{固定模型与资产、合法通信组、一个累积窗口。}
+\AlgoOutput{各逻辑参数的一致新版本。}
 \begin{enumerate}
 \item 确认各副本对应同一参数版本，为窗口中的有效标签计数；在数据并行组中求和得到 $N$。
 \item 若 $N=0$，所有成员一致跳过；否则按通信采用求和或平均的约定确定损失系数。
@@ -342,4 +343,4 @@ Accelerate可以组织启动、设备与训练后端配置，并与上层训练�
 框架产生的分片检查点用于恢复训练，部署制品用于加载推理，两者可能具有不同格式。将分片状态汇总为完整权重时，要预算主机内存、存储和集合通信，并检验权重、配置、分词器与适配器的完整性。对恢复的验收应继续一次真实更新并检查数据进度；优化器、随机状态和数据进度应与模型更新共同恢复。
 
 \chapterreferences
-\lfsendchapterdocument
+\myendchapterdocument

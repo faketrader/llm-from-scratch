@@ -3,7 +3,7 @@
 \usetikzlibrary{arrows.meta,positioning}
 \input{diagram_styles.tex}
 \begin{document}
-\begin{tikzpicture}[lfs picture,node distance=9mm and 10mm]
+\begin{tikzpicture}[my picture,node distance=9mm and 10mm]
 \node[storage] (x) {$\mat{X}$\\$B\times d$};
 \node[compute,right=of x] (z) {$\mat{X}\mat{W}_1+\vect{b}_1$\\$B\times h$};
 \node[compute,right=of z] (a) {$\mat{A}=\operatorname{ReLU}(\mat{Z})$\\$B\times h$};

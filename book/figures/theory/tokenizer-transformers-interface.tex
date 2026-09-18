@@ -3,7 +3,7 @@
 \usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
 \input{diagram_styles.tex}
 \begin{document}
-\begin{tikzpicture}[lfs picture]
+\begin{tikzpicture}[my picture]
 
 \node[storage] (ranks) {BPE ranks\\\scriptsize 固定 token ID};
 \node[compute, right=of ranks] (backend) {\texttt{tokenizers.Tokenizer}\\\scriptsize Rust backend};

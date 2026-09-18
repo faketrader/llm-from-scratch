@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -403,7 +403,8 @@ PPO 采用旧策略状态与动作样本，构造单步概率比的\term{替代�
 \end{figure}
 
 \begin{algorithm}[有限轨迹上的 GAE 与 PPO 更新]
-输入为提示分布、初始策略与价值网络、奖励规则、采样预算及裁剪参数；输出为新策略和可追溯训练状态。本算法取有限终止任务、$\gamma=1$，一般折扣情形须补相应时间权重。
+\AlgoInput{提示分布、初始策略与价值网络、奖励规则、采样预算及裁剪参数。}
+\AlgoOutput{新策略和可追溯训练状态。本算法取有限终止任务、$\gamma=1$，一般折扣情形须补相应时间权重。}
 \begin{enumerate}
 \item 冻结行为策略快照 $\mu$，按明确采样分布生成轨迹，记录动作、行为对数概率、奖励及真实终止与截断标记。
 \item 固定本批次价值预测；在真实终止处置尾值为零，在未终止切片末端保留自举值。
@@ -427,4 +428,4 @@ PPO 采用旧策略状态与动作样本，构造单步概率比的\term{替代�
 
 
 \chapterreferences
-\lfsendchapterdocument
+\myendchapterdocument

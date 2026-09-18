@@ -4,7 +4,7 @@
 \usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
 \input{diagram_styles.tex}
 \begin{document}
-\begin{tikzpicture}[lfs picture]
+\begin{tikzpicture}[my picture]
   \node[compute] (services) {Gateway / Router\\Scheduler / Worker};
   \node[neutral, right=16mm of services] (collector) {OpenTelemetry\\Collector};
   \node[storage, above right=7mm and 18mm of collector] (metrics) {指标后端与告警};

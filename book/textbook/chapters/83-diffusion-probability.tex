@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -300,14 +300,15 @@ $L_T$ 将加噪终点与先验对齐；$L_{t-1}$ 约束每一步逆转移；$L_0
 \end{figure}
 
 \begin{algorithm}[噪声预测训练]
-输入为数据分布、固定日程、预测类型、时间抽样分布与损失权重；输出为训练后的预测网络。
-\begin{lfsalgorithmic}[1]
-\State 抽取干净样本 $\vect{x}_0$，执行固定预处理；独立抽取时间 $t$ 和标准高斯 $\vect{\epsilon}$。
-\State 由累计日程直接构造 $\vect{x}_t=a_t\vect{x}_0+b_t\vect{\epsilon}$，不运行完整前向链。
-\State 输入 $\vect{x}_t$ 和约定的时间条件；按预测类型构造目标 $\vect{\epsilon}$、$\vect{x}_0$ 或 $a_t\vect{\epsilon}-b_t\vect{x}_0$。
-\State 根据选定目标及时间抽样规则计算权重，执行反向传播和参数更新；完整变分训练还需对应的端点与方差项。
-\State 达到预定训练步数或明确定义的训练停止条件后输出权重和日程、预测类型、数据尺度配置。
-\end{lfsalgorithmic}
+\AlgoInput{数据分布、固定日程、预测类型、时间采样分布和损失权重。}
+\AlgoOutput{训练后的预测网络。}
+\begin{myalgorithmic}[1]
+\State Draw a clean sample $\vect{x}_0$ and apply fixed preprocessing; independently draw time $t$ and standard Gaussian noise $\vect{\epsilon}$
+\State Construct $\vect{x}_t=a_t\vect{x}_0+b_t\vect{\epsilon}$ directly from the cumulative schedule without running the complete forward chain
+\State Feed $\vect{x}_t$ with the specified time conditioning; construct target $\vect{\epsilon}$, $\vect{x}_0$, or $a_t\vect{\epsilon}-b_t\vect{x}_0$ according to the prediction type
+\State Compute weights from the selected target and time-sampling rule, then backpropagate and update parameters; complete variational training also includes the corresponding endpoint and variance terms
+\State After the prescribed training-step count or an explicitly defined stopping condition, emit the weights together with the schedule, prediction type, and data-scale configuration
+\end{myalgorithmic}
 不变量为目标与采样噪声来自同一配对、时间与累计日程一致、所有样本使用相同预处理约定。训练步数与扩散时间步是两种不同计数。
 \end{algorithm}
 
@@ -340,21 +341,22 @@ $\eta=0$ 时，没有额外随机项，给定初始噪声、网络及时间网�
 采样质量由网络误差、离散化路径与时间覆盖共同决定。减少时间步时，应在既定模型上评估采样质量与计算成本。\footnote{确定性采样仍以随机初始噪声为输入，因而输出整体仍可构成分布。确定性指给定初始状态后的映射，不表示所有请求生成同一结果。}
 
 \begin{algorithm}[反向生成]
-输入为训练后的网络、兼容日程、预测类型、递减时间网格和更新规则；输出为生成样本。
-\begin{lfsalgorithmic}[1]
-\State 检查时间网格严格递减、日程与预测类型兼容；固定推理配置
-\State 从约定末端先验抽取 $\vect{x}_T$
-\For{有限时间网格中每对相邻时间 $(t,s)$，$t>s\ge0$}
-  \State 将 $\vect{x}_t,t$ 送入网络，转换为更新公式所需的噪声或干净样本估计
-  \State 按 $(t,s)$ 对应系数计算更新均值和非负方差
-  \If{使用随机采样规则且当前转移要求噪声}
-    \State 抽取新的独立噪声并按指定方差更新 $\vect{x}_s$
+\AlgoInput{训练后的网络、兼容日程、预测类型、递减时间网格和更新规则。}
+\AlgoOutput{生成样本。}
+\begin{myalgorithmic}[1]
+\State Validate that the time grid is strictly decreasing and that the schedule and prediction type are compatible; fix the inference configuration
+\State Draw $\vect{x}_T$ from the specified terminal prior
+\For{each adjacent pair $(t,s)$ in the finite time grid, with $t>s\ge0$}
+  \State Feed $\vect{x}_t,t$ to the network and convert its output into the noise or clean-sample estimate required by the update rule
+  \State Compute the update mean and nonnegative variance from the coefficients for $(t,s)$
+  \If{the stochastic sampling rule is active and the current transition requires noise}
+    \State Draw fresh independent noise and update $\vect{x}_s$ using the specified variance
   \Else
-    \State 按确定性或端点规则更新 $\vect{x}_s$
+    \State Update $\vect{x}_s$ using the deterministic or endpoint rule
   \EndIf
 \EndFor
-\State \Return 逆预处理或后续解码器得到的生成样本
-\end{lfsalgorithmic}
+\State \Return the generated sample after inverse preprocessing or downstream decoding
+\end{myalgorithmic}
 不变量为时间严格递减、状态与系数对应、预测类型兼容、方差非负。生成路径不读取真实 $x_0$，也不通过生成循环执行参数训练。
 \end{algorithm}
 
@@ -395,4 +397,4 @@ $\eta=0$ 时，没有额外随机项，给定初始噪声、网络及时间网�
 
 % END GENERATED INTERVIEWS
 \chapterreferences
-\lfsendchapterdocument
+\myendchapterdocument

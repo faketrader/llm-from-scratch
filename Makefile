@@ -13,13 +13,13 @@ BOOK_TEX_SOURCES := $(shell find book -type f -name '*.tex')
 REFERENCED_FIGURES := $(sort $(basename $(notdir $(shell grep -hEo 'figures/theory/[[:alnum:]_.-]+\.pdf' $(BOOK_TEX_SOURCES)))))
 FIGURE_PDFS := $(addprefix $(FIGURE_SOURCE_DIR)/,$(addsuffix .pdf,$(REFERENCED_FIGURES)))
 WEB_FIGURE_SVGS := $(addprefix $(DIST_DIR)/web/,$(addsuffix .svg,$(REFERENCED_FIGURES)))
-.PHONY: figure figures web-figures textbook workbook books release chapter chapters clean --all web serve serve-web $(CHAPTER_TARGETS)
+.PHONY: figure figures web-figures textbook workbook books release chapter chapters clean --all web web-convert serve serve-web $(CHAPTER_TARGETS)
 figure:
 	@test -n "$(FIGURE)" || (echo 'Usage: make figure FIGURE=revision-ch08-architecture'; exit 2)
 	@test "$(FIGURE)" = "$(notdir $(FIGURE))" || (echo 'FIGURE must be a filename stem, not a path'; exit 2)
 	@test -f "$(FIGURE_SOURCE_DIR)/$(FIGURE).tex" || (echo 'Unknown TikZ figure'; exit 2)
 	@$(MAKE) --no-print-directory "$(FIGURE_SOURCE_DIR)/$(FIGURE).pdf"
-$(FIGURE_SOURCE_DIR)/%.pdf: $(FIGURE_SOURCE_DIR)/%.tex $(FIGURE_SOURCE_DIR)/diagram_styles.tex book/mymath.sty
+$(FIGURE_SOURCE_DIR)/%.pdf: $(FIGURE_SOURCE_DIR)/%.tex $(FIGURE_SOURCE_DIR)/diagram_styles.tex book/my-math.sty
 	@mkdir -p "build/figures/$*"
 	latexmk -xelatex -outdir="$(abspath build/figures/$*)" "$<"
 	@if grep -Eq 'Missing character:|There were undefined references|Citation .* undefined' "build/figures/$*/$*.log"; then echo '$*: figure log contains missing glyphs or unresolved references'; exit 1; fi
@@ -27,13 +27,13 @@ $(FIGURE_SOURCE_DIR)/%.pdf: $(FIGURE_SOURCE_DIR)/%.tex $(FIGURE_SOURCE_DIR)/diag
 	@echo "Built $@"
 figures: $(FIGURE_PDFS)
 web-figures: $(WEB_FIGURE_SVGS)
-$(DIST_DIR)/web/%.svg: $(FIGURE_SOURCE_DIR)/%.tex $(FIGURE_SOURCE_DIR)/diagram_styles.tex book/mymath.sty
+$(DIST_DIR)/web/%.svg: $(FIGURE_SOURCE_DIR)/%.tex $(FIGURE_SOURCE_DIR)/diagram_styles.tex book/my-math.sty
 	@mkdir -p "build/web-figures/$*" "$(DIST_DIR)/web"
 	@cd "$(FIGURE_SOURCE_DIR)" && xelatex -no-pdf -interaction=nonstopmode -halt-on-error -file-line-error \
 		-jobname="$*" -output-directory="$(abspath build/web-figures/$*)" \
-		'\def\pgfsysdriver{pgfsys-dvisvgm.def}\input{$*.tex}'
+		'\def\pgfsysdriver{pgfsys-dvisvgm.def}\AtBeginDocument{\sffamily}\input{$*.tex}'
 	@if grep -Eq 'Missing character:|There were undefined references|Citation .* undefined' "build/web-figures/$*/$*.log"; then echo '$*: web figure log contains missing glyphs or unresolved references'; exit 1; fi
-	dvisvgm --page=1 --output="$@" "build/web-figures/$*/$*.xdv"
+	dvisvgm --page=1 --no-fonts --output="$@" "build/web-figures/$*/$*.xdv"
 textbook: figures
 	latexmk $(TEXTBOOK_ENTRY)
 	@mkdir -p "$(DIST_DIR)"
@@ -55,9 +55,12 @@ $(CHAPTER_TARGETS): chapter-%:
 	PAR_GLOBAL_TMPDIR="$(abspath build/chapters/$*/.biber-tmp)" latexmk "book/textbook/chapters/$*.tex"
 chapters: textbook
 	@set -e; for chapter in $(CHAPTERS); do $(MAKE) --no-print-directory chapter-$$chapter; done
-web: books web-figures web/node_modules/.lfs-installed
+web: figures web-figures web/node_modules/.my-installed
+	+$(MAKE) --no-print-directory $(if $(filter -j,$(MAKEFLAGS)),,-j2) books web-convert
 	node web/build.ts
-web/node_modules/.lfs-installed: web/package.json web/pnpm-lock.yaml
+web-convert: figures
+	node web/convert.ts
+web/node_modules/.my-installed: web/package.json web/pnpm-lock.yaml
 	pnpm --dir web install --frozen-lockfile --ignore-scripts
 	touch $@
 serve:

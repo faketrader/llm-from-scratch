@@ -1,0 +1,26 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[storage] (ranks) {BPE ranks\\\scriptsize 固定 token ID};
+\node[compute, right=of ranks] (backend) {\texttt{tokenizers.Tokenizer}\\\scriptsize Rust backend};
+\node[compute, below=of backend] (template) {\texttt{TemplateProcessing}\\\scriptsize BOS / SEP / EOS};
+\node[interface, right=18mm of $(backend)!0.5!(template)$] (wrapper) {\texttt{PreTrainedTokenizerFast}\\\scriptsize Transformers wrapper};
+\node[storage, above right=8mm and 18mm of wrapper] (save) {\texttt{save\_pretrained}\\\scriptsize 标准目录};
+\node[interface, below right=8mm and 18mm of wrapper] (auto) {\texttt{AutoTokenizer}\\\scriptsize \texttt{from\_pretrained}};
+\draw[data arrow] (ranks) -- (backend);
+\draw[data arrow] (backend) -- (template);
+\draw[data arrow] (template) -- (wrapper);
+\draw[data arrow] (wrapper) -- (save);
+\draw[data arrow] (save) -- (auto);
+\node[group, fit=(backend)(template), label={[title]above:Fast backend}] {};
+
+\end{tikzpicture}
+\end{document}

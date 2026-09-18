@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -269,18 +269,19 @@ $(\mat{X}\mat{W}_1+\mathbf1_B\vect{b}_1^{\mathrm{T}})\mat{W}_2+\mathbf1_B\vect{b
 
 \begin{algorithm}[标量损失的反向自动微分]
 \label{alg:tensor-reverse}
-\textbf{输入：}有限无环计算图、输入与固定参数，各节点的前向运算及局部反向规则。\textbf{输出：}损失对各可训练参数的梯度。
-\begin{lfsalgorithmic}[1]
-\State 按拓扑顺序执行前向计算，保存局部求导状态，得到标量损失 $\mathcal L$
-\State 所有伴随量置零，$\overline{\mathcal L}\gets1$
-\For{逆拓扑顺序中的节点 $\vect{v}=f(\vect{u}_1,\ldots,\vect{u}_k)$}
-  \For{每条输入边 $(\vect{u}_i,\vect{v})$，包括指向同一节点的重复边}
+\AlgoInput{有限无环计算图、输入与固定参数，以及每个节点的前向操作和局部反向规则。}
+\AlgoOutput{损失对所有可训练参数的梯度。}
+\begin{myalgorithmic}[1]
+\State Execute the forward pass in topological order, save local derivative state, and obtain scalar loss $\mathcal L$
+\State Set every adjoint to zero and set $\overline{\mathcal L}\gets1$
+\For{each node $\vect{v}=f(\vect{u}_1,\ldots,\vect{u}_k)$ in reverse topological order}
+  \For{each input edge $(\vect{u}_i,\vect{v})$, including repeated edges from the same node}
     \State $\overline{\vect{u}}_i\gets\overline{\vect{u}}_i+\mat{J}_{f,u_i}^{\mathrm{T}}\overline{\vect{v}}$
   \EndFor
 \EndFor
-\State 完成全部反向计算后，优化器才可更新参数
-\State \Return 各可训练参数节点的伴随量
-\end{lfsalgorithmic}
+\State Allow the optimizer to update parameters only after the entire reverse pass is complete
+\State \Return the adjoints of all trainable parameter nodes
+\end{myalgorithmic}
 \textbf{不变量：}访问某节点时，其所有后继已将经过各自路径的贡献累加到该节点。若单个基本运算的反向成本与前向同阶，总算术成本与计算图执行成本同阶；保存中间状态的内存另计。不可微点采用已声明的求导约定。
 \end{algorithm}
 
@@ -542,4 +543,4 @@ $\frac{|a-n|}{\max(\delta,|a|+|n|)}$，其中 $\delta>0$ 避免近零分母。�
 
 
 \chapterreferences
-\lfsendchapterdocument
+\myendchapterdocument

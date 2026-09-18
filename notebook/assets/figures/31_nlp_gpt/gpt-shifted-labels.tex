@@ -1,0 +1,24 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[storage] (seq) {token 序列\\\scriptsize $(t_0,t_1,\ldots,t_n)$};
+\node[storage, above right=9mm and 18mm of seq] (input) {\texttt{input\_ids}\\\scriptsize $(t_0,\ldots,t_{n-1})$\\\scriptsize $[B,T]$};
+\node[storage, below right=9mm and 18mm of seq] (labels) {\texttt{labels}\\\scriptsize $(t_1,\ldots,t_n)$\\\scriptsize $[B,T]$};
+\node[block, right=of input] (gpt) {Causal GPT};
+\node[storage, right=of gpt] (logits) {logits\\\scriptsize $[B,T,V]$};
+\node[compute, right=23mm of $(logits)!0.5!(labels)$] (loss) {Cross-Entropy\\Loss};
+\draw[data arrow] (seq) -- node[label text, above, sloped]{去掉末位} (input);
+\draw[data arrow] (seq) -- node[label text, below, sloped]{去掉首位} (labels);
+\draw[data arrow] (input) -- (gpt) -- (logits) -- (loss);
+\draw[data arrow] (labels) -- (loss);
+
+\end{tikzpicture}
+\end{document}

@@ -1,0 +1,25 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[storage] (config) {\texttt{tokenizer\_config.json}\\\texttt{tokenizer.json}};
+\node[interface, right=of config] (auto) {\texttt{AutoTokenizer}\\\scriptsize 选择实现类};
+\node[interface, right=of auto] (wrapper) {\texttt{PreTrainedTokenizerFast}\\\scriptsize 公开 API};
+\node[compute, below=of wrapper] (backend) {\texttt{backend\_tokenizer}\\\scriptsize normalizer $\to$ decoder};
+\node[storage, right=of wrapper] (batch) {\texttt{BatchEncoding}\\\scriptsize IDs / masks / offsets};
+\draw[data arrow] (config) -- (auto);
+\draw[data arrow] (auto) -- (wrapper);
+\draw[data arrow] (wrapper) -- (batch);
+\draw[data arrow] (wrapper) -- node[label text, right]{委托} (backend);
+\draw[data arrow] (backend.east) -| (batch.south);
+\node[group, fit=(wrapper)(backend), label={[title]above:Fast Tokenizer 两层对象}] {};
+
+\end{tikzpicture}
+\end{document}

@@ -4,7 +4,7 @@
 \usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
 \input{diagram_styles.tex}
 \begin{document}
-\begin{tikzpicture}[lfs picture]
+\begin{tikzpicture}[my picture]
   \node[interface] (entry) {全局入口\\鉴权、配额、超载拒绝};
   \node[compute, above right=20mm and 22mm of entry] (ra) {Router A};
   \node[neutral, right=11mm of ra] (qa) {有界队列 A};

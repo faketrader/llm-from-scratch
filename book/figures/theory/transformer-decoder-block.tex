@@ -5,15 +5,15 @@
 \input{diagram_styles.tex}
 
 \begin{document}
-\begin{tikzpicture}[lfs picture, >=Latex, node distance=7mm]
+\begin{tikzpicture}[my picture, >=Latex, node distance=7mm]
 
 \tikzset{
-  op/.style={draw=LFSPurple, fill=LFSPurpleSoft, rounded corners=2pt, font=\footnotesize\bfseries, align=center, inner sep=4pt, minimum height=7mm},
-  norm/.style={draw=LFSOrange, fill=LFSOrangeSoft, rounded corners=2pt, font=\footnotesize\bfseries, align=center, inner sep=3pt, minimum width=32mm, minimum height=6.5mm},
-  add/.style={draw=LFSBlue, fill=LFSBlueSoft, circle, font=\small\bfseries, inner sep=1pt, minimum size=6mm},
-  tensor/.style={font=\scriptsize\ttfamily, text=LFSGray},
-  wire/.style={->, draw=LFSGray, line width=0.8pt},
-  reswire/.style={->, draw=LFSBlue, line width=0.9pt}
+  op/.style={draw=MyPurple, fill=MyPurpleSoft, rounded corners=2pt, font=\footnotesize\bfseries, align=center, inner sep=4pt, minimum height=7mm},
+  norm/.style={draw=MyOrange, fill=MyOrangeSoft, rounded corners=2pt, font=\footnotesize\bfseries, align=center, inner sep=3pt, minimum width=32mm, minimum height=6.5mm},
+  add/.style={draw=MyBlue, fill=MyBlueSoft, circle, font=\small\bfseries, inner sep=1pt, minimum size=6mm},
+  tensor/.style={font=\scriptsize\ttfamily, text=MyGray},
+  wire/.style={->, draw=MyGray, line width=0.8pt},
+  reswire/.style={->, draw=MyBlue, line width=0.9pt}
 }
 
 % Input
@@ -51,22 +51,22 @@
 
 % Residual bypass 1 (around Attn)
 \draw[reswire] (0, 0.4) -- ++(-2.3, 0) |- (add1);
-\node[font=\tiny, text=LFSBlue, left] at (-2.3, 1.4) {残差连接分支 (Identity)};
+\node[font=\tiny, text=MyBlue, left] at (-2.3, 1.4) {残差连接分支 (Identity)};
 
 % Residual bypass 2 (around FFN)
 \draw[reswire] (0, 4.0) -- ++(-2.3, 0) |- (add2);
-\node[font=\tiny, text=LFSBlue, left] at (-2.3, 5.0) {残差连接分支 (Identity)};
+\node[font=\tiny, text=MyBlue, left] at (-2.3, 5.0) {残差连接分支 (Identity)};
 
 % Background container box for one Decoder Block
 \begin{scope}[on background layer]
-  \node[draw=LFSGray!40, fill=LFSGraySoft!40, rounded corners=6pt, dashed, line width=0.8pt,
+  \node[draw=MyGray!40, fill=MyGraySoft!40, rounded corners=6pt, dashed, line width=0.8pt,
         fit=(add1) (norm1) (attn) (add2) (norm2) (ffn),
         inner xsep=26mm, inner ysep=4mm] (block) {};
-  \node[font=\small\bfseries, text=LFSGray, anchor=north west] at (block.north west) {现代纯解码器 Transformer 层 (Decoder-Only Block)};
+  \node[font=\small\bfseries, text=MyGray, anchor=north west] at (block.north west) {现代纯解码器 Transformer 层 (Decoder-Only Block)};
 \end{scope}
 
 % Right side dimension annotations
-\node[font=\scriptsize, text=LFSGray, align=left, anchor=west] at (2.4, 2.7) {
+\node[font=\scriptsize, text=MyGray, align=left, anchor=west] at (2.4, 2.7) {
   \textbf{注意量子层}：\\
   $\bullet\ \mat{Q},\mat{K},\mat{V} \in \Real^{B \times T \times d}$\\
   $\bullet$ 键值头分组 (GQA)\\
@@ -74,7 +74,7 @@
   $\bullet\ \mat{W}_O \in \Real^{d \times d}$
 };
 
-\node[font=\scriptsize, text=LFSGray, align=left, anchor=west] at (2.4, 6.2) {
+\node[font=\scriptsize, text=MyGray, align=left, anchor=west] at (2.4, 6.2) {
   \textbf{前馈子层 (SwiGLU)}：\\
   $\bullet$ 门控投影 $\mat{W}_g \in \Real^{d \times f}$\\
   $\bullet$ 上投影 $\mat{W}_u \in \Real^{d \times f}$\\

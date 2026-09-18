@@ -5,15 +5,15 @@
 \input{diagram_styles.tex}
 
 \begin{document}
-\begin{tikzpicture}[lfs picture, >=Latex]
+\begin{tikzpicture}[my picture, >=Latex]
 
 \tikzset{
-  qbox/.style={draw=LFSBlue, fill=LFSBlueSoft, rounded corners=2pt, font=\scriptsize\bfseries, inner sep=2pt, minimum width=9mm, minimum height=6mm},
-  kvbox/.style={draw=LFSGreen, fill=LFSGreenSoft, rounded corners=2pt, font=\scriptsize\bfseries, inner sep=2pt, minimum width=9mm, minimum height=6mm},
-  gbox/.style={draw=LFSPurple, fill=LFSPurpleSoft, rounded corners=2pt, font=\scriptsize\bfseries, inner sep=2pt, minimum width=19mm, minimum height=6mm},
-  allbox/.style={draw=LFSRed, fill=LFSRedSoft, rounded corners=2pt, font=\scriptsize\bfseries, inner sep=2pt, minimum width=40mm, minimum height=6mm},
-  titlebox/.style={font=\small\bfseries, text=LFSGray, align=center},
-  subtitle/.style={font=\scriptsize, text=LFSGray, align=center}
+  qbox/.style={draw=MyBlue, fill=MyBlueSoft, rounded corners=2pt, font=\scriptsize\bfseries, inner sep=2pt, minimum width=9mm, minimum height=6mm},
+  kvbox/.style={draw=MyGreen, fill=MyGreenSoft, rounded corners=2pt, font=\scriptsize\bfseries, inner sep=2pt, minimum width=9mm, minimum height=6mm},
+  gbox/.style={draw=MyPurple, fill=MyPurpleSoft, rounded corners=2pt, font=\scriptsize\bfseries, inner sep=2pt, minimum width=19mm, minimum height=6mm},
+  allbox/.style={draw=MyRed, fill=MyRedSoft, rounded corners=2pt, font=\scriptsize\bfseries, inner sep=2pt, minimum width=40mm, minimum height=6mm},
+  titlebox/.style={font=\small\bfseries, text=MyGray, align=center},
+  subtitle/.style={font=\scriptsize, text=MyGray, align=center}
 }
 
 % -------------------------------------------------------------
@@ -31,17 +31,17 @@
   % KV heads
   \foreach \i in {1,...,8} {
     \node[kvbox] (kv\i) at ({0.5*(\i-1)}, 1.2) {\tiny $K_\i V_\i$};
-    \draw[->, draw=LFSBlue, line width=0.6pt] (q\i) -- (kv\i);
+    \draw[->, draw=MyBlue, line width=0.6pt] (q\i) -- (kv\i);
   }
 
-  \node[font=\tiny, text=LFSGray, align=center] at (1.8, 0.4) {
+  \node[font=\tiny, text=MyGray, align=center] at (1.8, 0.4) {
     KV Cache: $1.0\times$ 基线\\
     计算与显存开销最高
   };
 \end{scope}
 
 % Separator 1
-\draw[dashed, draw=LFSGray!40, line width=0.5pt] (4.1, 0.0) -- (4.1, 4.3);
+\draw[dashed, draw=MyGray!40, line width=0.5pt] (4.1, 0.0) -- (4.1, 4.3);
 
 % -------------------------------------------------------------
 % Panel 2: GQA (Grouped-Query Attention)
@@ -60,20 +60,20 @@
   \node[gbox] (gkv2) at (2.75, 1.2) {\scriptsize $K_2 V_2$ 组};
 
   \foreach \i in {1,...,4} {
-    \draw[->, draw=LFSPurple, line width=0.6pt] (gq\i) -- (gkv1);
+    \draw[->, draw=MyPurple, line width=0.6pt] (gq\i) -- (gkv1);
   }
   \foreach \i in {5,...,8} {
-    \draw[->, draw=LFSPurple, line width=0.6pt] (gq\i) -- (gkv2);
+    \draw[->, draw=MyPurple, line width=0.6pt] (gq\i) -- (gkv2);
   }
 
-  \node[font=\tiny, text=LFSGray, align=center] at (1.8, 0.4) {
+  \node[font=\tiny, text=MyGray, align=center] at (1.8, 0.4) {
     KV Cache: $0.25\times$\\
     主流平衡架构（LLaMA/Qwen）
   };
 \end{scope}
 
 % Separator 2
-\draw[dashed, draw=LFSGray!40, line width=0.5pt] (8.7, 0.0) -- (8.7, 4.3);
+\draw[dashed, draw=MyGray!40, line width=0.5pt] (8.7, 0.0) -- (8.7, 4.3);
 
 % -------------------------------------------------------------
 % Panel 3: MQA (Multi-Query Attention)
@@ -91,10 +91,10 @@
   \node[allbox] (mkv) at (1.75, 1.2) {\scriptsize 全局共享单头 $K_1 V_1$};
 
   \foreach \i in {1,...,8} {
-    \draw[->, draw=LFSRed, line width=0.6pt] (mq\i) -- (mkv);
+    \draw[->, draw=MyRed, line width=0.6pt] (mq\i) -- (mkv);
   }
 
-  \node[font=\tiny, text=LFSGray, align=center] at (1.8, 0.4) {
+  \node[font=\tiny, text=MyGray, align=center] at (1.8, 0.4) {
     KV Cache: $0.125\times$\\
     显存占用极小，表达力略受限
   };

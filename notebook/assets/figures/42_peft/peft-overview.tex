@@ -1,0 +1,32 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[storage] (base) {预训练基座\\\scriptsize 冻结大部分或全部参数};
+\node[storage, below=of base] (goal) {SFT / DPO / GRPO\\\scriptsize 数据与目标};
+\node[decision, right=22mm of $(base)!0.5!(goal)$] (select) {选择参数\\注入位置};
+\node[compute, above right=13mm and 21mm of select] (lora) {权重低秩增量\\\scriptsize LoRA / AdaLoRA / DoRA};
+\node[compute, above right=2mm and 21mm of select] (prompt) {虚拟 Token / 层前缀\\\scriptsize Prompt / Prefix / P-Tuning};
+\node[compute, below right=2mm and 21mm of select] (ia) {激活缩放向量\\\scriptsize IA$^3$};
+\node[compute, below right=13mm and 21mm of select] (adapter) {瓶颈旁路 / 少量参数\\\scriptsize Adapter / BitFit / Tokens};
+\node[storage, right=24mm of $(prompt)!0.5!(ia)$] (artifact) {PEFT 配置 + 权重\\\scriptsize 基座与训练目标契约};
+\draw[data arrow] (base) -- (select);
+\draw[data arrow] (goal) -- (select);
+\draw[data arrow] (select) -- (lora);
+\draw[data arrow] (select) -- (prompt);
+\draw[data arrow] (select) -- (ia);
+\draw[data arrow] (select) -- (adapter);
+\draw[data arrow] (lora) -- (artifact);
+\draw[data arrow] (prompt) -- (artifact);
+\draw[data arrow] (ia) -- (artifact);
+\draw[data arrow] (adapter) -- (artifact);
+
+\end{tikzpicture}
+\end{document}

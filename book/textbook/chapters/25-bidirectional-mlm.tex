@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -117,14 +117,15 @@ $C$ & 下游类别数 & 正整数\\
 
 \begin{algorithm}[构造一个 MLM 训练批次]
 \label{alg:mlm-batch}
-\textbf{输入：}原序列、有效性标记、控制词元位置、损坏规则、随机状态。\textbf{输出：}损坏输入、原值标签、监督集合及有效监督数。
-\begin{lfsalgorithmic}[1]
-\State 从有效且允许监督的位置构造候选集合；位置来源的判断依据是有效性标记，填充编号的相等比较不足以替代它。
-\State 按给定抽样方式选取 $\mathcal M_b$，复制原输入得到 $\widetilde x_b$；先保存每个选中位置的原词元标签。
-\State 对每个选中位置抽取分支：替换 MASK、从规定集合随机替换，或保留原值。标签在三种情况下均不改变。
-\State 构造只读取有效键的双向掩码，并统计 $N_M$。若 $N_M=0$，按预定策略重新采样或跳过批次，不除以零。
-\State 编码损坏输入，计算选中位置的词表损失，按式\eqref{eq:mlm-batchloss}归一化；反向完成后更新参数。
-\end{lfsalgorithmic}
+\AlgoInput{原始序列、有效性标志、控制词元位置、损坏规则和随机状态。}
+\AlgoOutput{损坏后的输入、原始值标签、监督集合和有效监督数量。}
+\begin{myalgorithmic}[1]
+\State Build the candidate set from valid positions eligible for supervision; determine provenance from validity flags rather than padding-ID equality alone
+\State Sample $\mathcal M_b$ by the specified method and copy the original input to $\widetilde x_b$; first save the original token label at every selected position
+\State For each selected position, sample one branch: replace with MASK, replace randomly from the specified set, or retain the original value; keep the label unchanged in all three cases
+\State Build a bidirectional mask that reads only valid keys and count $N_M$; if $N_M=0$, resample or skip the batch under the specified policy instead of dividing by zero
+\State Encode the corrupted input, compute vocabulary loss at selected positions, normalize by Equation~\eqref{eq:mlm-batchloss}, and update parameters after backpropagation completes
+\end{myalgorithmic}
 \textbf{不变量：}监督标签来自损坏前的文本；参与监督的位置由集合决定，损坏后的词元值不参与这一判断。构造过程线性扫描批量位置，编码器计算成本另计。
 \end{algorithm}
 
@@ -287,4 +288,4 @@ MLM 损失取决于损坏率、损坏方式、位置抽样和有效监督数，�
 
 
 \chapterreferences
-\lfsendchapterdocument
+\myendchapterdocument

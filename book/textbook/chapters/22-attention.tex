@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -152,27 +152,28 @@ Softmax 权重非负且和为一，因此值向量的加权和属于其凸包。
 
 \begin{algorithm}[具有严格可见性的单头注意力]
 \label{alg:attn-masked}
-\textbf{输入：}$\mat{Q}\in\Real^{T\times d_k}$、$\mat{K}\in\Real^{S\times d_k}$、$\mat{V}\in\Real^{S\times d_v}$，每行允许集合 $\mathcal J_i$，查询有效标记 $b_i$。\textbf{输出：}$\mat{O}\in\Real^{T\times d_v}$；需要诊断或显式反向时同时保留权重 $\mat{A}$。本算法关闭权重 Dropout。
-\begin{lfsalgorithmic}[1]
-\State 检查形状、键值位置数和输入有限性；$\mat{O}\gets0$，需要权重时 $\mat{A}\gets0$
-\For{查询 $i=1,\ldots,T$}
+\AlgoInput{$\mat{Q}\in\Real^{T\times d_k}$、$\mat{K}\in\Real^{S\times d_k}$、$\mat{V}\in\Real^{S\times d_v}$，每行的允许集合 $\mathcal J_i$，以及查询有效性标志 $b_i$。}
+\AlgoOutput{$\mat{O}\in\Real^{T\times d_v}$；诊断或显式反向传播需要时还保留权重 $\mat{A}$。注意力权重的随机失活关闭。}
+\begin{myalgorithmic}[1]
+\State Validate shapes, key--value position counts, and finiteness; set $\mat{O}\gets0$ and, if needed, $\mat{A}\gets0$
+\For{query $i=1,\ldots,T$}
   \If{$b_i=0$}
-    \State 保持该行输出为零，进入下一查询
+    \State Leave the output row at zero and continue to the next query
   \Else
     \If{$\mathcal J_i=\varnothing$}
-      \State 报告非法可见性并终止
+      \State Report invalid visibility and terminate
     \EndIf
     \For{$j\in\mathcal J_i$}
-      \State $u_j\gets\frac{\vect{q}_i \vect{k}_j^{\mathrm{T}}}{\sqrt{d_k}}$；非有限结果触发数值异常并终止
+      \State $u_j\gets\frac{\vect{q}_i \vect{k}_j^{\mathrm{T}}}{\sqrt{d_k}}$; terminate with a numerical error if the result is non-finite
     \EndFor
-    \State $c\gets\max_{j\in\mathcal J_i}u_j$，$e_j\gets\exp(u_j-c)$，$z\gets\sum_{j\in\mathcal J_i}e_j$
+    \State $c\gets\max_{j\in\mathcal J_i}u_j$, $e_j\gets\exp(u_j-c)$, and $z\gets\sum_{j\in\mathcal J_i}e_j$
     \For{$j\in\mathcal J_i$}
-      \State $a_j\gets\frac{e_j}{z}$，$\vect{o}_i\gets \vect{o}_i+a_j\vect{v}_j$；需要权重时 $A_{ij}\gets a_j$
+      \State $a_j\gets\frac{e_j}{z}$ and $\vect{o}_i\gets \vect{o}_i+a_j\vect{v}_j$; if weights are required, set $A_{ij}\gets a_j$
     \EndFor
   \EndIf
 \EndFor
-\State \Return $\mat{O}$ 及按需保留的 $\mat{A}$
-\end{lfsalgorithmic}
+\State \Return $\mat{O}$ and, when requested, $\mat{A}$
+\end{myalgorithmic}
 有效行权重非负且和为一；无效行保持零，禁止位置不参与归一化和汇总。
 显式逐行形式用于陈述完整定义，批量矩阵或融合实现可以更改执行次序，但必须保持允许集合、无效行约定与相同输入下的计算语义。
 \end{algorithm}
@@ -476,4 +477,4 @@ MHA 到 GQA 不只是一次张量重排：不同键值投影被约束为共享�
 
 
 \chapterreferences
-\lfsendchapterdocument
+\myendchapterdocument

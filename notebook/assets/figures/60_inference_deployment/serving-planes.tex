@@ -1,0 +1,46 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+  \node[interface] (client) {客户端 / SDK};
+  \node[interface, right=12mm of client] (gateway) {Gateway\\鉴权、配额、期限、协议};
+  \node[compute, right=12mm of gateway] (router) {Router\\模型修订与故障域};
+  \node[compute, right=12mm of router] (scheduler) {Scheduler\\有界队列、公平调度、取消};
+  \node[compute, right=15mm of scheduler] (w1) {Worker 1};
+  \node[compute, above=6mm of w1] (w2) {Worker 2};
+  \node[compute, below=6mm of w1] (w3) {Worker 3};
+
+  \node[storage, below=34mm of router] (registry) {制品注册表};
+  \node[interface, below=34mm of scheduler] (control) {部署控制面\\期望状态与路由快照};
+  \node[neutral, below=34mm of w1] (telemetry) {指标、日志与追踪};
+
+  \draw[data arrow] (client) -- (gateway);
+  \draw[data arrow] (gateway) -- (router);
+  \draw[data arrow] (router) -- (scheduler);
+  \foreach \w in {w1,w2,w3}{\draw[data arrow] (scheduler.east) -- (\w.west);}
+  \draw[data arrow] (registry) -- node[label text,above]{固定修订} (control);
+  \draw[control arrow] (control) -- (router);
+  \draw[control arrow] (control) -- (scheduler);
+  \coordinate (telemetry bus left) at ($(gateway.south |- w3.south)+(0,-8mm)$);
+  \coordinate (telemetry bus right) at (telemetry.north |- telemetry bus left);
+  \foreach \n in {gateway,router,scheduler,w3}{
+    \draw[control arrow] (\n.south) -- (\n.south |- telemetry bus left);
+  }
+  \draw[draw=MyOrange,dashed,line width=0.9pt]
+    (telemetry bus left) -- node[label text,above]{遥测汇聚总线} (telemetry bus right);
+  \draw[control arrow] (telemetry bus right) -- (telemetry.north);
+
+  \begin{scope}[on background layer]
+    \node[group, fit=(client)(gateway)(router)(scheduler)(w1)(w2)(w3), label={[title]above:在线数据面}] {};
+    \node[group, fit=(registry)(control), label={[title]below:制品与控制面}] {};
+    \node[group, fit=(telemetry), label={[title]below:遥测面}] {};
+  \end{scope}
+\end{tikzpicture}
+\end{document}

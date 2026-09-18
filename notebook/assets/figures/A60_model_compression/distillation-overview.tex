@@ -1,0 +1,30 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[storage] (input) {同一批输入};
+\node[neutral, above right=9mm and 18mm of input] (teacher) {冻结 Teacher};
+\node[block, below right=9mm and 18mm of input] (student) {可训练 Student};
+\node[storage, right=of teacher] (tout) {Teacher logits / states};
+\node[storage, right=of student] (sout) {Student logits / states};
+\node[compute, right=20mm of $(tout)!0.5!(sout)$] (soft) {Distillation Loss};
+\node[storage, below=of student] (label) {真实标签};
+\node[compute, right=of label] (hard) {Hard-label Loss};
+\node[compute, right=of soft] (total) {加权总损失};
+\draw[data arrow] (input) -- (teacher) -- (tout) -- (soft);
+\draw[data arrow] (input) -- (student) -- (sout) -- (soft);
+\draw[data arrow] (label) -- (hard);
+\draw[data arrow] (sout) |- (hard);
+\draw[data arrow] (soft) -- (total);
+\draw[data arrow] (hard) -| (total.south);
+\draw[control arrow] (total.south) |- node[label text, below]{只更新 Student} (student.south);
+
+\end{tikzpicture}
+\end{document}

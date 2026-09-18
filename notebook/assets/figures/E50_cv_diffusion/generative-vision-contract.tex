@@ -1,0 +1,30 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[storage] (cond) {Prompt / Reference Media / Action};
+\node[compute, right=of cond] (enc) {Text \& Media Encoders};
+\node[storage, below=of cond] (state) {Noise / Flow State};
+\node[storage, below=of enc] (time) {Timestep / Flow Time};
+\node[block, right=22mm of $(enc)!0.5!(time)$] (model) {U-Net / DiT / Video DiT};
+\node[compute, right=of model] (solver) {Scheduler / ODE Solver};
+\node[storage, below=22mm of solver] (latent) {Image / Spatiotemporal Latent};
+\node[compute, left=of latent] (vae) {Image / Video VAE Decoder};
+\node[storage, left=of vae] (out) {Image / Video /\\Audio-Visual Output};
+\draw[data arrow] (cond) -- (enc) -- (model);
+\coordinate (stateleft) at ($(state.west)+(-8mm,0)$);
+\draw[data arrow] (state.west) -- (stateleft) |- (model.west);
+\draw[control arrow] (time) -- (model);
+\draw[data arrow] (model) -- (solver);
+\draw[control arrow] (solver.north) |- node[label text, above]{iterate} (model.north);
+\draw[data arrow] (solver) -- (latent) -- (vae) -- (out);
+
+\end{tikzpicture}
+\end{document}

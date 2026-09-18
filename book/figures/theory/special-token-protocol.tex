@@ -3,7 +3,7 @@
 \usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
 \input{diagram_styles.tex}
 \begin{document}
-\begin{tikzpicture}[lfs picture]
+\begin{tikzpicture}[my picture]
 
 \node[storage] (text) {原始文本 A / B};
 \node[compute, right=of text] (post) {Tokenizer 后处理器\\\scriptsize 插入 CLS / BOS / SEP / EOS};

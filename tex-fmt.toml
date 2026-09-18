@@ -10,7 +10,15 @@ tabchar = "space"
 wrap = true
 wraplen = 100
 wrapmin = 90
-wrap-chars = ["。", "，", "；", "：", "！", "？"]
+wrap-chars = [
+    "。",
+    "，",
+    "；",
+    "：",
+    "、",
+    "！",
+    "？"
+]
 
 # 保留表格中手工安排的列间距。
 format-tables = false

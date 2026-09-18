@@ -1,0 +1,26 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[storage] (corpus) {无标注语料};
+\node[compute, right=of corpus] (pair) {句对构造};
+\node[compute, right=of pair] (mask) {随机 Mask Token};
+\node[block, right=of mask] (bert) {共享 BERT Encoder};
+\node[compute, above right=9mm and 20mm of bert] (mlm) {MLM Head\\\scriptsize 恢复被遮盖 Token};
+\node[compute, below right=9mm and 20mm of bert] (nsp) {NSP Head\\\scriptsize 判断下一句关系};
+\node[compute, right=of mlm] (mloss) {MLM Loss};
+\node[compute, right=of nsp] (nloss) {NSP Loss};
+\node[compute, right=22mm of $(mloss)!0.5!(nloss)$] (total) {联合预训练损失};
+\draw[data arrow] (corpus) -- (pair) -- (mask) -- (bert);
+\draw[data arrow] (bert) -- (mlm) -- (mloss) -- (total);
+\draw[data arrow] (bert) -- (nsp) -- (nloss) -- (total);
+
+\end{tikzpicture}
+\end{document}

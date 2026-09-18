@@ -3,7 +3,7 @@
 \usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
 \input{diagram_styles.tex}
 \begin{document}
-\begin{tikzpicture}[lfs picture]
+\begin{tikzpicture}[my picture]
 
 \node[storage] (patch) {Patch Tokens\\\scriptsize $[B,N_v,d_v]$};
 \node[compute, right=of patch] (proj) {Project to LLM Space\\\scriptsize $d_v\to d$};

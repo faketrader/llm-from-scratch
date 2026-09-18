@@ -1,0 +1,150 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{my-format}[2026/09/18 My book formatting and figures]
+
+\RequirePackage{iftex}
+\RequireTUTeX
+
+% 中文沿用 ctex 平台默认字体；纸书西文正文使用 Pagella，与数学字形区分。
+% 按 TeX Live 文件名加载，避免依赖操作系统字体索引。
+\ifdefined\HCode
+  \newcommand{\myheadingfont}{\bfseries}
+\else
+  \setmainfont{texgyrepagella}[
+    Extension=.otf,
+    UprightFont=*-regular,
+    BoldFont=*-bold,
+    ItalicFont=*-italic,
+    BoldItalicFont=*-bolditalic
+  ]
+  % 全角中文标点（包括弯引号）跟随当前 CJK 字体族，不使用西文正文字体。
+  \ifXeTeX
+    \xeCJKsetup{PunctFamily=false}
+  \fi
+  \newcommand{\myheadingfont}{\bfseries\heiti\sffamily}
+\fi
+
+% 正度16开成品尺寸：185 mm × 260 mm。
+\RequirePackage[
+  paperwidth=185mm,
+  paperheight=260mm,
+  inner=30mm,
+  outer=24mm,
+  top=26mm,
+  bottom=26mm,
+  headheight=16pt
+]{geometry}
+% 内侧 30 mm 已包含装订余量；边注只占外侧，不侵入装订沟。
+\setlength{\marginparwidth}{17mm}
+\setlength{\marginparsep}{3mm}
+
+\RequirePackage{siunitx}
+\sisetup{mode=match}
+\RequirePackage{enumitem}
+\RequirePackage{seqsplit,fvextra}
+
+\RequirePackage{newunicodechar}
+% 中文科技排版
+\newunicodechar{。}{．}
+
+\RequirePackage{xcolor}
+% 项目全局视觉主题色彩定义
+\definecolor{MyNavy}{HTML}{0F172A}      % Slate 900 典雅藏青
+\definecolor{MyPrimary}{HTML}{1D4ED8}   % Blue 700 核心主蓝
+\definecolor{MyCyan}{HTML}{0284C7}      % Sky 600 科技青蓝
+\definecolor{MyTeal}{HTML}{0D9488}      % Teal 600
+\definecolor{MyAmber}{HTML}{D97706}    % Amber 600 强调金橙
+\definecolor{MyMuted}{HTML}{64748B}     % Slate 500 说明次阶
+\definecolor{MyLight}{HTML}{F8FAFC}     % Slate 50 浅色底衬
+\definecolor{MyBorder}{HTML}{CBD5E1}    % Slate 300 分割细线
+% 借鉴 GitHub Alerts 的五级语义色阶；既有环境作为兼容别名保留。
+\definecolor{MyAlertNote}{HTML}{0969DA}
+\definecolor{MyAlertNoteBack}{HTML}{EFF6FF}
+\definecolor{MyAlertTip}{HTML}{1A7F37}
+\definecolor{MyAlertTipBack}{HTML}{F0FFF4}
+\definecolor{MyAlertImportant}{HTML}{8250DF}
+\definecolor{MyAlertImportantBack}{HTML}{F6F0FF}
+\definecolor{MyAlertWarning}{HTML}{9A6700}
+\definecolor{MyAlertWarningBack}{HTML}{FFF8C5}
+\definecolor{MyAlertCaution}{HTML}{CF222E}
+\definecolor{MyAlertCautionBack}{HTML}{FFF1F0}
+
+
+\RequirePackage{graphicx,booktabs,tabularx}
+\RequirePackage{longtable,array,calc,caption,changepage}
+\RequirePackage{etoolbox}
+\RequirePackage{tikz}
+\usetikzlibrary{calc,positioning,fadings,shapes.geometric,arrows.meta,shadows,decorations.pathreplacing}
+
+\ifdefined\HCode
+  % 章节图路径原本相对章节文件；整书 HTML 直接 input 时补回章节目录。
+  \graphicspath{{chapters/}}
+\fi
+
+% 图表可对称侵入页边距，正文版心与行长保持不变。
+% 6 mm 出血后，内侧仍保留 24 mm，外侧仍保留 18 mm。
+\newlength{\myfloatbleed}
+\setlength{\myfloatbleed}{6mm}
+\ifdefined\HCode
+  \NewDocumentEnvironment{mywidefloat}{}{}{}
+\else
+  \NewDocumentEnvironment{mywidefloat}{}
+    {\begin{adjustwidth}{-\myfloatbleed}{-\myfloatbleed}}
+    {\end{adjustwidth}}
+  \let\myoriginalfigure\figure
+  \let\myendoriginalfigure\endfigure
+  \RenewDocumentEnvironment{figure}{O{tbp}}
+    {\myoriginalfigure[#1]\begin{mywidefloat}}
+    {\end{mywidefloat}\myendoriginalfigure}
+  \let\myoriginaltable\table
+  \let\myendoriginaltable\endtable
+  \RenewDocumentEnvironment{table}{O{tbp}}
+    {\myoriginaltable[#1]\begin{mywidefloat}}
+    {\end{mywidefloat}\myendoriginaltable}
+\fi
+
+% 图题使用非浮动位置，链接锚点落在图题处；表题统一置于表体上方。
+\captionsetup{hypcap=false}
+\ifdefined\HCode\else
+  \captionsetup{font=sf,labelfont=bf}
+\fi
+\captionsetup[figure]{width=\textwidth}
+\captionsetup[table]{position=top,width=\textwidth}
+% 表体统一使用小字号；表题继续由 caption 包独立控制。
+\AtBeginEnvironment{tabular}{\small}
+\AtBeginEnvironment{tabularx}{\small}
+\AtBeginEnvironment{longtable}{\small}
+
+\newcommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\DeclareRobustCommand{\bookcode}[1]{\texttt{\seqsplit{#1}}}
+\DefineVerbatimEnvironment{verbatim}{Verbatim}{breaklines=true,fontsize=\small}
+
+\RequirePackage{microtype}
+\RequirePackage{fancyhdr}
+\RequirePackage{emptypage} % 双页清页插入的空白页不显示页眉页脚。
+
+% 纸书正文保留衬线字体；各级标题追加黑体与非衬线西文字体，沿用 ctex 原有字号和间距。
+% 网页标题由 CSS 统一控制，避免把纸书字体命令送入 TeX4ht。
+\ifdefined\HCode\else
+  \ctexset{
+    part/format+={\heiti\sffamily},
+    chapter/format+={\heiti\sffamily},
+    section/format+={\heiti\sffamily},
+    subsection/format+={\heiti\sffamily},
+    subsubsection/format+={\heiti\sffamily}
+  }
+\fi
+\setlength{\parindent}{2em}
+% 普通行仍使用类默认行距；仅当行内公式使相邻行净空过小时增加间距。
+\setlength{\lineskiplimit}{2pt}
+\setlength{\lineskip}{3pt}
+\setlength{\emergencystretch}{2em}
+% 禁止同一条脚注跨页拆分；空间不足时由正文分页为完整脚注让位。
+\interfootnotelinepenalty=10000
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE]{\small\nouppercase{\leftmark}}
+\fancyhead[RO]{\small\nouppercase{\rightmark}}
+\fancyfoot[LE,RO]{\thepage}
+\fancypagestyle{plain}{\fancyhf{}\fancyfoot[LE,RO]{\thepage}\renewcommand{\headrulewidth}{0pt}}
+
+\endinput

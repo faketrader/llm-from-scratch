@@ -1,0 +1,26 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[storage] (ids) {\texttt{input\_ids}\\\scriptsize $[B,T]$};
+\node[storage, below=of ids] (posid) {position IDs\\\scriptsize $[B,T]$};
+\node[compute, right=of ids] (tok) {Token Embedding\\\scriptsize $[B,T,E]$};
+\node[compute, right=of posid] (pos) {Position Embedding\\\scriptsize $[B,T,E]$};
+\node[interface, right=18mm of $(tok)!0.5!(pos)$] (add) {逐元素相加\\\scriptsize $x_0:[B,T,E]$};
+\node[block, right=of add] (blocks) {\texttt{MyCausalBlock} $\times N$\\\scriptsize Pre-Norm\\\scriptsize causal mask $[T,T]$};
+\node[compute, below=of blocks] (norm) {Final LayerNorm};
+\node[compute, left=of norm] (head) {LM Head\\\scriptsize weight $[V,E]$};
+\node[storage, left=of head] (logits) {logits\\\scriptsize $[B,T,V]$};
+\draw[data arrow] (ids) -- (tok) -- (add);
+\draw[data arrow] (posid) -- (pos) -- (add);
+\draw[data arrow] (add) -- (blocks) -- (norm) -- (head) -- (logits);
+
+\end{tikzpicture}
+\end{document}

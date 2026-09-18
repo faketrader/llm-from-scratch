@@ -1,0 +1,38 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[storage] (tokens) {Input Tokens};
+\node[compute, above right=8mm and 18mm of tokens] (mixer) {Attention / State Mixer};
+\node[storage, right=of mixer] (state) {KV / Recurrent State Cost};
+\node[compute, below right=8mm and 18mm of tokens] (router) {MoE Router};
+\node[compute, right=of router] (experts) {Selected Experts};
+\node[storage, right=of experts] (comm) {Expert Communication Cost};
+\node[storage, below=36mm of tokens] (weights) {Total Weights + Precision};
+\node[storage, right=of weights] (wm) {Weight Memory};
+\coordinate (costeast) at ($(state.east)!0.5!(comm.east)$);
+\node[interface, anchor=west] (capacity) at ($(costeast)+(22mm,0)$) {Serving Capacity\\\scriptsize memory / latency / throughput};
+\node[storage, below=of wm] (contract) {Template / Processor /\\License / Runtime};
+\node[decision, right=of capacity] (gate) {Release Gate};
+\draw[data arrow] (tokens) -- (mixer);
+\draw[data arrow] (mixer) -- (state);
+\draw[data arrow] (state) -- (capacity);
+\draw[data arrow] (tokens) -- (router);
+\draw[data arrow] (router) -- (experts);
+\draw[data arrow] (experts) -- (comm);
+\draw[data arrow] (comm) -- (capacity);
+\draw[data arrow] (weights) -- (wm);
+\draw[data arrow] (wm.east) -| (capacity.south);
+\draw[control arrow] (contract) -| (gate.south);
+\draw[data arrow] (capacity) -- (gate);
+\node[group, fit=(mixer)(state)(router)(experts)(comm), label={[title]above:每 Token 计算与状态成本}] {};
+
+\end{tikzpicture}
+\end{document}

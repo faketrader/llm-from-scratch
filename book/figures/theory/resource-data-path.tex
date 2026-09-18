@@ -4,7 +4,7 @@
 \usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
 \input{diagram_styles.tex}
 \begin{document}
-\begin{tikzpicture}[lfs picture]
+\begin{tikzpicture}[my picture]
   \node[storage] (source) {对象存储\\并行文件系统};
   \node[compute, right=15mm of source] (cpu) {CPU 解析\\Tokenizer};
   \node[compute, right=15mm of cpu] (gpu) {GPU / Accelerator\\训练或推理 Kernel};

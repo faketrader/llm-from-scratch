@@ -6,7 +6,7 @@
 \input{diagram_styles.tex}
 
 \begin{document}
-\begin{tikzpicture}[lfs picture]
+\begin{tikzpicture}[my picture]
 \begin{axis}[
     width=115mm,
     height=68mm,
@@ -24,10 +24,10 @@
 ]
 
 % 困惑度主曲线
-\addplot[domain=0.5:4.09, samples=100, line width=1.4pt, color=LFSBlue] {exp(x)};
+\addplot[domain=0.5:4.09, samples=100, line width=1.4pt, color=MyBlue] {exp(x)};
 
 % 典型参考点标注
-\addplot[only marks, mark=*, mark size=2.5pt, mark options={fill=LFSRed, draw=LFSRed}] coordinates {
+\addplot[only marks, mark=*, mark size=2.5pt, mark options={fill=MyRed, draw=MyRed}] coordinates {
     (1.0, 2.718)
     (1.609, 5.0)
     (2.302, 10.0)

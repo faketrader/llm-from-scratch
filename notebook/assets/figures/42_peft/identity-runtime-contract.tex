@@ -1,0 +1,28 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[storage] (profile) {稳定 Identity Profile};
+\node[compute, right=of profile] (adapter) {LoRA Adapter\\\scriptsize 随版本发布};
+\node[storage, below=20mm of profile] (runtime) {Runtime Context\\\scriptsize 日期 / 租户 / 工具};
+\node[storage, below=of runtime] (obs) {Tool / RAG Observation\\\scriptsize 实时事实};
+\node[interface, right=of $(runtime)!0.5!(obs)$] (template) {Chat Template};
+\node[block, right=28mm of $(adapter)!0.5!(template)$] (model) {Qwen3 Causal LM};
+\node[storage, right=of model] (answer) {身份一致且\\不过度触发的回答};
+\draw[data arrow] (profile) -- (adapter) -- (model);
+\draw[data arrow] (runtime) -- (template);
+\draw[data arrow] (obs) -- (template);
+\draw[data arrow] (template) -- (model);
+\draw[data arrow] (model) -- (answer);
+\node[group, fit=(profile)(adapter), label={[title]above:训练期稳定层}] {};
+\node[group, fit=(runtime)(obs)(template), label={[title]below:请求期动态层}] {};
+
+\end{tikzpicture}
+\end{document}

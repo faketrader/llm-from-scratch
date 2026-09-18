@@ -1,0 +1,29 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[storage] (x) {输入\\\scriptsize $[B,d]$};
+\node[compute, right=of x] (up) {Up Projection\\\scriptsize $W_{up}:[h,d]$};
+\node[compute, right=of up] (act) {Activation\\\scriptsize $[B,h]$};
+\node[compute, right=of act] (down) {Down Projection\\\scriptsize $W_{down}:[o,h]$};
+\node[storage, right=of down] (y) {输出\\\scriptsize $[B,o]$};
+\node[compute, below=of act] (score) {通道重要性评分};
+\node[decision, below=of score] (keep) {保留 $h'$ 个\\中间通道};
+\node[compute, below left=9mm and 18mm of keep] (newup) {新 Up\\\scriptsize $[h',d]$};
+\node[compute, below right=9mm and 18mm of keep] (newdown) {新 Down\\\scriptsize $[o,h']$};
+\draw[data arrow] (x) -- (up) -- (act) -- (down) -- (y);
+\draw[control arrow] (act) -- (score) -- (keep);
+\draw[control arrow] (keep) -- (newup);
+\draw[control arrow] (keep) -- (newdown);
+\draw[data arrow] (newup) -- node[label text, below]{同一通道集合} (newdown);
+\node[group, fit=(up)(act)(down), label={[title]above:剪枝前：外部 $d\to o$ 不变}] {};
+
+\end{tikzpicture}
+\end{document}

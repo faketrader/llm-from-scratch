@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -189,7 +189,8 @@ $h_a,k$ & 最终动作摘要与幂等键，分别绑定动作内容和逻辑执�
 工具超时可能发生在副作用已经完成、结果尚未返回之后。“超时”与“未执行”是两种状态。状态应区分已准备、已授权、执行中、成功、明确失败和结果未知。未知状态先查对账或结果接口；用新幂等键重新发起会制造第二个副作用。补偿操作与真实回滚属于不同机制：已经发送的数据无法靠撤销调用收回，某些业务动作只能进行后续补偿。
 
 \begin{algorithm}[受控工具执行]
-输入是已认证请求、模型动作建议和当前策略；输出是拒绝、待批准、执行结果或结果未知状态。
+\AlgoInput{已认证请求、模型动作建议和当前策略。}
+\AlgoOutput{拒绝、待批准、执行结果或结果未知状态。}
 \begin{enumerate}
  \item 从受保护会话取得主体与任务范围，解析模型建议；身份或租户的自报字段与会话状态冲突时，以会话状态为准。
  \item 规范化资源与参数，验证结构、范围、用途、资源归属及预算；策略明确拒绝或必需状态不可取得时停止。
@@ -398,4 +399,4 @@ Anthropic在2026年2月23日的公告中介绍了流量分类、行为指纹、�
 
 % END GENERATED INTERVIEWS
 \chapterreferences
-\lfsendchapterdocument
+\myendchapterdocument

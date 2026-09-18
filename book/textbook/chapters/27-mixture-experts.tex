@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -299,9 +299,9 @@ Switch 使用硬分配比例与平均概率乘积构造辅助目标。按照式\
 \end{example}
 
 \begin{algorithm}[带显式容量规则的稀疏专家前向]\label{alg:moe-routing}
-\textbf{输入：}$\mat{X}\in\Real^{N\times d}$，路由器 $\mat{W}_r,b_r$，$E_r$ 个专家，选择数 $k$，容量 $C$；采用选中内归一化、按词元顺序接收、拒绝路径置零且不二次归一化。
-
-\textbf{输出：}$\mat{Y}\in\Real^{N\times d}$，申请数、接收数、拒绝数和路由记录。\textbf{状态：}每专家槽位计数 $c_e=0$，输出 $\mat{Y}=0$，以及接收记录 $(t,e,c,a_{te})$。
+\AlgoInput{$\mat{X}\in\Real^{N\times d}$，路由器 $\mat{W}_r,b_r$，$E_r$ 个专家，选择数 $k$，容量 $C$；采用选中内归一化、按词元顺序接收、拒绝路径置零且不二次归一化。}
+\AlgoOutput{$\mat{Y}\in\Real^{N\times d}$，申请数、接收数、拒绝数和路由记录。}
+\AlgoState{每专家槽位计数 $c_e=0$，输出 $\mat{Y}=0$，以及接收记录 $(t,e,c,a_{te})$。}
 \begin{enumerate}
 \item 若 $N=0$，返回空输出和零计数；否则检查 $1\le k\le E_r$、$C\ge1$，计算路由分数及全专家概率。非有限分数作为输入失败处理，不进入排序。
 \item 对词元 $t=1,\ldots,N$，按分数降序选取不同的 $k$ 个专家；并列时按专家编号升序。计算选中集合内权重，记录所有申请。
@@ -445,4 +445,4 @@ DeepSeek-V3 & $671\text{B} / 37\text{B}$ & $256$ & $8$ & $1$ & 无辅助损失�
 
 
 \chapterreferences
-\lfsendchapterdocument
+\myendchapterdocument

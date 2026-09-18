@@ -1,6 +1,6 @@
 \ifdefined\HCode
   \PassOptionsToClass{fontset=none}{ctexbook}
-  \def\LFSWebBook{}
+  \def\MyWebBook{}
 \fi
 \documentclass[UTF8,zihao=-4,twoside,openany]{ctexbook}
 \usepackage{subfiles}
@@ -78,13 +78,25 @@
 \subfile{chapters/83-diffusion-probability.tex}
 \subfile{chapters/84-conditional-vision.tex}
 
+\appendix
+\ctexset{chapter/name={附录,},chapter/number=\Alph{chapter}}
 \ifdefined\HCode
-  \par\HCode{<div class="lfs-bibliography-start"></div>}
+  \par\HCode{<div class="partHead">附录</div>}
+\else
+  \bookmarksetup{startatroot}
+\fi
+\subfile{appendices/A-tensor-shapes.tex}
+\subfile{appendices/B-resource-estimation.tex}
+\subfile{appendices/C-experiment-reporting.tex}
+
+\ifdefined\HCode
+  \par\HCode{<div class="my-bibliography-start"></div>}
   \printbibliography[heading=none]
   % 在结束钩子禁用 \clearpage 前提交参考文献末页，保证最后条目进入 HTML。
   \newpage
 \else
   \backmatter
+  \bookmarksetup{startatroot}
   \input{backmatter/term-index.tex}
   \printbibliography[heading=bibintoc,title={参考文献}]
 \fi

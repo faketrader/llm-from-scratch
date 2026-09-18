@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -256,7 +256,9 @@ B_q=P\frac b8+\left\lceil\frac Pg\right\rceil h.
 \end{example}
 
 \begin{algorithm}[二阶补偿量化的概念流程]
-\textbf{输入：}层权重、校准输入、量化格点、坐标顺序与阻尼。\textbf{输出：}量化码值及元数据。\textbf{状态：}当前连续权重、自由坐标集合、曲率分解。
+\AlgoInput{层权重、校准输入、量化格点、坐标顺序与阻尼。}
+\AlgoOutput{量化码值及元数据。}
+\AlgoState{当前连续权重、自由坐标集合、曲率分解。}
 \begin{enumerate}
 \item 根据 $\mat{X}$ 构建重建曲率，处理不可观测方向并加入所需阻尼，得到稳定分解。
 \item 按固定顺序选择自由坐标，对其当前补偿后的值作格点选择。
@@ -361,15 +363,8 @@ FP8 张量仍常需要外部尺度。例如令 $\widehat x=s\,\operatorname{cast
 
 \begin{figure}[htbp]
 \centering
-\begin{tikzpicture}[>=stealth,every node/.style={font=\small},b/.style={draw,align=center,minimum height=.85cm,minimum width=2.6cm}]
-\node[b](q)at(0,0){压缩权重与元数据};
-\node[b](full)at(3.6,1.3){完整恢复张量};\node[b](gemm)at(7.3,1.3){浮点矩阵乘法};
-\node[b](fused)at(5,-1.3){分块解码与乘法融合\\片上中间状态};
-\node(b)at(10,0){输出};
-\draw[->](q)--(full);\draw[->](full)--(gemm);\draw[->](gemm)--(b);
-\draw[->](q)--(fused);\draw[->](fused)--(b);
-\end{tikzpicture}
-\caption{完整恢复与融合恢复的数据路径不同。必须确认实际执行路径，才能解释运行时收益。}
+\includegraphics[width=\linewidth]{\subfix{../../figures/theory/dequantization-runtime-paths.pdf}}
+\caption{量化权重的三种消费路径具有不同的驻留和数据搬运成本。必须确认实际执行路径，才能解释运行时收益。}
 \label{fig:opt-runtime}
 \end{figure}
 
@@ -395,7 +390,9 @@ t\ge\max(\frac{F}{C},\frac{B}{\mathcal B}).
 
 \subsubsection{制品与证据}
 \begin{algorithm}[量化制品的形成]
-\textbf{输入：}固定模型、校准集、目标位宽与内核约束、质量预算。\textbf{输出：}量化制品及版本清单。\textbf{状态：}校准统计、候选尺度、局部与整模型误差记录。
+\AlgoInput{固定模型、校准集、目标位宽与内核约束、质量预算。}
+\AlgoOutput{量化制品及版本清单。}
+\AlgoState{校准统计、候选尺度、局部与整模型误差记录。}
 \begin{enumerate}
 \item 先明确目标后端可消费的布局、粒度、零点和累加约定，固定高精度参考与输入协议。
 \item 采集校准统计，依据所选方法计算尺度、通道变换或二阶补偿，保存异常值与零通道处理规则。
@@ -848,7 +845,8 @@ softmax 对公共平移不变，因此分别中心化师生 logits：$\widetilde
 \term{恢复训练}{Recovery Training}{}使用保留参数适应压缩结构，可结合真实标签、原模型输出或中间状态。它本身消耗数据与训练资源，也可能过拟合校准分布。每次结构变化后都应重新确认权重共享、嵌入与输出头绑定、配置形状、稀疏掩码以及优化器状态，并保存完整基线与中间版本，以便定位质量损失来源。
 
 \begin{algorithm}[按误差与执行约束构建压缩产物]
-输入：原模型、独立校准数据、恢复训练数据、质量预算与目标后端。输出：具有明确结构、表示及来源记录的候选压缩模型。
+\AlgoInput{原模型、独立校准数据、恢复训练数据、质量预算与目标后端。}
+\AlgoOutput{具有明确结构、表示及来源记录的候选压缩模型。}
 \begin{enumerate}
 \item 固定原模型和评估契约，列出各模块形状、共享关系与目标后端可执行的稀疏或低秩形式。
 \item 在校准输入上估计通道敏感度或输入二阶矩，按预算产生剪枝掩码、保留索引或低秩因子。记录目标函数与近似方法。
@@ -903,4 +901,4 @@ softmax 对公共平移不变，因此分别中心化师生 logits：$\widetilde
 
 \chapterreferences
 \endgroup
-\lfsendchapterdocument
+\myendchapterdocument

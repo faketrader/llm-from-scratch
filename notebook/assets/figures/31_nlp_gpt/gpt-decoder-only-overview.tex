@@ -1,0 +1,39 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[storage] (ids) {token IDs\\\scriptsize $[B,T]$};
+\node[compute, right=of ids] (token) {Token Embedding};
+\node[compute, below=of token] (pos) {Position Embedding};
+\node[interface, right=16mm of $(token)!0.5!(pos)$] (add) {逐元素 Add\\\scriptsize $[B,T,E]$};
+\node[compute, right=of add] (attn) {Causal Self-Attention};
+\node[compute, below=of attn] (ffn) {FFN};
+\node[interface, right=of attn] (res1) {Residual + Norm};
+\node[interface, right=of ffn] (res2) {Residual + Norm};
+\node[compute, right=18mm of res2] (head) {LM Head\\\scriptsize weight $[V,E]$};
+\node[storage, right=of head] (logits) {next-token logits\\\scriptsize $[B,T,V]$};
+\node[neutral, above=of attn] (mask) {causal mask\\\scriptsize $[T,T]$};
+\draw[data arrow] (ids) -- (token);
+\draw[data arrow] (ids) |- (pos);
+\draw[data arrow] (token) -- (add);
+\draw[data arrow] (pos) -- (add);
+\draw[data arrow] (add) -- (attn);
+\draw[data arrow] (attn) -- (res1);
+\coordinate (ffnroute) at ($(res1.south)+(0,-10mm)$);
+\draw[data arrow] (res1.south) -- (ffnroute) -| (ffn.east);
+\draw[data arrow] (ffn) -- (res2);
+\draw[data arrow] (res2) -- (head);
+\draw[data arrow] (head) -- (logits);
+\draw[control arrow] (mask) -- (attn);
+\draw[residual] (add.south) -- ++(0,-4mm) -| (res1.south);
+\node[group, inner sep=5pt, fit=(attn)(ffn)(res1)(res2), label={[title]above:GPT Block $\times N$}] {};
+
+\end{tikzpicture}
+\end{document}

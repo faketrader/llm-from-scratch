@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -325,16 +325,17 @@ InternVL & 动态切片 ViT & MLP 空间重排 & $2\times2$ 补丁合并 ($\frac
 训练与部署还必须绑定同一组处理器规则，包括图像归一化、裁剪与块序、视觉占位符、文本分词器、会话模板以及特殊标记。处理器参与定义模型输入分布，其变更会改变模型实际接收的张量和词元序列。编码器、连接器、语言主干和输出解码器分别具有版本及适用条件，组合制品应保存完整依赖关系。
 
 \begin{algorithm}[多模态条件生成的训练步骤]
-输入为媒体、提示、答案及其长度和坐标元数据；输出为损失和本阶段允许更新的参数梯度。
-\begin{lfsalgorithmic}[1]
- \State 依据固定版本处理器解码媒体，记录尺寸、裁剪、时间戳与有效位置；按预算选择媒体片段，保持答案所需监督与输入一致。
- \State 计算感知特征，经投影及可选重采样得到语言侧表示，保存每个媒体对象到输出位置区间的映射。
- \State 构造文本嵌入，并在约定位置插入媒体表示；生成独立的上下文有效性、因果可见性和目标损失掩码。
- \State 只执行一次目标移位，将目标位置 $j$ 对齐到输出位置 $j-1$；无有效目标的样本按契约跳过或报数据错误。
- \State 前向计算答案分布，按选定的词元或样本归一化计算损失；若有辅助对比目标，使用其单独的配对和可见性规则。
- \State 沿需要的输入梯度路径反向，只更新本阶段开放的参数。记录有效媒体与文本长度、监督词元数和各目标损失。
- \State 处理完当前批次后结束此步；按既定训练步数、数据轮次与独立验证准则控制整个训练过程。阶段切换时保存模型及处理器契约。
-\end{lfsalgorithmic}
+\AlgoInput{媒体、提示、回答及其长度与坐标元数据。}
+\AlgoOutput{当前阶段的损失和可训练参数梯度。}
+\begin{myalgorithmic}[1]
+ \State Decode media with the fixed-version processor and record dimensions, crops, timestamps, and valid positions; select media segments within budget while preserving inputs required to supervise the answer
+ \State Compute perceptual features and obtain language-side representations through projection and optional resampling; retain the mapping from each media object to its output-position interval
+ \State Construct text embeddings and insert media representations at the agreed positions; generate separate masks for context validity, causal visibility, and target loss
+ \State Shift targets exactly once, aligning target position $j$ with output position $j-1$; skip samples without valid targets or report a data error according to the contract
+ \State Compute the answer distribution and loss under the selected token- or sample-level normalization; if an auxiliary contrastive objective is present, use its separate pairing and visibility rules
+ \State Backpropagate through required input-gradient paths and update only parameters enabled in the current stage; record valid media and text lengths, supervised-token counts, and each objective loss
+ \State End the step after processing the current batch; govern the full training run by the specified step count, data epochs, and independent validation criteria, and save both model and processor contracts at stage transitions
+\end{myalgorithmic}
 不变量是媒体位置映射与标签长度始终一致，所有受监督答案只依赖允许的条件，冻结语言权重不阻断连接器需要的梯度。
 \end{algorithm}
 
@@ -499,4 +500,4 @@ Whisper解码器可以看作以音频编码结果为条件的语言模型，但�
 
 % END GENERATED INTERVIEWS
 \chapterreferences
-\lfsendchapterdocument
+\myendchapterdocument

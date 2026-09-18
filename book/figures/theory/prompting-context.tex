@@ -4,7 +4,7 @@
 \usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
 \input{diagram_styles.tex}
 \begin{document}
-\begin{tikzpicture}[lfs picture]
+\begin{tikzpicture}[my picture]
   \node[interface] (zero) {Zero-shot};
   \node[interface, below=7mm of zero] (few) {Few-shot ICL};
   \node[interface, below=7mm of few] (cot) {CoT 提示};

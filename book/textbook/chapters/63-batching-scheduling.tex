@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -255,7 +255,7 @@ Little 关系联系长期平均人数、吞吐与驻留时间\cite{little1961que
 设重算成本为 $C_r$，换出和换入共需移动 $2m$ 字节，有效传输带宽为 $b$，另有同步成本 $C_s$。粗略比较 $C_r$ 与 $\frac{2m}{b}+C_s$ 有助于选择，而链路竞争与恢复时设备占用还会改变两者的实际大小。频繁抢占会产生反复重算，使观测到的忙碌增加而有效完成减少。应记录重算词元与原始词元的比例，并设置冷却或最小执行份额。
 
 \begin{algorithm}[单轮有界调度]
- 输入为等待队列、活动请求、物理页状态、租户信用和本轮预算。
+\AlgoInput{等待队列、活动请求、物理页状态、租户信用和本轮预算。}
 \begin{enumerate}
 \item 在安全边界处理完成、取消和到期事件，释放引用与预留；已发布终止状态不得重新入队。
 \item 增加各租户信用，更新活动解码与等待预填充的期限、年龄与成本估计。
@@ -283,4 +283,4 @@ Little 关系联系长期平均人数、吞吐与驻留时间\cite{little1961que
 
 % END GENERATED INTERVIEWS
 \chapterreferences
-\lfsendchapterdocument
+\myendchapterdocument

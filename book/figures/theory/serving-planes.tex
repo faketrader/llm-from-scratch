@@ -4,7 +4,7 @@
 \usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
 \input{diagram_styles.tex}
 \begin{document}
-\begin{tikzpicture}[lfs picture]
+\begin{tikzpicture}[my picture]
   \node[interface] (client) {客户端 / SDK};
   \node[interface, right=12mm of client] (gateway) {Gateway\\鉴权、配额、期限、协议};
   \node[compute, right=12mm of gateway] (router) {Router\\模型修订与故障域};
@@ -29,7 +29,7 @@
   \foreach \n in {gateway,router,scheduler,w3}{
     \draw[control arrow] (\n.south) -- (\n.south |- telemetry bus left);
   }
-  \draw[draw=LFSOrange,dashed,line width=0.9pt]
+  \draw[draw=MyOrange,dashed,line width=0.9pt]
     (telemetry bus left) -- node[label text,above]{遥测汇聚总线} (telemetry bus right);
   \draw[control arrow] (telemetry bus right) -- (telemetry.north);
 

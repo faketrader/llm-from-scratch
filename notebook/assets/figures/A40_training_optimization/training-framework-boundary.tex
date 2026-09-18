@@ -1,0 +1,26 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+
+\node[storage] (data) {Dataset / Collator};
+\node[interface, right=of data] (engine) {Training Engine};
+\node[compute, right=of engine] (forward) {Model Forward};
+\node[compute, below=of forward] (loss) {Token-normalized Loss};
+\node[compute, left=of loss] (backward) {Backward};
+\node[interface, left=of backward] (comm) {Gradient Communication\\\scriptsize All-Reduce / Reduce-Scatter};
+\node[compute, below=of comm] (optim) {Optimizer + Scheduler};
+\node[storage, right=of optim] (ckpt) {Distributed Checkpoint};
+\node[compute, below=of ckpt] (valid) {Validation};
+\draw[data arrow] (data) -- (engine) -- (forward) -- (loss) -- (backward) -- (comm) -- (optim) -- (ckpt);
+\draw[control arrow] (valid) -- node[label text, right]{best state} (ckpt);
+\node[group, fit=(engine)(forward)(loss)(backward)(comm)(optim), label={[title]above:训练执行面}] {};
+
+\end{tikzpicture}
+\end{document}

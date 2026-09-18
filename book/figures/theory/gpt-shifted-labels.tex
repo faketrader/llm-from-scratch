@@ -3,7 +3,7 @@
 \usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
 \input{diagram_styles.tex}
 \begin{document}
-\begin{tikzpicture}[lfs picture]
+\begin{tikzpicture}[my picture]
 
 \node[storage] (seq) {token 序列\\\scriptsize $(t_0,t_1,\ldots,t_n)$};
 \node[storage, above right=9mm and 18mm of seq] (input) {输入序列\\\scriptsize $(t_0,\ldots,t_{n-1})$\\\scriptsize $[B,T]$};

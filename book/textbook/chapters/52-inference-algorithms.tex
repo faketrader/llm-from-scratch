@@ -1,4 +1,4 @@
-\ifdefined\LFSWebBook\else
+\ifdefined\MyWebBook\else
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
@@ -88,26 +88,27 @@ $m_A,\ell_A$ 是标量，$\vect{u}_A\in\Real^{d_v}$。在线归一化通过更�
 \end{example}
 
 \begin{algorithm}[单查询的分块精确注意力]
-\textbf{输入：}查询、按块读取的键值、可见性规则；\textbf{输出：}注意力值向量。
-\begin{lfsalgorithmic}[1]
-\State $\mathrm{valid}\gets\mathrm{false}$；空集合不参与最大值算术
-\For{有限输入中的每个键值块}
-  \State 计算合法位置及其分数
-  \If{本块存在合法位置}
-    \State 计算本块 $(m_b,\ell_b,\vect{u}_b)$
+\AlgoInput{一个查询、按块读取的键和值，以及可见性规则。}
+\AlgoOutput{注意力值向量。}
+\begin{myalgorithmic}[1]
+\State Set $\mathrm{valid}\gets\mathrm{false}$; exclude empty sets from maximum arithmetic
+\For{each key--value block in the finite input}
+  \State Compute valid positions and their scores
+  \If{the block contains at least one valid position}
+    \State Compute block state $(m_b,\ell_b,\vect{u}_b)$
     \If{$\mathrm{valid}=\mathrm{false}$}
-      \State $(m,\ell,\vect{u})\gets(m_b,\ell_b,\vect{u}_b)$，$\mathrm{valid}\gets\mathrm{true}$
+      \State Set $(m,\ell,\vect{u})\gets(m_b,\ell_b,\vect{u}_b)$ and $\mathrm{valid}\gets\mathrm{true}$
     \Else
-      \State 按式\eqref{eq:kernel-merge}合并本块状态
+      \State Merge the block state using Equation~\eqref{eq:kernel-merge}
     \EndIf
   \EndIf
 \EndFor
 \If{$\mathrm{valid}=\mathrm{true}$}
   \State \Return $\frac{\vect{u}}{\ell}$
 \Else
-  \State 执行输入契约规定的全掩码行处理
+  \State Apply the all-masked-row behavior specified by the input contract
 \EndIf
-\end{lfsalgorithmic}
+\end{myalgorithmic}
 \end{algorithm}
 
 \section{FlashAttention 与存储层次}
@@ -252,7 +253,8 @@ $p$ 与 $q$ 定义在同一离散词元空间，均为归一化概率。候选�
 终止词元一旦接受或由修正分支生成，应立即结束请求，不再附加奖励词元。长度预算也应裁剪本轮可提交量。随机数流不同可以导致同一种子生成不同具体样本；算法保持目标分布，具体样本随随机数流变化。\footnote{确定性贪心解码可采用与目标最大概率词元逐项比较的专门规则，但那是在复现贪心路径，与随机目标分布的保持证明无关。}
 
 \begin{algorithm}[保持目标分布的推测解码]
-\textbf{输入：}目标 $p$、草稿 $q$、已确认前缀、候选预算 $k$、停止规则；\textbf{输出：}目标分布下的新词元。
+\AlgoInput{目标 $p$、草稿 $q$、已确认前缀、候选预算 $k$、停止规则。}
+\AlgoOutput{目标分布下的新词元。}
 \begin{enumerate}
 \item 保存草稿与目标的已确认缓存边界。草稿自回归采样不超过 $k$ 个候选，并保存或能够精确重建每步完整的条件提议分布 $q_i(\cdot)$。仅保存抽中词元的概率不足以构造拒绝后的残差分布；等价实现必须提供精确残差采样所需的分布表示。
 \item 目标因果验证候选，取得每个候选前缀下的实际目标概率及全部接受后的分布。
@@ -310,4 +312,4 @@ $\alpha=1$ 时取极限 $k+1$。条件接受率不恒定时，应使用各级生
 
 
 \chapterreferences
-\lfsendchapterdocument
+\myendchapterdocument

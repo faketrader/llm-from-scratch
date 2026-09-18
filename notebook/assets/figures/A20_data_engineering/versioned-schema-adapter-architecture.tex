@@ -1,0 +1,38 @@
+\def\pgfsysdriver{pgfsys-dvisvgm.def}
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{texgyretermes-regular.otf}
+\setCJKmainfont{FandolHei-Regular.otf}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
+\input{assets/figures/diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture]
+  \node[storage] (raw) {JSONL / Parquet\\Arrow IPC / TAR Shard};
+  \node[compute, right=14mm of raw] (reader) {Pinned Reader};
+  \node[interface, right=14mm of reader] (registry) {Schema Registry\\显式版本与判别规则};
+  \node[compute, right=15mm of registry] (adapters) {版本化 Adapter\\Alpaca / Messages / Preference / Trace};
+  \node[storage, right=15mm of adapters] (canonical) {Canonical Envelope\\+ Typed Payload};
+  \node[compute, below=13mm of canonical] (materializer) {Objective Materializer};
+  \node[storage, below=10mm of materializer] (views) {训练视图\\SFT / Preference / RL-Verified};
+  \node[risk, below=16mm of registry] (quarantine) {Quarantine\\稳定 Reason Code};
+  \node[storage, below=18mm of adapters] (lineage) {原始记录、Adapter Revision\\源对象与 Canonical 哈希};
+
+  \draw[data arrow] (raw) -- (reader);
+  \draw[data arrow] (reader) -- (registry);
+  \draw[data arrow] (registry) -- node[label text,above]{known + valid} (adapters);
+  \draw[data arrow] (adapters) -- (canonical);
+  \draw[data arrow] (canonical) -- (materializer);
+  \draw[data arrow] (materializer) -- (views);
+  \draw[control arrow] (registry) -- node[label text,left]{unknown / invalid} (quarantine);
+  \draw[data arrow] (adapters) -- (lineage);
+  \draw[data arrow] (canonical) -- (lineage);
+
+  \begin{scope}[on background layer]
+    \node[group, fit=(raw)(reader), label={[title]above:物理输入边界}] {};
+    \node[group, fit=(registry)(adapters)(quarantine), label={[title]above:Schema 判别与隔离边界}] {};
+    \node[group, fit=(canonical)(materializer)(views)(lineage), label={[title]above:Canonical 数据产品边界}] {};
+  \end{scope}
+\end{tikzpicture}
+\end{document}

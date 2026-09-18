@@ -4,7 +4,7 @@
 \usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
 \input{diagram_styles.tex}
 \begin{document}
-\begin{tikzpicture}[lfs picture]
+\begin{tikzpicture}[my picture]
   \node[risk] (user) {用户与调用方};
   \node[interface, right=15mm of user] (entry) {身份认证\\配额与入口策略};
   \node[compute, right=14mm of entry] (orchestrator) {LLM 编排层};
@@ -38,7 +38,7 @@
   \begin{scope}[on background layer]
     \node[group, fit=(entry)(orchestrator)(output), label={[title]above:应用信任域}] {};
     \node[group, fit=(model)(rag)(tool)(tenant)(identity)(business), label={[title]below:受控执行域}] {};
-    \node[group, draw=LFSRed, fit=(user)(external)(supply), label={[title]below:域外不可信来源}] {};
+    \node[group, draw=MyRed, fit=(user)(external)(supply), label={[title]below:域外不可信来源}] {};
   \end{scope}
 \end{tikzpicture}
 \end{document}

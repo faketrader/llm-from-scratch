@@ -3,7 +3,7 @@
 \usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds}
 \input{diagram_styles.tex}
 \begin{document}
-\begin{tikzpicture}[lfs picture]
+\begin{tikzpicture}[my picture]
 
 \node[storage] (records) {72 条 records\\\scriptsize 原始样本};
 \node[storage, right=of records] (jsonl) {\texttt{data.jsonl}\\\scriptsize UTF-8 权威资产};
