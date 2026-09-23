@@ -1,0 +1,18 @@
+% Select the complete Founder font set when it is installed on this machine.
+% Otherwise let ctex choose its platform default.
+\RequirePackage{fontspec}
+\newif\ifmyfounderfonts
+\myfounderfontstrue
+\IfFontExistsTF{FZShuSong-Z01}{}{\myfounderfontsfalse}
+\IfFontExistsTF{FZXiaoBiaoSong-B05}{}{\myfounderfontsfalse}
+\IfFontExistsTF{FZKai-Z03}{}{\myfounderfontsfalse}
+\IfFontExistsTF{FZXiHeiI-Z08}{}{\myfounderfontsfalse}
+\IfFontExistsTF{FZHei-B01}{}{\myfounderfontsfalse}
+\IfFontExistsTF{FZFangSong-Z02}{}{\myfounderfontsfalse}
+\IfFontExistsTF{FZLiShu-S01}{}{\myfounderfontsfalse}
+\IfFontExistsTF{FZXiYuan-M01}{}{\myfounderfontsfalse}
+\IfFontExistsTF{FZZhunYuan-M02}{}{\myfounderfontsfalse}
+\ifmyfounderfonts
+  \PassOptionsToClass{fontset=founder}{ctexbook}
+  \PassOptionsToPackage{fontset=founder}{ctex}
+\fi

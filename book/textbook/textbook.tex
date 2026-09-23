@@ -2,7 +2,9 @@
   \PassOptionsToClass{fontset=none}{ctexbook}
   \def\MyWebBook{}
 \else
-  \PassOptionsToClass{fontset=founder}{ctexbook}
+  \IfFileExists{../fontset.tex}
+    {\input{../fontset.tex}}
+    {\input{../../fontset.tex}}
 \fi
 \documentclass[UTF8,zihao=5,twoside,openany]{ctexbook}
 \usepackage{subfiles}
