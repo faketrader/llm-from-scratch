@@ -19,9 +19,9 @@ figure:
 	@test "$(FIGURE)" = "$(notdir $(FIGURE))" || (echo 'FIGURE must be a filename stem, not a path'; exit 2)
 	@test -f "$(FIGURE_SOURCE_DIR)/$(FIGURE).tex" || (echo 'Unknown TikZ figure'; exit 2)
 	@$(MAKE) --no-print-directory "$(FIGURE_SOURCE_DIR)/$(FIGURE).pdf"
-$(FIGURE_SOURCE_DIR)/%.pdf: $(FIGURE_SOURCE_DIR)/%.tex $(FIGURE_SOURCE_DIR)/diagram_styles.tex book/my-math.sty book/fontset.tex Makefile
+$(FIGURE_SOURCE_DIR)/%.pdf: $(FIGURE_SOURCE_DIR)/%.tex $(FIGURE_SOURCE_DIR)/diagram_styles.tex book/my-math.sty book/my-fontset.tex Makefile
 	@mkdir -p "build/figures/$*"
-	latexmk -g -xelatex -jobname="$*" -usepretex='\input{../../fontset.tex}' -outdir="$(abspath build/figures/$*)" "$<"
+	latexmk -g -xelatex -jobname="$*" -usepretex='\input{../../my-fontset.tex}' -outdir="$(abspath build/figures/$*)" "$<"
 	@if grep -Eq 'Missing character:|There were undefined references|Citation .* undefined' "build/figures/$*/$*.log"; then echo '$*: figure log contains missing glyphs or unresolved references'; exit 1; fi
 	@cp "build/figures/$*/$*.pdf" "$@"
 	@echo "Built $@"

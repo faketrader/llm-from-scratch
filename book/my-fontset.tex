@@ -1,0 +1,9 @@
+% Use the Founder family when Founder ShuSong is installed.
+% Otherwise let ctex choose its platform default.
+\RequirePackage{fontspec}
+\newif\ifmyfounderfonts
+\IfFontExistsTF{FZShuSong-Z01}{\myfounderfontstrue}{\myfounderfontsfalse}
+\ifmyfounderfonts
+  \PassOptionsToClass{fontset=founder}{ctexbook}
+  \PassOptionsToPackage{fontset=founder}{ctex}
+\fi
