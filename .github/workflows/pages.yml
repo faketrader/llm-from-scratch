@@ -13,7 +13,7 @@ permissions:
   contents: read
 concurrency:
   group: github-pages
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -25,13 +25,23 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
+      - name: Restore generated figure PDFs
+        id: figure-cache
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: book/figures/theory/*.pdf
+          key: texlive-20260901-figures-${{ hashFiles('book/figures/theory/*.tex', 'book/my-math.sty', 'book/my-fontset.tex', 'Makefile') }}
+      - name: Refresh cached figure timestamps
+        if: steps.figure-cache.outputs.cache-hit == 'true'
+        run: find book/figures/theory -maxdepth 1 -type f -name '*.pdf' -exec touch {} +
       - name: Install pnpm
         run: npm install --global pnpm@12.4.2
-      - name: Build and validate
-        run: |
-          make web/node_modules/.my-installed
-          pnpm --dir web typecheck
-          make web
+      - name: Install web dependencies
+        run: make web/node_modules/.my-installed
+      - name: Typecheck web
+        run: pnpm --dir web typecheck
+      - name: Build web
+        run: make -j2 web
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: dist/web
