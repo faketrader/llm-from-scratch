@@ -91,7 +91,7 @@
 \ifdefined\HCode
   \NewDocumentEnvironment{mywidefloat}{}{}{}
   \NewDocumentEnvironment{widetable}{O{tbp}}{\begin{table}[#1]}{\end{table}}
-  \NewDocumentEnvironment{table*}{O{tbp}}{\begin{table}[#1]}{\end{table}}
+  \RenewDocumentEnvironment{table*}{O{tbp}}{\begin{table}[#1]}{\end{table}}
 \else
   \NewDocumentEnvironment{mywidefloat}{}
     {\begin{adjustwidth}{-\myfloatbleed}{-\myfloatbleed}\captionsetup{width=\linewidth}}
