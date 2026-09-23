@@ -1,0 +1,87 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex,amsmath,amssymb}
+\usetikzlibrary{arrows.meta,positioning,calc,fit,backgrounds}
+\input{diagram_styles.tex}
+
+\begin{document}
+\begin{tikzpicture}[my picture, node distance=5mm and 6.5mm]
+
+% 4个训练演进阶段：预训练 -> 微调 -> 偏好对齐 -> 可验证推理
+
+% 阶段 1：预训练与规模定律
+\node[storage, text width=32mm, minimum height=14mm] (s1_top) {
+  \textbf{数据工程与规模定律}\\[0.8mm]
+  \scriptsize 语料清洗、去重与质量分类\\
+  Chinchilla 算力与参数配比（第31、33章）
+};
+\node[compute, text width=32mm, minimum height=14mm, below=5mm of s1_top] (s1_bot) {
+  \textbf{优化器与训练稳定性}\\[0.8mm]
+  \scriptsize AdamW、余弦退火与梯度裁剪\\
+  Loss Spike 防护与检查点（第14、34章）
+};
+\begin{scope}[on background layer]
+  \node[group, fit=(s1_top)(s1_bot), label={[font=\footnotesize\bfseries, text=MyGreen]above:一、基础预训练阶段}] (g1) {};
+\end{scope}
+
+% 阶段 2：指令微调与高效适配
+\node[block, text width=32mm, minimum height=14mm, right=7mm of s1_top] (s2_top) {
+  \textbf{监督微调（SFT）}\\[0.8mm]
+  \scriptsize 多轮对话指令格式化\\
+  问答与推理能力激发（第41章）
+};
+\node[interface, text width=32mm, minimum height=14mm, below=5mm of s2_top] (s2_bot) {
+  \textbf{参数高效微调（PEFT）}\\[0.8mm]
+  \scriptsize 低秩自适应（LoRA / DoRA）\\
+  量化 QLoRA 与前缀微调（第42、43章）
+};
+\begin{scope}[on background layer]
+  \node[group, fit=(s2_top)(s2_bot), label={[font=\footnotesize\bfseries, text=MyBlue]above:二、后微调与高效适配}] (g2) {};
+\end{scope}
+
+% 阶段 3：价值与偏好对齐
+\node[compute, text width=32mm, minimum height=14mm, right=7mm of s2_top] (s3_top) {
+  \textbf{强化学习对齐（RLHF）}\\[0.8mm]
+  \scriptsize 人类偏好成对标注\\
+  奖励模型与 PPO 策略更新（第44章）
+};
+\node[interface, text width=32mm, minimum height=14mm, below=5mm of s3_top] (s3_bot) {
+  \textbf{直接偏好优化（DPO）}\\[0.8mm]
+  \scriptsize 隐式奖励闭式解构造\\
+  无奖励模型高效对齐（第45章）
+};
+\begin{scope}[on background layer]
+  \node[group, fit=(s3_top)(s3_bot), label={[font=\footnotesize\bfseries, text=MyOrange]above:三、价值与偏好对齐}] (g3) {};
+\end{scope}
+
+% 阶段 4：慢思考可验证推理
+\node[block, text width=32mm, minimum height=14mm, right=7mm of s3_top] (s4_top) {
+  \textbf{过程奖励模型（PRM）}\\[0.8mm]
+  \scriptsize 步骤级正确性自动检验\\
+  蒙特卡洛/蒙特卡洛树搜索（第46章）
+};
+\node[compute, text width=32mm, minimum height=14mm, below=5mm of s4_top] (s4_bot) {
+  \textbf{可验证推理强化训练}\\[0.8mm]
+  \scriptsize 强化学习自探索演化\\
+  测试期计算规模扩展（第46章）
+};
+\begin{scope}[on background layer]
+  \node[group, fit=(s4_top)(s4_bot), label={[font=\footnotesize\bfseries, text=MyPurple]above:四、可验证推理强化}] (g4) {};
+\end{scope}
+
+% 阶段间连线
+\draw[data arrow] (s1_top.east) -- (s2_top.west);
+\draw[data arrow] (s1_bot.east) -- (s2_bot.west);
+
+\draw[data arrow] (s2_top.east) -- (s3_top.west);
+\draw[data arrow] (s2_bot.east) -- (s3_bot.west);
+
+\draw[data arrow] (s3_top.east) -- (s4_top.west);
+\draw[data arrow] (s3_bot.east) -- (s4_bot.west);
+
+% 底部总结栏
+\node[neutral, text width=146mm, minimum height=7mm, below=6mm of $(s2_bot.south)!0.5!(s3_bot.south)$] (bot_summary) {
+  \scriptsize \textbf{第三篇训练主线：} 无监督预训练（海量吸收世界知识） $\longrightarrow$ 监督微调（对齐指令格式） $\longrightarrow$ 偏好对齐（契合人类意图） $\longrightarrow$ 过程强化（激发严密推理）
+};
+
+\end{tikzpicture}
+\end{document}

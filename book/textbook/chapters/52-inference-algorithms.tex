@@ -4,18 +4,17 @@
 \fi
 \bookchapter{推理计算优化}{ch:inference-algorithms}
 
-缓存减少已经完成的计算，算子优化减少完成一次计算所需的数据移动与调度，推测解码则尝试在一次目标模型调用中确认多个输出。三者作用于不同成本项。判断一种优化是否成立，首先要确定它保留了什么：同一数学算子、同一概率分布，还是仅保留某项任务质量的近似水平。
+推理计算优化围绕执行时延、显存占用与服务吞吐展开。增量解码通过键值缓存消除历史前缀的重复前向；算子融合与片上分块计算减少显存与计算核心之间的数据搬运；推测解码利用计算不对称性在单次大模型前向中并行验证多个候选词元。不同优化路径对系统等价性有明确约束：算子分块在浮点舍入容差内保证严格数学等价，精确推测解码保持原始自回归采样分布，而低精度量化与窗口截断则引入受控的逼近误差。
 
-\bookxref{ch:incremental-decoding-cache}解释历史状态的复用。在线归一化与分块注意力减少中间数据搬运，融合与编译组织执行，精确推测解码利用接受和残差采样保持目标分布。低精度误差在\bookxref{ch:quantization}展开，请求级调度在\bookxref{ch:batching-scheduling}展开。
+\bookxref{ch:incremental-decoding-cache}讨论了键值状态的历史复用。在线归一化与分块注意力抑制了显存往返开销，图融合与特化编译消除了运行时调度气泡，精确推测解码则通过接受与残差重采样保障分布一致性。低精度量化误差分析在\bookxref{ch:quantization}展开，请求级动态调度在\bookxref{ch:batching-scheduling}展开。
 
-\section{计算、搬运与启动成本}
+\section{推理执行成本}
 
 本章主要符号见表\ref{tab:inference-algorithms-symbols}。
 \begin{table}[htbp]
 \centering
-\caption{推理计算优化的主要符号。}
-\label{tab:inference-algorithms-symbols}
-\begin{tabularx}{\linewidth}{@{}lX@{}}
+\caption{推理计算优化主要符号}\label{tab:inference-algorithms-symbols}
+\begin{tabular}{ll}
 \toprule
 符号 & 含义\\
 \midrule
@@ -27,19 +26,19 @@ $F,Q_b,R,b$ & 运算量、搬运字节数、有效计算速率和有效带宽。
 $p,q$ & 给定前缀下的目标采样分布与草稿采样分布。\\
 $k,\alpha$ & 单轮草稿候选数及特定假设下的条件接受概率。\\
 \bottomrule
-\end{tabularx}
+\end{tabular}
 \end{table}
 
-对一个执行片段，计算时间至少为 $\frac{F}{R}$，数据传输时间至少为 $\frac{Q_b}{b}$。两者可部分重叠，因此 $\max(\frac{F}{R},\frac{Q_b}{b})$ 只是一个简化下界，全部延迟还包括主机调度、设备启动、同步和布局变换。小矩阵可能受启动时延限制，大矩阵可能受计算或带宽限制，浮点运算数只是其中一项。
+对特定的执行内核，计算时间下界为 $\frac{F}{R}$，数据传输时间下界为 $\frac{Q_b}{b}$。二者在硬件流水线中可部分重叠，因此 $\max(\frac{F}{R},\frac{Q_b}{b})$ 构成了理论时延的下限基准。端到端实际延迟还包含主机侧下发调度、设备内核启动（Kernel Launch）、显存同步及张量布局重排。小规模张量算子常受限于启动与同步延迟，长序列大矩阵运算则由算力峰值或全局显存带宽主导。
 
-若某优化仅加速原总时间中的比例 $f$，该部分加速 $s$ 倍，其他部分不变，则总加速比为
+若某项优化仅作用于占基准总耗时比例为 $f$ 的算子，且该部分获得 $s$ 倍加速，其余部分耗时保持不变，则系统端到端加速比由阿姆达尔定律决定：
 \begin{equation}
  S=\frac{1}{(1-f)+\frac{f}{s}}.
  \label{eq:kernel-amdahl}
 \end{equation}
-例如某算子占40\%，即使加速4倍，总加速也只有 $\frac{1}{0.6+0.1}\approx1.43$。加入新的布局转换或同步后还会更低。算子收益必须沿完整路径核算。
+例如当优化算子占总执行时间的比例 $f=0.4$ 时，即使算子本身取得 $s=4$ 倍加速，系统总加速比上限仅为 $\frac{1}{0.6+0.1}\approx 1.43$。若优化实现引入了额外的跨张量布局转换或显卡流同步，端到端收益将进一步折损。因此算子加速必须置于完整调用链与计算图中综合度量。
 
-\section{在线 Softmax 的充分统计量}
+\section{分块注意力计算}
 
 \subsection{分块归一化合并}
 单查询注意力输出为
@@ -48,74 +47,76 @@ $k,\alpha$ & 单轮草稿候选数及特定假设下的条件接受概率。\\
  z_j=\frac{\vect{q}^{\mathrm{T}}k_j}{\sqrt{d_h}}+M_j.
  \label{eq:kernel-attention}
 \end{equation}
-$M_j$ 表示允许的加性偏置或掩码。将键分为两组后，各组独立 Softmax 的分母不同，直接相加或等权平均两组输出通常会出错；正确做法是知道每组在全局分母中所占的质量。
+$M_j$ 表示因果掩码或相对位置偏置。将键值序列划分为多个独立块后，各分块局部 Softmax 的归一化分母互不相同，直接相加或等权平均局部输出会导致加权基准错位；分块计算的关键在于维护各分块的局部统计量，并在归约合并时恢复其在全局指数和中的准确质量权重。
 
-对非空有效键集合 $A$，保存
+对非空有效键集合 $A$，维护局部三元统计量：
 \begin{equation}
  m_A=\max_{j\in A}z_j,\quad
  \ell_A=\sum_{j\in A}\conste{}^{z_j-m_A},\quad
  \vect{u}_A=\sum_{j\in A}\conste{}^{z_j-m_A}v_j.
  \label{eq:kernel-summary}
 \end{equation}
-$m_A,\ell_A$ 是标量，$\vect{u}_A\in\Real^{d_v}$。在线归一化通过更新最大值与归一化和，避免先遍历完整向量求最大值再单独计算分母\autocite{milakov2018online}。
+其中 $m_A,\ell_A$ 为标量，$\vect{u}_A\in\Real^{d_v}$。在线归一化算法通过随分块遍历动态更新最大值与缩放和，消除了传统实现必须先遍历全序列求全局最大值再计算全局分母的二次全局读写访存\autocite{milakov2018online}。
 
-\subsection{适配器合并定理}
-对不相交有效集合 $A,B$，令 $m=\max(m_A,m_B)$，则
+\subsection{分块统计量的合并}
+对不相交有效集合 $A,B$，设全局局部最大值为 $m=\max(m_A,m_B)$，统计量合并递推公式为
 \begin{align}
  \ell&=\conste{}^{m_A-m}\ell_A+\conste{}^{m_B-m}\ell_B,\\
  \vect{u}&=\conste{}^{m_A-m}\vect{u}_A+\conste{}^{m_B-m}\vect{u}_B.
  \label{eq:kernel-merge}
 \end{align}
-因为 $\conste{}^{m_A-m}\conste{}^{z_j-m_A}=\conste{}^{z_j-m}$，第一行正好等于全体键的缩放指数和，第二行同理。因此合并结果仍满足式\eqref{eq:kernel-summary}，最终输出为 $\vect{o}=\frac{\vect{u}}{\ell}$。
+由恒等式 $\conste{}^{m_A-m}\conste{}^{z_j-m_A}=\conste{}^{z_j-m}$，合并后的 $\ell$ 严格等于并集 $A\cup B$ 的全局缩放指数和，$\vect{u}$ 同理。合并结果精确满足式\eqref{eq:kernel-summary}定义的数学形式，最终注意力输出为 $\vect{o}=\frac{\vect{u}}{\ell}$。\keyconcept{分块在线归一化通过三元状态 $(m,\ell,\vect{u})$ 维护局部的最大值、指数和与值加权和，在单趟片上遍历中恢复全局精确 Softmax，消除了完整注意力矩阵的高带宽显存往返。}
 
-只要每次合并保留这三个统计量，就可以按任意分块顺序处理同一键集合。在精确算术下，合并对应集合并集，因而结果与分块方式无关；浮点舍入会受顺序影响。分块计算读取全部有效键，并通过统计量合并得到完整 Softmax 输出。
+只要在归约过程中严格维护上述三元统计量，即可按任意分块顺序流式遍历键值集合。在精确算术下，合并操作满足结合律，输出结果与分块拓扑完全无关；实际硬件中不同的分块归约顺序仅引入微小的浮点舍入累积差。
 
-用 $m=-\infty$ 与另一个空块相减处理空块会产生非法运算。实现应使用有效标志：全掩码块不贡献统计量；首个非空块直接初始化。若整个查询行没有合法键，数学分母为零，需要按模型接口明确定义输出或拒绝输入，把未定义值挡在下游计算之外。
+若将全掩码空块的最大值形式化置为 $m=-\infty$，浮点减法运算 $(-\infty)-(-\infty)$ 会直接产生非数（NaN）。工程实现必须通过显式的有效性标志（valid flag）解耦空块处理：完全被掩码屏蔽的块\emph{直接跳过统计量更新}；首个包含合法键的块直接初始化三元组。若整行查询均无有效键，全局分母退化为零，系统应依接口规范显式填零或上报异常，杜绝未定义浮点异常向后级网络传递。
+
+\begin{warning}[全掩码分块的浮点 NaN 陷阱]
+若将完全被掩码屏蔽的空块最大值形式化置为 $m=-\infty$，两块合并时计算指数差值将触发 $(-\infty)-(-\infty)$ 的未定义浮点运算，直接在片上生成非数（NaN）。工程实现必须通过显式的有效性标志（valid flag）解耦空块判定：全掩码块直接跳过统计量更新；首个合法块直接初始化三元状态；若整行全被屏蔽，显式填零或上报异常，杜绝浮点异常污染后级计算。
+\end{warning}
 
 \begin{example}
-
-
-设分数为 $(\log2,\log1,\log6)$，对应标量值为 $(1,4,5)$，前两个键组成块 $A$，第三个键组成块 $B$。有
+设分数值为 $(\log2,\log1,\log6)$，对应标量值向量为 $(1,4,5)$。前两个键构成块 $A$，第三个键构成块 $B$。分别计算两块局部统计量：
 \begin{align*}
  m_A&=\log2,&\ell_A&=\frac{3}{2},&u_A&=3,\\
  m_B&=\log6,&\ell_B&=1,&u_B&=5.
 \end{align*}
-共同最大值为 $\log6$，块 $A$ 的缩放系数为 $\frac{1}{3}$，因此
+两块联合最大值为 $m=\max(\log2,\log6)=\log6$，块 $A$ 相对最大值的缩放权重为 $\conste{\log2-\log6}=\frac{1}{3}$，代入合并公式：
 \begin{equation*}
- \ell=(\frac{1}{3})(\frac{3}{2})+1=\frac{3}{2},\qquad u=(\frac{1}{3})3+5=6,\qquad o=4.
+ \ell=\left(\frac{1}{3}\right)\left(\frac{3}{2}\right)+1=\frac{3}{2},\qquad u=\left(\frac{1}{3}\right)3+5=6,\qquad o=\frac{u}{\ell}=4.
 \end{equation*}
-完整计算为 $\frac{2\times1+1\times4+6\times5}{2+1+6}=4$。两个块的局部输出分别为2和5；直接相加得到7，等权平均得到3.5，均不等于正确结果，因为两块的全局指数质量分别为3和6。
+若直接计算全局 Softmax，输出为 $\frac{2\times 1+1\times 4+6\times 5}{2+1+6}=4$。块 $A$ 与块 $B$ 的局部归一化输出分别为 $2$ 和 $5$；直接相加得 $7$，等权平均得 $3.5$，均偏离真实解。在线合并通过乘法重缩放因子 $\frac{1}{3}$ 精确恢复了各块在全局指数和中的比重。
 \end{example}
 
 \begin{algorithm}[单查询的分块精确注意力]
-\AlgoInput{一个查询、按块读取的键和值，以及可见性规则。}
-\AlgoOutput{注意力值向量。}
+\AlgoInput{查询向量、按块分批加载的键值张量、因果与注意力掩码。}
+\AlgoOutput{精确注意力加权值向量 $\vect{o}$。}
 \begin{myalgorithmic}[1]
-\State Set $\mathrm{valid}\gets\mathrm{false}$; exclude empty sets from maximum arithmetic
-\For{each key--value block in the finite input}
-  \State Compute valid positions and their scores
-  \If{the block contains at least one valid position}
-    \State Compute block state $(m_b,\ell_b,\vect{u}_b)$
+\State 令 $\mathrm{valid}\gets\mathrm{false}$
+\For{each 有限输入中的键值块}
+  \State 计算有效位置及其分数
+  \If{该块包含至少一个有效位置}
+    \State 计算局部块状态 $(m_b,\ell_b,\vect{u}_b)$
     \If{$\mathrm{valid}=\mathrm{false}$}
-      \State Set $(m,\ell,\vect{u})\gets(m_b,\ell_b,\vect{u}_b)$ and $\mathrm{valid}\gets\mathrm{true}$
+      \State 令 $(m,\ell,\vect{u})\gets(m_b,\ell_b,\vect{u}_b)$ 且 $\mathrm{valid}\gets\mathrm{true}$
     \Else
-      \State Merge the block state using Equation~\eqref{eq:kernel-merge}
+      \State 利用式\eqref{eq:kernel-merge}合并块状态
     \EndIf
   \EndIf
 \EndFor
 \If{$\mathrm{valid}=\mathrm{true}$}
   \State \Return $\frac{\vect{u}}{\ell}$
 \Else
-  \State Apply the all-masked-row behavior specified by the input contract
+  \State 执行输入契约规定的全掩码行行为
 \EndIf
 \end{myalgorithmic}
 \end{algorithm}
 
-\section{FlashAttention 与存储层次}
+\subsection{FlashAttention 的存储组织}
 
-显式实现通常先写出 $T_q\times T_k$ 分数，再读出求 Softmax，最后读取概率矩阵计算与 $\mat{V}$ 的乘积。若 $T_q=T_k=8192$，单头分数矩阵含67108864个元素；即使每元素仅2字节，也占128 MiB，32头则仅这一类矩阵已达4 GiB，尚未计批量和其他状态。
+标准注意力的显式实现通常先将完整的 $T_q\times T_k$ 注意力分数矩阵写回高带宽显存（HBM），再次读取后执行行 Softmax，最后将完整的注意力概率矩阵写入显存并读出与 $\mat{V}$ 相乘。当 $T_q=T_k=8192$ 时，单头浮点分数矩阵包含 $\num{67108864}$ 个元素；以半精度（FP16/BF16）存储即占用 \qty{128}{\mebi\byte}，32个注意力头将导致中间显存占用激增至 \qty{4}{\gibi\byte}。
 
-FlashAttention 将查询块、键值块及归一化状态安排在片上存储中，利用分块计算减少中间矩阵与高带宽显存之间的往返\autocite{dao2022flashattention}。FlashAttention 减少数据移动，稠密注意力的算术复杂度仍为 $\mat{O}(T_qT_kd_h)$。因果掩码可以跳过某些完全不可见块，但仍保留对应可见集合内的完整注意力。
+FlashAttention 通过切分查询、键与值矩阵，将分块运算与在线归一化状态完全驻留在片上共享内存（SRAM）中，消除了中间概率矩阵在显存与芯片核心间的频繁往返\autocite{dao2022flashattention}。FlashAttention 属于 IO 感知型（IO-Aware）算法优化，其稠密注意力的理论计算复杂度仍严格为 $\mathcal{O}(T_q T_k d_h)$。因果掩码仅在计算调度层跳过完全不可见的下三角分块，并未改变有效注意力覆盖范围内的计算等价性。
 
 \begin{figure}[htbp]
 \centering
@@ -127,19 +128,17 @@ FlashAttention 将查询块、键值块及归一化状态安排在片上存储�
 \draw[->] (hbm)--(tile);\draw[->] (tile)--(state);\draw[->] (state)--(out);
 \draw[->] (state.north) to[out=110,in=70,looseness=1.3] node[above,font=\small] {下一键块继续合并} (tile.north);
 \end{tikzpicture}
-\caption{分块注意力的数据移动。完整分数矩阵不必写回显存，但查询仍处理全部合法键。}
-\label{fig:kernel-tiling}
+\caption[分块注意力数据搬运流]{分块注意力数据搬运流。完整分数矩阵不必写回高带宽显存，查询仍通过分块在线归一化遍历全部合法键。}\label{fig:kernel-tiling}
 \end{figure}
 
 \subsection{块大小、并行度与反向重算}
 较大的块可以复用更多数据，却占用更多寄存器和片上存储，降低同时驻留的执行单元数；过小的块则增加读取和循环开销。因此块大小由头维、精度、设备资源和并行映射共同决定，最大块未必是最优块。
 
-表\ref{tab:rev-flashattention-evolution}梳理了 FlashAttention 算法与硬件协同设计的演进历程。从算子分块、循环排布到深层次的异步管线与硬件特化，注意力内核持续逼近现代加速器的理论计算极限。
+表\ref{tab:flashattention-evolution}梳理了 FlashAttention 算法与硬件协同设计的演进历程。从算子分块、循环排布到深层次的异步管线与硬件特化，注意力内核持续逼近现代加速器的理论计算极限。
 
 \begin{table}[htbp]
 \centering
-\caption{FlashAttention 算法与系统演进对比。}
-\label{tab:rev-flashattention-evolution}
+\caption{FlashAttention 算法演进对比}\label{tab:flashattention-evolution}
 \begin{tabularx}{\linewidth}{@{}lXXX@{}}
 \toprule
 特性维度 & FlashAttention-1 & FlashAttention-2 & FlashAttention-3 \\
@@ -162,77 +161,86 @@ Warp 并行划分 & 块内沿列划分（需共享内存中间交换） & 块内
 \end{align}
 这些关系解释为什么反向可逐块重新计算所需概率。实际实现还须处理掩码、Dropout和浮点累计；重算时使用的随机掩码必须与正向一致。
 
-\subsection{接口、后端和正确性条件}
-缩放点积注意力接口规定输入输出语义，具体后端由设备、形状、精度和支持条件选择。实际内核可通过后端选择信息与执行分析确认。采用优化路径时，掩码极性、非方形因果对齐、头分组、缩放因子和张量步幅均须保持一致。
+\subsection{注意力后端的兼容条件}
+缩放点积注意力（SDPA）的高层接口封装了统一的计算语义，但底层具体内核后端的派发取决于硬件架构、输入张量形状、数据类型及内存布局。切换至优化内核时，因果掩码对齐、多查询与分组查询头映射、缩放因子及内存步幅（Stride）连续性必须与规范实现严格一致。
 
-例如缓存解码的查询只覆盖最新位置，而键包含整个历史。把 $1\times T_k$ 因果掩码误按查询局部索引从零对齐，就只有第一个键可见。正确可见集合取决于查询的逻辑位置，矩阵左上角推断不出它。验证时应检查逻辑位置与实际可见集合。
+在增量解码阶段，单步查询长度为 $1$，而键值缓存覆盖长度为 $T_k$ 的历史前缀。若将 $1\times T_k$ 因果掩码按局部相对索引从零对齐，会导致仅首个历史键可见而后续历史键全部被错误屏蔽。因果掩码必须依据当前查询在序列中的全局逻辑位置 $T_k-1$ 展开可见性判定。后端集成测试须逐项核验逻辑时间戳与实际注意力可见集合的映射关系。
 
-\section{算子融合与执行图}
+\section{执行图优化}
 
-\term{算子融合}{Operator Fusion}{}把相邻运算放在同一执行内核中，减少中间张量写回和启动。以 $\vect{y}=\phi(\vect{x}\mat{W}+\vect{b})$ 为例，若矩阵乘法后写回 $\mat{Z}=\vect{x}\mat{W}$，偏置与激活再分别读写，额外流量与 $\mat{Z}$ 的元素数成正比。将偏置、激活作为矩阵乘法的尾部计算，可避免这些完整中间结果的显存往返。
+执行图优化通过消除中间临时张量的显存往返、减少内核启动频率并复用静态执行拓扑来降低端到端时延。算子融合重构指令流水线，图编译生成硬件特化机器码，图回放消除 CPU 侧的主机下发开销。
 
-融合也有边界：中间结果被多个分支使用时，重新计算可能比保存更贵；融合后寄存器压力过大可能使数据溢出到较慢存储；跨设备通信或跨线程全局归约常需要显式同步。融合收益取决于数据复用、寄存器压力与同步成本。
+\subsection{算子融合}
 
-\term{图编译}{Graph Compilation}{}将一段运算图转为特化执行程序；\term{执行图回放}{Execution Graph Replay}{}复用已记录的提交依赖，主要减少重复调度。两者属于不同技术：回放不必重新选择算子算法，编译也不保证所有动态控制流都能被捕获。
+\term{算子融合}{Operator Fusion}{}将多个相邻计算节点合并至同一个计算内核中执行，减少中间张量的显存读写与内核启动开销。以 $\vect{y}=\phi(\vect{x}\mat{W}+\vect{b})$ 为例，若矩阵乘法后将中间结果 $\mat{Z}=\vect{x}\mat{W}$ 完整写回显存，偏置加法与激活函数再分别发起全局内存读写，引入的显存访存量正比于 $\mat{Z}$ 的元素总数。将偏置相加与非线性激活作为矩阵乘法累加寄存器的尾部操作直接发射（Epilogue Fusion），中间张量完全驻留在片上寄存器中，消除了该部分显存带宽占用。
 
-当主机读取设备张量的值以决定分支时，可能引入同步并切断可捕获区域。应把数据依赖与元数据依赖分开分析。图捕获范围应保留任务要求的停止条件与可见性逻辑。
+算子融合受硬件物理资源的严格约束：当中间特征需被多个下游分支复用时，融合可能导致重复计算；融合算子若引入过多局部变量，会导致寄存器溢出（Register Spill）至局部显存，显著增加访存延迟；跨线程块的全局归约或跨卡通信需要显式硬件屏障，限制了融合边界的扩展。因此融合设计需综合权衡片上数据复用深度、寄存器压力与硬件同步开销。
+
+\subsection{图编译与执行回放}
+
+\term{图编译}{Graph Compilation}{}将动态计算图静态化为针对目标设备指令级优化的执行程序。\term{执行图回放}{Execution Graph Replay}{}（如 CUDA Graphs）预先捕获并固化 GPU 任务的内核拓扑与内存依赖，后续推理只需单次触发即可由硬件工作引擎完成全图下发，消除了每次前向由主机 CPU 发起频繁内核发射引入的调度气泡。
+
+若模型控制流中存在主机依据设备端张量值做动态分支判定的操作（如动态 Early-exit 或基于张量值的异常中断），主机与设备间的同步将打断图捕获链路。工程实现应严格分离数据依赖与元数据依赖，将循环展开与掩码长度控制收敛于静态张量维度内。
 
 \subsection{形状特化的摊销模型}
-设一次编译成本为 $C$，未编译每次耗时 $t_e$，编译后耗时 $t_c<t_e$，调用 $n$ 次，则净收益条件为
+设单次静态编译耗时为 $C$，动态解释执行单次耗时为 $t_e$，编译特化后单次执行耗时为 $t_c<t_e$。在调用频次为 $n$ 的推理服务中，图编译取得净时间收益的充要条件为
 \begin{equation}
  C+nt_c<nt_e\quad\Longleftrightarrow\quad n>\frac{C}{t_e-t_c}.
  \label{eq:kernel-amortize}
 \end{equation}
-若 $C=3$秒，每次由2毫秒降到1.5毫秒，需要超过6000次调用才能取得净时间收益。对每个形状分别编译时，应逐桶计算 $C_i,n_i$，冷门桶可能始终无法摊平。
+若 $C=\qty{3}{\second}$，单次执行耗时由 $t_e=\qty{2}{\milli\second}$ 降至 $t_c=\qty{1.5}{\milli\second}$，则至少需要 $n>\num{6000}$ 次调用才能摊平静态编译开销。在动态变长推理场景中，若对每个出现的新输入形状均发起即时特化编译，调用频次极低的冷门形状将无法回收编译成本，甚至引发显存膨胀与首字延迟劣化。
 
-\term{形状分桶}{Shape Bucketing}{}把实际形状映射到有限执行形状。设长度随机变量为 $T$，映射到桶上界 $b(T)$，填充位置的期望为 $\mathbb E[b(T)-T]$。对稠密注意力，额外计算更接近 $\mathbb E[b(T)^2-T^2]$，平均长度差估计不出它。桶过多增加编译和缓存，桶过少增加无效计算与预留内存。
+\term{形状分桶}{Shape Bucketing}{}将连续变化的输入长度离散化映射至一组预设的几何或算术边界桶。设输入序列长度随机变量为 $T$，映射至其所在的桶上界 $b(T)$，则平均填充无用词元数为 $\mathbb{E}[b(T)-T]$。对于稠密自注意力，填充引入的无效计算量正比于二阶矩 $\mathbb{E}[b(T)^2-T^2]$。分桶策略需要在编译缓存开销、预留显存碎片与填充算力损耗之间寻找权衡。
 
-\section{推测解码的精确性}
+\section{推测解码}
 
-\subsection{接受质量与残差质量}
-\term{推测解码}{Speculative Decoding}{}由较便宜的草稿过程提出候选，再由目标模型验证\autocite{leviathan2023speculative}。下面讨论保持目标采样分布的精确形式，贪心匹配规则属于另一套论证。
+\subsection{推测解码的分布保持}
+\term{推测解码}{Speculative Decoding}{}由计算成本较低的草稿模型提出前向候选，再由参数量更大的目标模型执行并行因果验证\autocite{leviathan2023speculative}。本节重点讨论保证输出序列与目标自回归采样分布完全同一的精确验证算法。
 
 \begin{assumption}[采样分布条件]
-$p$ 与 $q$ 定义在同一离散词元空间，均为归一化概率。候选确实按 $q$ 采样，计算的概率包括各自实际使用的温度、截断和约束。目标 $p$ 是希望保留的分布；$q$ 不必与 $p$ 使用相同采样参数。所有概率对应同一个已确认前缀。
+草稿分布 $q$ 与目标分布 $p$ 定义在同一离散词元空间 $\mathcal{V}$ 上，且满足全概率归一化。候选词元严格依条件分布 $q(\cdot\mid x_{<t})$ 独立采样，分布已包含温度、截断（Top-$k$/Top-$p$）等变换。草稿分布与目标分布基于相同的已确认历史前缀展开。
 \end{assumption}
 
-对候选 $x\sim q$，当 $q(x)>0$ 时以
+对于草稿提出的候选词元 $x\sim q$，当 $q(x)>0$ 时，定义其接受概率为
 \begin{equation}
- a(x)=\min\{1,\frac{p(x)}{q(x)}\}
+ a(x)=\min\left\{1,\frac{p(x)}{q(x)}\right\}.
 \end{equation}
-接受。$q(x)=0$ 的词元不会被提议，该比值对它没有定义。接受并输出 $x$ 的无条件质量为 $q(x)a(x)=\min(p(x),q(x))$。总接受率为
+候选词元 $x$ 被提议且被目标模型接受的联合概率质量为 $q(x)a(x)=\min(p(x),q(x))$。全词表总接受率为
 \begin{equation}
- A=\sum_x\min(p(x),q(x))
- =1-\frac12\sum_x|p(x)-q(x)|.
+ A=\sum_{x\in\mathcal{V}}\min(p(x),q(x))
+ =1-\frac{1}{2}\sum_{x\in\mathcal{V}}|p(x)-q(x)|=1-D_{\mathrm{TV}}(p,q).
  \label{eq:kernel-accept-tv}
 \end{equation}
-第二个等号由 $\min(a,b)=\frac{a+b-|a-b|}{2}$ 得到。因此接受率等于1减去两个分布的总变差距离。
+式\eqref{eq:kernel-accept-tv}表明，单步理论接受率等于 $1$ 减去目标分布与草稿分布的总变差距离（Total Variation Distance）。
 
-若拒绝，令 $Z=1-A$，从残差分布
+若候选词元未通过接受检验，定义单步拒绝概率为 $Z=1-A$。此时算法不丢弃当前步，而是从校正残差分布
 \begin{equation}
  r(x)=\frac{[p(x)-q(x)]_+}{Z}
  \label{eq:kernel-residual}
 \end{equation}
-采样，其中 $[u]_+=\max(u,0)$。由于两分布和均为1，正差之和恰为 $Z$，残差归一化成立。最终输出概率为
+中独立采样替代词元，其中 $[u]_+=\max(u,0)$。由 $\sum_x p(x)=\sum_x q(x)=1$ 可知正差累加和严格为 $\sum_x [p(x)-q(x)]_+=Z$，因此残差分布 $r(x)$ 满足合法概率分布的非负性与归一化条件。该机制下的实际输出概率为
 \begin{equation}
- \Pr(\mathrm{output}=x)=\min(p(x),q(x))+Zr(x)=p(x).
+ \Pr(\mathrm{output}=x)=q(x)a(x)+Z r(x)=\min(p(x),q(x))+[p(x)-q(x)]_+=p(x).
  \label{eq:kernel-exact-speculation}
 \end{equation}
-若 $Z=0$，拒绝事件概率为零，此时的残差构造会除以零。目标有质量而草稿为零的位置，可通过拒绝后的残差获得，因此草稿不必覆盖目标的完整支持集。
+式\eqref{eq:kernel-exact-speculation}证明了输出分布对目标分布的严格精确保持。\keyconcept{推测解码通过接受概率 $a(x)=\min(1, \frac{p(x)}{q(x)})$ 与正残差重采样分布 $r(x)=\frac{[p(x)-q(x)]_+}{Z}$，在数学上严格精确保持目标自回归采样分布。}当 $Z=0$ 时，草稿分布与目标分布完全一致，候选必定被全额接受。对于草稿概率为零但目标概率非零的词元（即 $q(x)=0$ 且 $p(x)>0$），其在残差分布中的分子保留完整的 $p(x)$，在发生拒绝时可被按比例重采样恢复。因此推测解码不要求草稿分布必须具备全词表的全正支撑集。
 
 \begin{example}
+设词表大小为 $3$，目标概率分布为 $p=(0.5,0.3,0.2)$，草稿分布为 $q=(0.2,0.5,0.3)$。
+三个词元的逐项接受概率为 $a=(\min(1,\frac{0.5}{0.2}),\min(1,\frac{0.3}{0.5}),\min(1,\frac{0.2}{0.3}))=(1,0.6,\frac{2}{3})$。
+接受分支的联合概率质量为 $(0.2\times 1,0.5\times 0.6,0.3\times \frac{2}{3})=(0.2,0.3,0.2)$，总接受率 $A=0.2+0.3+0.2=0.7$。
+拒绝概率 $Z=1-0.7=0.3$。正残差项 $[p-q]_+=(0.3,0,0)$，归一化残差分布为 $r=(1,0,0)$。
+拒绝发生时必定采样输出第一个词元，提供修正质量 $0.3\times (1,0,0)=(0.3,0,0)$。
+将接受分支与修正分支相加：$(0.2,0.3,0.2)+(0.3,0,0)=(0.5,0.3,0.2)=p$，精确还原目标分布。
 
-
-设 $p=(0.5,0.3,0.2)$、$q=(0.2,0.5,0.3)$。接受概率为 $(1,0.6,\frac{2}{3})$，接受路径质量为 $(0.2,0.3,0.2)$，总接受率0.7。拒绝概率0.3，正残差为 $(0.3,0,0)$，因此拒绝后必定输出第一个词元。合并得到 $(0.5,0.3,0.2)$，正好是目标分布。
-
-若错误地在拒绝后直接从 $p$ 重采样，最终质量为 $(0.2,0.3,0.2)+0.3p=(0.35,0.39,0.26)$，已改变目标。拒绝分支的残差分布是恢复目标概率的必要环节。
+若在发生拒绝后错误地直接重新从\emph{全目标分布} $p$ 采样，而非从\emph{残差分布} $r$ 采样，合并后的实际输出概率为 $(0.2,0.3,0.2)+0.3\times(0.5,0.3,0.2)=(0.35,0.39,0.26)\ne p$，破坏了原始自回归生成分布。
 \end{example}
 
-\section{多词元验证与缓存事务}
+\subsection{候选验证的执行过程}
 
-草稿依次提出 $k$ 个候选 $x_1,\ldots,x_k$。目标模型利用因果前向，一次计算这些候选对应前缀下的条件分布，以及全部接受之后的下一分布。验证必须按候选顺序进行：仅在前面候选全部接受时，当前目标条件才对应已确认前缀。
+草稿模型在已确认前缀后自回归串行生成 $k$ 个候选词元 $x_1,\ldots,x_k$。目标模型将这 $k$ 个候选词元拼接至输入，利用因果掩码执行单次批量前向传播，同时获得这 $k$ 个词元各自上下文下的目标条件分布 $p(x_i\mid x_{<i})$ 以及全部候选接受后的第 $k+1$ 步分布。
 
-第一次拒绝发生在 $j$ 时，保留 $x_{<j}$，按该位置残差采样修正词元，并丢弃 $x_{>j}$。如果全部接受，则可从目标在完整草稿前缀后的分布再采样一个词元。逐位置应用式\eqref{eq:kernel-exact-speculation}并对已确认前缀归纳，可得最终序列仍服从目标自回归分布。
+验证过程必须沿时间步由前向后严格按序判别：仅当 $x_1,\ldots,x_{j-1}$ 全部通过接受测试时，$x_j$ 的验证环境才与目标模型的自回归因果前缀严格等价。若首个拒绝发生在位置 $j$，则保留已确认前缀 $x_{<j}$，在位置 $j$ 依残差分布 $r_j(x)$ 采样生成修正词元，并丢弃 $x_{>j}$。若 $k$ 个候选全部被接受，则直接从第 $k+1$ 步目标分布中额外采样一个词元。逐位置应用式\eqref{eq:kernel-exact-speculation}并通过数学归纳法，保证了推测解码生成的任意长度序列严格服从目标大模型的自回归联合分布。
 
 \begin{figure}[htbp]
 \centering
@@ -244,50 +252,50 @@ $p$ 与 $q$ 定义在同一离散词元空间，均为归一化概率。候选�
 \node[box,left=of commit] (rollback) {裁剪未接受缓存\\更新逻辑长度};
 \draw[->] (prefix)--(draft);\draw[->] (draft)--(verify);\draw[->] (verify)--(commit);\draw[->] (commit)--(rollback);\draw[->] (rollback)--(prefix);
 \end{tikzpicture}
-\caption{推测解码的提交边界。草稿产生的状态是暂存状态，拒绝后的后缀随即失效，不再参与注意力。}
-\label{fig:kernel-speculation}
+\caption[推测解码提议与提交边界]{推测解码提议与提交边界。草稿模型生成的键值状态为暂存状态，验证拒绝后的后缀随即失效且不再参与注意力计算。}\label{fig:kernel-speculation}
 \end{figure}
 
-生成的修正词元尚未必被目标模型前向处理。因此实现需区分“已输出序列长度”和“已物化KV的长度”，下一次调用从未物化的后缀接续。草稿模型也要恢复到相同已确认前缀。简单删除输出文本却保留被拒绝词元的KV，会破坏下一步条件概率。
-
-终止词元一旦接受或由修正分支生成，应立即结束请求，不再附加奖励词元。长度预算也应裁剪本轮可提交量。随机数流不同可以导致同一种子生成不同具体样本；算法保持目标分布，具体样本随随机数流变化。\footnote{确定性贪心解码可采用与目标最大概率词元逐项比较的专门规则，但那是在复现贪心路径，与随机目标分布的保持证明无关。}
+在显存管理层面，拒绝位置产生的修正词元并未经历目标模型的前向特征提取。因此系统须严格解耦“逻辑输出序列长度”与“显存物化 KV 长度”：未被目标模型前向计算的词元，其键值状态留待下一轮首步前向时统一物化。若仅在应用层回滚文本而未在底层物理缓存中裁剪被拒绝后缀的键值状态，残留的无效键值将在下一轮计算中污染因果注意力。
 
 \begin{algorithm}[保持目标分布的推测解码]
-\AlgoInput{目标 $p$、草稿 $q$、已确认前缀、候选预算 $k$、停止规则。}
-\AlgoOutput{目标分布下的新词元。}
+\AlgoInput{目标模型 $p$、草稿模型 $q$、已确认前缀 $x_{\le t}$、每轮推测步数 $k$、终止条件。}
+\AlgoOutput{符合目标模型分布的新增生成词元。}
 \begin{enumerate}
-\item 保存草稿与目标的已确认缓存边界。草稿自回归采样不超过 $k$ 个候选，并保存或能够精确重建每步完整的条件提议分布 $q_i(\cdot)$。仅保存抽中词元的概率不足以构造拒绝后的残差分布；等价实现必须提供精确残差采样所需的分布表示。
-\item 目标因果验证候选，取得每个候选前缀下的实际目标概率及全部接受后的分布。
-\item 按顺序比较独立均匀随机数与接受概率；接受则提交该候选，遇停止标记立即结束。
-\item 第一次拒绝时，按式\eqref{eq:kernel-residual}采样修正词元，舍弃后续候选及其缓存，结束本轮。
-\item 若候选全部接受且尚未达到停止或长度条件，从额外目标分布采样一个词元。
-\item 同步两套逻辑前缀，标记尚未物化的KV后缀；继续下一轮或返回完成结果。
+\item 记录当前已确认前缀的 KV 缓存边界。草稿模型自回归生成 $k$ 个候选词元 $x_{1},\ldots,x_{k}$，并保存每一步的完整条件提议分布 $q_i(\cdot)$。
+\item 目标模型将 $k$ 个候选一次性并行前向，获取各候选条件分布 $p_1,\ldots,p_k$ 及后续分布 $p_{k+1}$。
+\item 按序遍历 $i=1,\ldots,k$：从均匀分布 $u\sim\mathcal{U}(0,1)$ 采样。若 $u\le a(x_i)$，接受并提交 $x_i$；若遇终止标记则提前退出。
+\item 若在第 $j$ 步发生首次拒绝，按残差分布式\eqref{eq:kernel-residual}采样修正词元 $x'_j$ 并提交；丢弃后续未接受候选，回滚目标模型与草稿模型在位置 $j$ 之后的物理缓存。
+\item 若 $k$ 个候选全部被接受且未触发终止，从 $p_{k+1}$ 采样一个新词元并提交。
+\item 更新逻辑序列指针与物理缓存水位，进入下一轮迭代。
 \end{enumerate}
 \end{algorithm}
 
-\section{推测收益与正确性边界}
+\subsection{推测解码的加速条件}
 
-设一轮中每个候选在之前均已接受的条件下，接受概率都为常数 $\alpha$，暂不考虑提前终止。至少提交 $i+1$ 个词元需要前 $i$ 个候选全部接受，因此一轮提交量 $N$ 的期望为
+设一轮中每个候选词元在前面均被接受的前提下，条件接受概率为常数 $\alpha$。提交至少 $i+1$ 个有效词元要求前 $i$ 个词元均被接受，因此单轮平均提交词元数 $N$ 的数学期望为
 \begin{equation}
  \mathbb E[N]=\sum_{i=0}^k\Pr(N\ge i+1)
  =\sum_{i=0}^k\alpha^i
  =\frac{1-\alpha^{k+1}}{1-\alpha},
  \label{eq:kernel-spec-speed}
 \end{equation}
-$\alpha=1$ 时取极限 $k+1$。条件接受率不恒定时，应使用各级生存概率；把总体平均接受率直接代入幂次会得到不同的数。
+当 $\alpha=1$ 时式\eqref{eq:kernel-spec-speed}的极限值为 $k+1$。若各步接受概率随推测深度衰减，应代入各级联合生存概率计算；直接用平均接受率替代各阶幂次会高估期望提交量。
 
-设草稿每步代价 $c_d$，目标验证一轮代价 $c_v(k)$，缓存和采样管理代价 $c_m$，普通目标单步代价 $c_t$。近似加速比为
+设草稿模型单步前向耗时为 $c_d$，目标模型单次验证 $k$ 个词元的并行前向耗时为 $c_v(k)$，缓存回滚与采样控制开销为 $c_m$，目标模型基准单步自回归耗时为 $c_t$。推测解码的实际端到端加速比为
 \begin{equation}
- S\approx\frac{c_t\mathbb E[N]}{kc_d+c_v(k)+c_m}.
+ S\approx\frac{c_t\mathbb E[N]}{k c_d+c_v(k)+c_m}.
 \end{equation}
-取 $k=3,\alpha=0.8$，期望提交量为2.952。若 $c_t=10$毫秒、$c_d=1$毫秒、$c_v=12$毫秒、$c_m=1$毫秒，则近似加速比为 $\frac{29.52}{16}=1.845$。若验证代价增到30毫秒，则降到 $\frac{29.52}{34}<1$。
+以 $k=3,\alpha=0.8$ 为例，单轮期望产出词元数为 $\mathbb{E}[N]=2.952$。设 $c_t=\qty{10}{\milli\second}, c_d=\qty{1}{\milli\second}, c_v(3)=\qty{12}{\milli\second}, c_m=\qty{1}{\milli\second}$，端到端加速比为
+\begin{equation*}
+ S\approx\frac{10\times 2.952}{3\times 1+12+1}=\frac{29.52}{16}\approx 1.85.
+\end{equation*}
+若由于模型架构或批量过大导致验证耗时上升至 $c_v(3)=\qty{30}{\milli\second}$，则加速比降至 $\frac{29.52}{34}\approx 0.87<1$，推测解码反而劣化了系统性能。因此推测加速成立的前提是：草稿前向与目标验证的合计开销显著低于目标模型串行解码相同数量词元的开销。
 
-表\ref{tab:rev-speculative-decoding}总结了推测解码领域的主流范式与技术架构。不同范式在候选生成的计算来源、内存占用与接受率之间做出不同的权衡。
+表\ref{tab:speculative-decoding}比较了几种推测解码方法的草稿来源、额外存储和训练需求。选择方法时还需在目标任务上测量接受率及验证成本。
 
 \begin{table}[htbp]
 \centering
-\caption{推测解码主要技术范式对比。}
-\label{tab:rev-speculative-decoding}
+\caption{推测解码主要技术范式对比}\label{tab:speculative-decoding}
 \begin{tabularx}{\linewidth}{@{}lXXXX@{}}
 \toprule
 范式分类 & 代表方案 & 草稿生成机制 & 额外存储与训练开销 & 适用场景与限制 \\
@@ -300,13 +308,13 @@ $\alpha=1$ 时取极限 $k+1$。条件接受率不恒定时，应使用各级生
 \end{tabularx}
 \end{table}
 
-\term{滑动窗口注意力}{Sliding-Window Attention}{}只保留规定范围内的可见键。对原本全注意力的模型，删除窗口外质量通常改变输出，即使分块计算本身完全精确。若被删除的原注意力概率质量为 $\delta$，所有值向量范数不超过 $M$，保留部分重新归一化后输出 $\vect{o}'$，则当 $\delta<1$ 时
+\term{滑动窗口注意力}{Sliding-Window Attention}{}通过将键值可见范围截断至最近的 $W$ 个词元来降低计算与显存占用。对于未在训练阶段引入窗口因果掩码的全注意力模型，运行时截断窗口之外的注意力质量将导致输出表征偏离真实值。设被截断位置的原注意力权重和为 $\delta$，所有值向量的二范数满足 $\|v_j\|_2\le M$。令保留区域重新归一化后的输出为 $\vect{o}'$，在 $\delta<1$ 的条件下满足误差上界：
 \begin{equation}
- \|\vect{o}-\vect{o}'\|\le2\delta M.
+ \|\vect{o}-\vect{o}'\|_2\le 2\delta M.
 \end{equation}
-证明是将原输出写成 $(1-\delta)o'+\delta o_{\mathrm{drop}}$，再用三角不等式。该上界需要知道被删除的质量，“距离较远”推不出 $\delta$ 很小。原生窗口模型按照其既定掩码执行，则是在保留该模型自身的目标。
+该上界由将原输出分解为 $(1-\delta)\vect{o}'+\delta\vect{o}_{\mathrm{drop}}$ 并结合三角不等式推导得出。表征偏离幅度完全取决于被丢弃位置的注意力概率质量 $\delta$；仅当远距离历史的注意力权重衰减至极小值时，截断引入的表征误差才受控。
 
-最终正确性需要区分算子数值容差、缓存逻辑一致、采样分布与任务质量。随机解码通过分布推导与小词表概率算例检查采样规则。性能记录则区分首次编译、稳态执行、首词元、后续词元以及排队边界，以免把局部内核收益当成端到端收益。
+推理优化的系统验证需在不同抽象层级设立正交的标准：算子级核验单元测试中的绝对/相对数值误差容限（ATol/RTol）；状态级核验增量解码与全量前向的键值缓存一致性；算法级核验推测解码输出概率分布的经验频率与目标模型理论分布的拟合度；服务级核验首次词元延迟（TTFT）、词元生成吞吐（TPS）以及并发排队下的长尾时延（P99）。区分冷启动特化编译与稳态执行流水线，避免以微基准内核峰值替代端到端工程表现。
 
 
 

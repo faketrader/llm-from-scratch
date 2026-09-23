@@ -2,11 +2,11 @@
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
-\bookappendix{张量形状与常用运算速查}{app:tensor-shapes}{1}
+\bookappendix{张量运算速查}{app:tensor-shapes}{1}
 
-本附录集中列出正文中反复出现的张量形状。它用于核对轴的语义、矩阵乘法的公共轴、广播方向以及重排前后的元素对应关系；机制推导见\bookxref{ch:rev-tensors}、\bookxref{ch:attention}和\bookxref{ch:rev-transformer}。除非局部另行说明，序列张量采用 $[B,T,d]$，图像张量采用 $[B,C,H_{\mathrm{img}},W_{\mathrm{img}}]$，方括号按轴顺序给出逻辑形状。
+本附录集中列出正文中反复出现的张量形状。它用于核对轴的语义、矩阵乘法的公共轴、广播方向以及重排前后的元素对应关系；机制推导见\bookxref{ch:tensors}、\bookxref{ch:attention}和\bookxref{ch:transformer}。除非局部另行说明，序列张量采用 $[B,T,d]$，图像张量采用 $[B,C,H_{\mathrm{img}},W_{\mathrm{img}}]$，方括号按轴顺序给出逻辑形状。
 
-\section{通用轴与核对规则}
+\section{张量形状约定}
 
 \begin{longtable}{@{}p{.15\linewidth}p{.29\linewidth}p{.47\linewidth}@{}}
 \caption{常见张量轴的语义}\label{tab:appendix-shape-axes}\\
@@ -28,7 +28,7 @@ $N,F$ & 图像补丁数、每补丁展开宽度 & $N$ 由空间网格决定，$F
 \bottomrule
 \end{longtable}
 
-核对形状时可以依次执行以下四步：先给每个轴写出业务语义；再标出矩阵乘法中被归约的公共轴；随后检查广播只复制预期的轴；最后确认转置或重排没有把批量、位置、头和特征轴混在一起。元素总数相同只说明某次重塑在容量上可行，并不说明语义正确。
+张量形状由各轴的长度及其语义共同确定。矩阵乘法要求被归约的公共轴相容，广播规定参数沿哪些轴共享，转置与重排则改变元素的索引关系。重塑必须保持元素总数，同时满足批量、位置、头和特征等轴的对应关系。
 
 \section{基础运算}
 
@@ -38,7 +38,7 @@ $N,F$ & 图像补丁数、每补丁展开宽度 & $N$ 由空间网格决定，$F
 \begin{tabularx}{\linewidth}{p{.23\linewidth}p{.31\linewidth}X}
 \toprule
 运算 & 输入与参数 & 输出及核对点\\\midrule
-词嵌入查表 & 编号 $[B,T]$，嵌入表 $[V,d]$ & $[B,T,d]$；查表不等于对 $Vd$ 参数执行一次稠密矩阵乘法。\\
+词嵌入查表 & 编号 $[B,T]$，嵌入表 $[V,d]$ & $[B,T,d]$；按词元编号读取对应的嵌入行。\\
 共享线性层 & $\mat X:[B,T,a]$，$\mat W:[a,b]$，$\vect b:[b]$ & $\mat X\mat W+\vect b:[B,T,b]$；线性层只变换最后一轴。\\
 逐位置归一化 & $\mat X:[B,T,d]$，缩放参数 $[d]$ & $[B,T,d]$；均值或均方通常沿最后一轴计算。\\
 残差相加 & 两个张量均为 $[B,T,d]$ & $[B,T,d]$；形状相同之外，还要确认两个位置轴一一对应。\\
@@ -53,7 +53,7 @@ $N,F$ & 图像补丁数、每补丁展开宽度 & $N$ 由空间网格决定，$F
 
 \section{注意力形状}
 
-\subsection{单头与矩形注意力}
+\subsection{单头注意力}
 
 设查询、记忆输入分别为
 \begin{equation}
@@ -100,7 +100,7 @@ $N,F$ & 图像补丁数、每补丁展开宽度 & $N$ 由空间网格决定，$F
 \end{tabularx}
 \end{table}
 
-\section{Transformer 块与常见扩展}
+\section{Transformer 模块}
 
 \subsection{前馈网络}
 
@@ -137,9 +137,9 @@ SwiGLU 一类门控前馈使用两条上投影：
 
 路由器输入为 $[B,T,d]$，专家 logits 为 $[B,T,E]$，Top-$k$ 选择结果的专家编号与权重均为 $[B,T,k]$。把有效词元轴合并为 $N_{\mathrm{tok}}$ 后，每个词元复制或分派到 $k$ 个专家，分派条目总数为 $kN_{\mathrm{tok}}$；按专家排序后，每个专家接收的条目数可以不同。
 
-每个门控专家把 $[n_e,d]$ 映射为 $[n_e,d_f]$ 再返回 $[n_e,d]$，其中 $n_e$ 是该专家实际接收的条目数。专家输出按原词元索引聚合回 $[B,T,d]$。只检查最终形状无法发现词元排列错误，还要验证分派索引、专家权重和逆置换彼此一致。容量与路由机制见\bookxref{ch:rev-moe}。
+每个门控专家把 $[n_e,d]$ 映射为 $[n_e,d_f]$ 再返回 $[n_e,d]$，其中 $n_e$ 是该专家实际接收的条目数。专家输出按原词元索引聚合回 $[B,T,d]$。只检查最终形状无法发现词元排列错误，还要验证分派索引、专家权重和逆置换彼此一致。容量与路由机制见\bookxref{ch:moe}。
 
-\subsection{视觉补丁与多模态序列}
+\subsection{视觉输入的序列化}
 
 对图像 $[B,C,H_{\mathrm{img}},W_{\mathrm{img}}]$，无重叠补丁大小为 $P_h\times P_w$ 时，
 \begin{equation}
@@ -151,17 +151,17 @@ SwiGLU 一类门控前馈使用两条上投影：
 
 多模态模型把视觉表示接入语言模型前，投影后的最后一轴必须匹配语言隐藏宽度 $d$。拼接发生在序列轴时，$[B,T_{\mathrm{text}},d]$ 与 $[B,T_{\mathrm{vision}},d]$ 得到 $[B,T_{\mathrm{text}}+T_{\mathrm{vision}},d]$；位置编号、掩码和标签屏蔽也必须扩展到同一组合序列。
 
-\section{形状故障的最短检查表}
+\section{张量形状错误的诊断}
 
 \begin{enumerate}
- \item 为每个轴写出名称，不只写尺寸；特别区分批量、位置、头、专家与特征。
+ \item 轴的名称与尺寸共同标识其含义，需区分批量、位置、头、专家与特征。
  \item 对每次矩阵乘法标出被归约的轴，确认两侧长度和语义都一致。
  \item 对每次 Softmax 写明归一化轴，并检查全屏蔽行、填充位置和无效查询。
  \item 对每次广播说明哪些轴共享参数，避免合法广播掩盖错误的共享关系。
  \item 对每次 \texttt{reshape}、\texttt{view} 或展平，先确认轴已按目标顺序排列；转置与重塑不能互相替代。
  \item 对拼接写明拼接轴；在特征轴拼接多头，在序列轴拼接模态或上下文片段。
  \item 对缓存记录追加轴、绝对位置和有效长度；物理块布局可以变化，逻辑位置关系必须保持。
- \item 最后检查同形张量是否具有相同语义。残差、损失和逐元素门控都要求元素一一对应，而不只是形状相同。
+ \item 残差、损失和逐元素门控要求参与运算的元素在位置与语义上一一对应。
 \end{enumerate}
 
 \chapterreferences

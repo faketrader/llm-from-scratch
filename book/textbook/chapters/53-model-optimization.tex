@@ -7,9 +7,9 @@
 
 模型优化围绕质量、容量和执行成本组织四类方法：量化调整数值表示，剪枝选择保留的结构，低秩分解用矩阵因子形成近似，蒸馏把教师行为转移给学生。每种方法都需要说明近似对象、误差目标、训练或校准条件，以及目标硬件上的执行方式。
 
-量化、剪枝、低秩分解与蒸馏可分别使用，也可结合恢复训练形成组合方案。知识蒸馏只有在学生结构或表示更省资源时才产生压缩收益；参数高效微调中的 LoRA 学习低秩更新，低秩压缩则以因子替换原矩阵。
+量化、剪枝、低秩分解与蒸馏可分别使用，也可结合恢复训练形成组合方案。知识蒸馏只有在学生结构或表示更省资源时才产生压缩收益；参数高效微调中的 LoRA \emph{学习低秩更新}，低秩压缩则\emph{以因子替换原矩阵}。
 
-\section{压缩对象与误差预算}
+\section{模型压缩的目标}
 
 \begin{assumption}[局部近似的边界]
 分析线性层时采用列向量约定 $\vect{y}=\mat{W}\vect{x}+\vect{b}$，其中 $\mat{W}\in\mathbb R^{m\times n}$。偏置若未说明则保持不变。剪枝敏感度以可微损失的局部展开为依据，二阶结论不自动适用于大幅参数变动。低秩最优性针对明确的矩阵范数或校准输入分布。蒸馏教师在学生更新期间冻结，师生输出类别及监督位置已对齐。
@@ -17,9 +17,8 @@
 
 \begin{table}[htbp]
 \centering
-\caption{模型压缩与优化的基本符号。}
-\label{tab:rev-compress-symbols}
-\begin{tabularx}{\linewidth}{@{}lX@{}}
+\caption{模型压缩与优化基本符号}\label{tab:compress-symbols}
+\begin{tabular}{ll}
 \toprule
 符号 & 含义与形状\\
 \midrule
@@ -33,12 +32,12 @@ $z_T,z_S,C,\tau$ & 教师和学生的 $C$ 维 logits、类别数与正温度。\
 $p_T^\tau,p_S^\tau,\lambda$ & 温度分布与硬软目标混合系数，$0\leq\lambda\leq1$。\\
 $\mat{H}_T,\mat{H}_S,\mat{P}_h$ & 展平有效位置后的师生表示与对齐投影，形状为 $N_t\times d_T$、$N_t\times d_S$、$d_S\times d_T$。\\
 \bottomrule
-\end{tabularx}
+\end{tabular}
 \end{table}
 
-\term{模型压缩}{Model Compression}{}可以减少权重容量、计算次数、数据搬运或特定结构规模。这些目标各自独立。\term{知识蒸馏}{Knowledge Distillation}{KD}首先是一种监督转移方法，只有学生的实际结构或表示更省资源时才形成压缩。混合专家架构的稀疏激活属于另一回事：它可能同时增大总参数量。
+\term{模型压缩}{Model Compression}{}旨在降低参数存储容量、浮点计算量（FLOPs）、显存带宽搬运需求或物理拓扑规模。不同优化范式作用于计算图的不同层级：\term{知识蒸馏}{Knowledge Distillation}{KD}本质为跨架构的归纳偏置与监督转移技术，仅在学生模型参数量或计算拓扑收敛于更小规格时体现为压缩收益；混合专家（MoE）架构虽然单步解码仅激活稀疏子网络，但其总参数量通常远超同等激活容量的稠密基线，属于条件计算机制而非严格物理压缩。
 
-比较方案时，应固定原模型、任务、输入长度分布、批量、输出质量要求与目标设备。局部误差、任务指标和系统指标分别测量：矩阵 Frobenius 误差描述数值近似，任务正确率描述行为，峰值内存和延迟描述执行成本。三类指标共同评价压缩方案。
+评测模型压缩方案时，须固定基准模型、评测任务集、输入输出长度分布、并发批量及目标硬件环境。系统评测应建立多维度指标矩阵：矩阵 Frobenius 范数误差度量局部算子近似精度，下游任务精度反映端到端语义保持能力，显存峰值与生成时延则表征物理硬件上的执行收益。三者相互制约，构成了模型压缩的完整评估基准。
 
 \section{量化}
 \subsection{量化对象与基本符号}
@@ -50,9 +49,8 @@ $\mat{H}_T,\mat{H}_S,\mat{P}_h$ & 展平有效位置后的师生表示与对齐�
 
 \begin{table}[htbp]
 \centering
-\caption{主要符号。矩阵乘法采用列向量输入约定。}
-\label{tab:model-optimization-symbols}
-\begin{tabularx}{\linewidth}{@{}lX@{}}
+\caption[模型量化核心符号与约定]{模型量化核心符号与约定。矩阵乘法采用列向量输入约定。}\label{tab:model-optimization-symbols}
+\begin{tabular}{ll}
 \toprule
 符号 & 含义\\
 \midrule
@@ -65,25 +63,27 @@ $\mat{E},\mat{C},\mat{H}$ & 权重误差、输入二阶矩、局部重建 Hessia
 $\mat{D}$ & 正对角通道缩放矩阵，$d_i\times d_i$\\
 $g,b$ & 每组元素数与码值位宽\\
 \bottomrule
-\end{tabularx}
+\end{tabular}
 \end{table}
 
 \subsubsection{量化编码和恢复}
 \term{仿射量化}{Affine Quantization}{}采用
-\begin{equation}
-q=\operatorname{clip}\!\left(\operatorname{round}(\frac{x}{s})+z,q_{\min},q_{\max}\right),
-\qquad \widehat x=s(q-z),\quad s>0.
-\label{eq:opt-affine}
+\begin{equation}\label{eq:opt-affine}
+\begin{aligned}
+ q &= \operatorname{clip}\!\left(\operatorname{round}(\frac{x}{s})+z,q_{\min},q_{\max}\right), \\
+ \widehat x &= s(q-z), \qquad (s>0).
+\end{aligned}
 \end{equation}
 其中\term{量化尺度}{Quantization Scale}{} $s$ 决定相邻可恢复值的间距，\term{零点}{Zero Point}{} $z$ 是实数零对应的整数码。要求 $z$ 是编码范围内的整数，就可以精确恢复零；这对于填充、稀疏值和某些算子的零语义很重要。\term{反量化}{Dequantization}{}返回一个近似实数，其精度由量化映射决定。整数推理的此类表示与算术关系见 Jacob 等人的研究\cite{jacob2018integerquantization}。
 
 对希望覆盖的区间 $[a,b]$，先扩展为 $a'=\min(a,0)$、$b'=\max(b,0)$。若 $a'<b'$，一种常见初始化是
-\begin{equation}
-s=\frac{b'-a'}{q_{\max}-q_{\min}},\qquad
-z=\operatorname{clip}\!\left(\operatorname{round}(q_{\min}-\frac{a'}{s}),q_{\min},q_{\max}\right).
-\label{eq:opt-parameters}
+\begin{equation}\label{eq:opt-parameters}
+\begin{aligned}
+ s &= \frac{b'-a'}{q_{\max}-q_{\min}}, \\
+ z &= \operatorname{clip}\!\left(\operatorname{round}(q_{\min}-\frac{a'}{s}),q_{\min},q_{\max}\right).
+\end{aligned}
 \end{equation}
-由于 $z$ 被取整，真正的恢复端点是 $\ell=s(q_{\min}-z)$、$u=s(q_{\max}-z)$，不一定恰好为 $a',b'$。端点调整和舍入规则应共同写入协议；用理想区间证明误差、再用另一组实际端点执行，两者得出的结论不一致。
+由于 $z$ 被取整，实际恢复端点是 $\ell=s(q_{\min}-z)$、$u=s(q_{\max}-z)$，不一定恰好为 $a',b'$。端点调整和舍入规则应共同写入协议；用理想区间证明误差、再用另一组实际端点执行，两者得出的结论不一致。
 
 全零张量需要显式约定，例如取任意固定正 $s$、合法 $z$，全部编码为 $z$。令 $s=0$ 再计算 $\frac{x}{s}$ 会得到未定义结果。非零常量在扩展区间包含零后不再是零宽区间；若采用其他常量特例，也必须保证编码与恢复一致。
 
@@ -92,13 +92,13 @@ z=\operatorname{clip}\!\left(\operatorname{round}(q_{\min}-\frac{a'}{s}),q_{\min
 
 \term{最近舍入}{Round to Nearest}{RTN}在等距离点需要平局规则，例如取偶数。向零截断会产生不同偏差，最近舍入的结论对它并不成立。除非特别说明，本章采用最近舍入，数值例题避免依赖未声明的平局选择。
 
-\subsection{舍入、截断与饱和误差}
+\subsection{量化误差}
 
 \begin{assumption}[均匀量化的误差边界]
 $s>0$、$z\in\mathbb Z$ 固定，码值是连续整数区间，最近舍入后执行范围截断。计算暂视为精确实数运算，忽略尺度本身的浮点舍入。
 \end{assumption}
 
-\subsubsection{两类误差的分解}
+\subsubsection{舍入与饱和误差分解}
 当 $x\in[\ell,u]$ 时，其最近格点距离至多为半个步长，因此
 \begin{equation}
 |\widehat x-x|\le \frac{s}{2}.
@@ -132,8 +132,7 @@ $s>0$、$z\in\mathbb Z$ 固定，码值是连续整数区间，最近舍入后�
 取三比特无符号码 $q\in\{0,\ldots,7\}$，$s=0.5,z=2$，实际恢复范围为 $[-1,2.5]$。对输入 $(-1.2,-0.6,0,0.7,2.8)$，编码、恢复与误差见表\ref{tab:model-optimization-affine-example}。
 \begin{table}[htbp]
 \centering
-\caption{给定尺度与零点的手工编码结果，误差定义为 $\widehat x-x$。}
-\label{tab:model-optimization-affine-example}
+\caption[仿射量化编码与误差示例]{仿射量化编码与误差示例。给定尺度与零点的手工编码结果，重建误差定义为 $\widehat x-x$。}\label{tab:model-optimization-affine-example}
 \begin{tabular}{rrrrr}
 \toprule
 $x$ & $\operatorname{round}(\frac{x}{s})+z$ & $q$ & $\widehat x$ & 误差\\
@@ -163,12 +162,11 @@ $2.8$ & $8$ & $7$ & $2.5$ & $-0.3$\\
 \draw[->](2.8,.7)--(2.5,.12);\node[above]at(2.8,.7){$2.8$};
 \draw[<->](1,-.8)--(1.5,-.8)node[midway,below]{$s=0.5$};
 \end{tikzpicture}
-\caption{范围内映射到最近格点，范围外映射到端点。端点外的误差随输入距离增长。}
-\label{fig:opt-grid}
+\caption[均匀量化格点映射函数]{均匀量化格点映射函数。动态范围内数值映射到最近格点，范围外截断至端点，端点外的截断误差随输入偏离距离线性增长。}\label{fig:opt-grid}
 \end{figure}
 \end{example}
 
-\subsection{粒度与校准分布}
+\subsection{量化校准}
 
 \subsubsection{尺度共享范围}
 \term{逐张量量化}{Per-Tensor Quantization}{}为整个张量使用同一尺度。\term{逐通道量化}{Per-Channel Quantization}{}允许每个通道独立选择尺度。对 $\mat{W}\in\Real^{d_o\times d_i}$，若每个输出通道对应一行，则逐输出通道尺度为 $s_i$；改变矩阵存储方向时，数组的“第一维”不再指示通道含义。
@@ -204,7 +202,7 @@ B_q=P\frac b8+\left\lceil\frac Pg\right\rceil h.
 \mathbb E\|\mat{E}\vect{x}\|_2^2=\operatorname{tr}(\mat{E}C\mat{E}^{\mathrm{T}}).
 \label{eq:opt-outputerror}
 \end{equation}
-因此同样的权重均方误差可能产生不同输出误差：高频或高幅值输入方向赋予对应列更大权重。下游非线性和残差还会重新传播误差，局部重建最优与端到端任务最优是两件事。这个区别构成激活感知方法与二阶补偿方法的共同出发点。
+因此相同的权重均方误差在不同特征输入下引发的输出扰动存在显著差异：输入二阶矩在特征协方差主成分方向赋予对应权重列更大的敏感度权重。由于层间非线性激活与残差连接的级联累积，基于单层局部特征重构的极小化并不等价于端到端任务损失极小化。激活感知与二阶曲率补偿方法均以特征敏感度加权替代无加权的参数空间均方误差。
 
 \subsection{GPTQ 的二阶误差补偿}
 \optional
@@ -213,8 +211,10 @@ B_q=P\frac b8+\left\lceil\frac Pg\right\rceil h.
 
 把某行权重转为列向量 $\vect{w}\in\Real^{d_i}$，令更新为 $\vect{\delta}$。重建损失增量为
 \begin{equation}
-\mathcal E(\vect{\delta})=\|\vect{\delta}^{\mathrm{T}}\mat{X}\|_2^2
-=\tfrac12\vect{\delta}^{\mathrm{T}}\mat{H}\vect{\delta},\qquad \mat{H}=2\mat{X}\mat{X}^{\mathrm{T}}.
+\begin{aligned}
+ \mathcal E(\vect{\delta}) &= \|\vect{\delta}^{\mathrm{T}}\mat{X}\|_2^2 = \tfrac12\vect{\delta}^{\mathrm{T}}\mat{H}\vect{\delta}, \\
+ \mat{H} &= 2\mat{X}\mat{X}^{\mathrm{T}}.
+\end{aligned}
 \end{equation}
 该二次形式精确描述固定线性层的重建损失。
 
@@ -225,14 +225,17 @@ B_q=P\frac b8+\left\lceil\frac Pg\right\rceil h.
 \subsubsection{约束二次问题的解}
 记 $d=\widehat w_i-w_i$，$\vect{e}_i$ 为第 $i$ 个标准基向量。求解
 \begin{equation}
-\min_\delta\;\tfrac12\vect{\delta}^{\mathrm{T}}\mat{H}\vect{\delta},
-\qquad \vect{e}_i^{\mathrm{T}}\vect{\delta}=d.
+\begin{aligned}
+ &\min_{\vect{\delta}}\;\tfrac12\vect{\delta}^{\mathrm{T}}\mat{H}\vect{\delta}, \\
+ &\text{s.t.}\quad \vect{e}_i^{\mathrm{T}}\vect{\delta}=d.
+\end{aligned}
 \end{equation}
 拉格朗日函数为 $\tfrac12\vect{\delta}^{\mathrm{T}}\mat{H}\vect{\delta}+\mu(\vect{e}_i^{\mathrm{T}}\vect{\delta}-d)$。令梯度为零，有 $\mat{H}\vect{\delta}+\mu \vect{e}_i=0$，所以 $\vect{\delta}=-\mu \mat{H}^{-1}\vect{e}_i$。代回约束得到
-\begin{equation}
-\vect{\delta}^*=\frac{d}{(\mat{H}^{-1})_{ii}}\mat{H}^{-1}\vect{e}_i,
-\qquad \mathcal E(\vect{\delta}^*)=\frac{d^2}{2(\mat{H}^{-1})_{ii}}.
-\label{eq:opt-gptqcomp}
+\begin{equation}\label{eq:opt-gptqcomp}
+\begin{aligned}
+ \vect{\delta}^* &= \frac{d}{(\mat{H}^{-1})_{ii}}\mat{H}^{-1}\vect{e}_i, \\
+ \mathcal E(\vect{\delta}^*) &= \frac{d^2}{2(\mat{H}^{-1})_{ii}}.
+\end{aligned}
 \end{equation}
 若用量化残差 $w_i-\widehat w_i$ 表示，则更新前有负号。算法中的符号差异常来自残差方向，照抄时需先确认方向约定。非对角项决定其他坐标如何补偿；若输入不相关且 $\mat{H}$ 对角，则没有跨坐标补偿。
 
@@ -247,11 +250,11 @@ B_q=P\frac b8+\left\lceil\frac Pg\right\rceil h.
 
 
 设
-\begin{equation}
-\mat{H}=\begin{bmatrix}2&1\\1&2\end{bmatrix},\qquad
-\mat{H}^{-1}=\frac13\begin{bmatrix}2&-1\\-1&2\end{bmatrix},\qquad
-\vect{w}=\begin{bmatrix}0.3\\0.6\end{bmatrix}.
-\end{equation}
+\begin{align*}
+ \mat{H} &= \begin{bmatrix}2&1\\1&2\end{bmatrix}, &
+ \mat{H}^{-1} &= \frac13\begin{bmatrix}2&-1\\-1&2\end{bmatrix}, &
+ \vect{w} &= \begin{bmatrix}0.3\\0.6\end{bmatrix}.
+\end{align*}
 采用间隔 $0.5$ 的格点，先把第一坐标量化为 $0.5$，$d=0.2$。式\eqref{eq:opt-gptqcomp}给出 $\vect{\delta}=(0.2,-0.1)^{\mathrm{T}}$，故第二坐标变为 $0.5$，恰好已在格点上。补偿误差为 $\tfrac12\vect{\delta}^{\mathrm{T}}\mat{H}\vect{\delta}=0.03$；若只改变第一坐标，误差为 $0.04$。该例显示相关输入允许利用另一坐标抵消输出扰动，后续坐标仍按同一规则依次量化。
 \end{example}
 
@@ -268,7 +271,7 @@ B_q=P\frac b8+\left\lceil\frac Pg\right\rceil h.
 \textbf{不变量：}已固定权重始终位于指定格点；校准曲率只约束该重建问题，独立任务评价另需一次测量。
 \end{algorithm}
 
-\subsection{AWQ 与 SmoothQuant 的通道缩放}
+\subsection{通道缩放}
 
 \subsubsection{通道缩放恒等式}
 对任意正对角矩阵 $\mat{D}=\operatorname{diag}(d_1,\ldots,d_{d_i})$，有
@@ -305,11 +308,10 @@ AWQ 以权重量化误差及激活重要性为中心，SmoothQuant 则平衡权�
 \draw[->](x)--(d);\draw[->](d)--(w);\draw[->](w)--(y);
 \node[align=center]at(5,-1.5){量化前：函数恒等\\量化后：误差取决于两侧的格点、粒度和尺度};
 \end{tikzpicture}
-\caption{通道尺度变换保持原函数，却改变低精度表示的误差分配。}
-\label{fig:opt-scaling-graph}
+\caption[通道尺度变换误差再分配]{通道尺度变换误差再分配。对激活与权重实施等价逆缩放保持数学输出不变，同时将低精度量化误差向更易表达的通道转移。}\label{fig:opt-scaling-graph}
 \end{figure}
 
-\subsection{PTQ、QAT 和低精度训练}
+\subsection{低精度模型的训练方式}
 
 \term{训练后量化}{Post-Training Quantization}{PTQ}从已训练权重出发，利用统计校准、搜索或局部重建产生量化模型，通常不进行完整任务训练。简单最大值权重量化可以不用激活数据，GPTQ、AWQ 和 SmoothQuant 则使用输入统计；所以“PTQ 不需要数据”只是个别情形的描述，不是一般定义。
 
@@ -321,9 +323,9 @@ AWQ 以权重量化误差及激活重要性为中心，SmoothQuant 则平衡权�
 
 QAT 不要求训练器本身用目标整数指令完成全部运算。\term{低精度训练}{Low-Precision Training}{}则进一步让某些前向、反向矩阵乘法或状态采用低精度执行，需要管理累加、主权重和更新尺度。QLoRA 的冻结量化基座加可训练适配器，是另一种参数与计算边界，它只更新适配器，详见\bookxref{ch:parameter-efficient-finetuning}。
 
-\subsection{FP8 与非均匀表示}
+\subsection{浮点量化}
 \optional
-\subsubsection{浮点格点随指数变化}
+\subsubsection{浮点数的指数与表示间距}
 \term{八位浮点}{8-bit Floating Point}{FP8}不是一种均匀整数网格。对普通规格化二进制浮点数，可以写成 $(-1)^s2^{e-\beta}(1+\frac{f}{2^m})$，其中 $s$ 为符号位、$e$ 为指数域、$\beta$ 为偏置、$m$ 为尾数字段位数。一个指数区间内间隔为 $2^{e-\beta-m}$，随数量级变化。
 
 在远离溢出和下溢、采用最近舍入的规格化区域，单位舍入误差量级为 $2^{-(m+1)}$，描述的是相对误差尺度，全张量没有单一的绝对误差界。次正规数、零附近以及饱和区域需要分别分析。
@@ -335,7 +337,7 @@ E4M3 在相似数值区间拥有更细尾数，E5M2 提供更大动态范围。�
 \subsubsection{缩放、累加与更新}
 FP8 张量仍常需要外部尺度。例如令 $\widehat x=s\,\operatorname{cast}_{\mathrm{FP8}}(\frac{x}{s})$，尺度把当前范围映射到有限编码区间。由当前张量估计尺度需要额外归约；用历史最大值延迟更新尺度会引入状态，并可能来不及覆盖分布突变。静态、动态和分块尺度必须绑定实际执行协议。
 
-乘法与累加可采用不同精度。长内积可能在低位累加中丢失小贡献或溢出，因而通常需要更宽累加器、分段归约或其他受支持的数值策略。若优化器更新量小于权重所在格点间距，直接在粗格点中更新可能完全消失；高精度主参数或合适舍入方式可以缓解，但也增加状态成本。是否支持某种 FP8 乘法、累加和布局，由具体硬件与内核决定，文件类型说明不了。
+乘法与累加可采用不同精度。长内积可能在低位累加中丢失小贡献或溢出，因而通常需要更宽累加器、分段归约或其他受支持的数值策略。若优化器更新量小于权重所在格点间距，直接在粗格点中更新可能完全消失；高精度主参数或合适舍入方式可以缓解，但也增加状态成本。FP8 乘法、累加和布局的支持情况需根据具体硬件与内核核查，模型文件中的存储格式只是其中一项条件。
 
 非均匀四比特码本 NF4 则面向另一种分布假设，\bookxref{ch:parameter-efficient-finetuning}已经说明其在 QLoRA 中的职责。对非均匀码本，局部最近舍入误差由相邻码字间隔控制，统一整数步长 $\frac{s}{2}$ 只适用于等距区间。
 
@@ -356,7 +358,7 @@ FP8 张量仍常需要外部尺度。例如令 $\widehat x=s\,\operatorname{cast
 
 累加器必须覆盖和的动态范围。即使输入均为八比特，$d_i$ 项乘积之和也未必适合八位或十六位累加。分组尺度若随 $j$ 变化，尺度不能直接提出整个求和号外，需要逐组累加和缩放，这正是粒度影响内核设计的原因之一。
 
-\subsubsection{三种运行路径}
+\subsubsection{运行时反量化路径}
 量化文件可以在加载时完整恢复成高精度权重，此时减少的是磁盘与传输体积，驻留权重可能没有减少。也可以在每次前向先恢复一个完整权重张量，再调用浮点矩阵乘法；此时额外读写高精度临时数组可能抵消带宽节省。第三种方式是\term{融合反量化}{Fused Dequantization}{}：内核读取压缩块，在寄存器或片上工作区中恢复并立即参与计算，避免完整中间张量往返显存。
 
 融合路径仍可能使用浮点乘法，而原生低精度矩阵乘法则直接消费硬件支持的低精度操作数。二者都可能有收益，但收益机制不同。比特打包、尺度加载、布局转置、尾块处理和线程组织共同决定性能，实际执行的是哪条路径需从内核确认。
@@ -364,8 +366,7 @@ FP8 张量仍常需要外部尺度。例如令 $\widehat x=s\,\operatorname{cast
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\linewidth]{\subfix{../../figures/theory/dequantization-runtime-paths.pdf}}
-\caption{量化权重的三种消费路径具有不同的驻留和数据搬运成本。必须确认实际执行路径，才能解释运行时收益。}
-\label{fig:opt-runtime}
+\caption[量化权重运行时反量化路径]{量化权重运行时反量化路径。权重驻留、反量化与计算执行路径具有不同的显存和数据搬运成本，硬件吞吐收益取决于实际执行路径。}\label{fig:opt-runtime}
 \end{figure}
 
 \subsubsection{带宽、算力与端到端收益}
@@ -410,14 +411,13 @@ t\ge\max(\frac{F}{C},\frac{B}{\mathcal B}).
 量化方案由可表示值、映射规则、统计分布、张量布局和执行内核共同定义。位宽只是其中一项；同样的四比特文件可以对应不同误差和完全不同的计算路径。
 \end{note}
 
-表\ref{tab:rev-quantization-taxonomy}总结了大语言模型量化领域的主流算法与技术特征。不同方法在优化目标、标定复杂度与硬件适配性上各有侧重。
+表\ref{tab:quantization-taxonomy}总结了大语言模型量化领域的主流算法与技术特征。不同方法在优化目标、标定复杂度与硬件适配性上各有侧重。
 
 \begin{table}[htbp]
 \centering
 \small
 \setlength{\tabcolsep}{3.5pt}
-\caption{大语言模型主流低精度量化方法对比。}
-\label{tab:rev-quantization-taxonomy}
+\caption{主流低精度量化方法对比}\label{tab:quantization-taxonomy}
 \begin{tabularx}{\linewidth}{@{}lp{20mm}p{32mm}p{22mm}X@{}}
 \toprule
 方法 & 量化对象 & 核心机制与优化目标 & 标定开销 & 适用硬件与场景 \\
@@ -436,7 +436,7 @@ FP8 & 权重+激活+KV & 原生低精度浮点格式动态缩放 & 原生硬件�
 
 
 \section{剪枝}
-\subsection{剪枝和敏感度}
+\subsection{模型剪枝}
 
 \subsubsection{幅值剪枝的最优性范围}
 \term{剪枝}{Pruning}{}通过删除权重或结构减少模型自由度。\term{非结构化剪枝}{Unstructured Pruning}{}使用逐元素掩码 $\mat{M}\in\{0,1\}^{m\times n}$，得到 $\widehat{\mat{W}}=\mat{M}\odot \mat{W}$。若仅要求保留 $k$ 个原有权重，且保留的数值不允许调整，则
@@ -444,9 +444,9 @@ FP8 & 权重+激活+KV & 原生低精度浮点格式动态缩放 & 原生硬件�
  \min_{M:\sum M_{ij}=k}\|\mat{W}-\mat{M}\odot \mat{W}\|_F^2
  =\min_M\sum_{M_{ij}=0}W_{ij}^2.
 \end{equation}
-因此保留绝对值最大的 $k$ 个元素，使被删除的平方和最小。这是\term{幅值剪枝}{Magnitude Pruning}{}在特定权重重建目标下的依据；阈值处出现相同幅值时，应固定并列选择规则以得到可复现掩码。
+因此保留绝对值最大的 $k$ 个元素，在欧几里得范数意义下最小化了被剔除权重的残差平方和。这是\term{幅值剪枝}{Magnitude Pruning}{}在无加权参数重构目标下的理论解；当边界处存在并列幅值时，须显式固定排序破平规则以保证稀疏掩码的确定性。
 
-最小权重误差与最小任务误差是两个不同的目标。若一个较小权重连接的输入幅度很大，或者该方向对输出损失极为敏感，删除它可能比删除较大权重更危险。不同层还可以通过尺度重参数化维持近似相同函数，直接跨层比较权重幅值因此可能受到表示尺度影响。
+参数空间的残差极小化并不直接等价于任务损失扰动极小化。若幅值较小的权重连接着高方差或高均值的输入特征通道，或该权重对应的损失曲率极高，将其置零对网络表征的冲击将显著高于删除大权重。此外，在包含归一化层的深度网络中，跨层重缩放变换（如将线性层权重放大 $c$ 倍同时将下层缩小 $c$ 倍）保持输入输出映射不变，但会人为改变权重的绝对幅值分布，导致全局统一幅值剪枝的标准失准。
 
 \subsubsection{一阶和二阶近似}
 设损失为 $\mathcal L(\vect{w})$，参数变化为 $\Delta \vect{w}$。二阶展开为
@@ -463,13 +463,15 @@ FP8 & 权重+激活+KV & 原生低精度浮点格式动态缩放 & 原生硬件�
 
 例如 $\vect{w}=(0.1,1)$、$\vect{g}=0$、$\mat{H}=\operatorname{diag}(1000,1)$。删除第一个权重的二阶代价为 $\frac{1000\cdot0.1^2}{2}=5$，删除第二个为 $\frac{1}{2}$。幅值排序会优先删除第一个，曲率排序却得出相反结论。这个例子说明敏感度需要同时考虑参数幅度与局部损失几何。
 
-多个参数一起删除时，交叉项 $H_{ij}\Delta w_i\Delta w_j$ 不再消失。因此逐个计算的对角分数之和一般不等于联合删除代价。神经网络真实 Hessian 也未必正定，局部近似还可能在大幅剪枝时失效；常见工程方法使用正半定重建曲率、阻尼或分块近似，以控制计算和数值问题。
+当多个参数被同时剪枝时，海森矩阵的非对角交叉项 $H_{ij}\Delta w_i\Delta w_j$ 不可忽略，逐坐标对角敏感度之和显著偏离联合剪枝的真实损失增量。此外，深层神经网络的经验损失 Hessian 在非最优鞍点附近往往非正定，大幅参数跳变亦会导致泰勒二阶展开的局部有效性失效。工程实现通常采用基于局部特征重构的正半定经验 Fisher 信息矩阵、阻尼对角扰动（$\mat{H}+\lambda\mat{I}$）或分块逆矩阵近似以保证数值稳定性。
 
-\subsubsection{允许其他权重补偿}
+\subsubsection{权重调整与剪枝误差补偿}
 若删除一个权重时允许其他参数调整，可以求解
 \begin{equation}
- \min_{\Delta w}\frac12\Delta \vect{w}^{\mathrm{T}} \mat{H}\Delta \vect{w},
- \qquad \vect{e}_q^{\mathrm{T}}\Delta \vect{w}=-w_q.
+\begin{aligned}
+ &\min_{\Delta\vect{w}}\frac12\Delta \vect{w}^{\mathrm{T}} \mat{H}\Delta \vect{w}, \\
+ &\text{s.t.}\quad \vect{e}_q^{\mathrm{T}}\Delta \vect{w}=-w_q.
+\end{aligned}
 \end{equation}
 假设 $\vect{g}=0$ 且 $\mat{H}$ 正定。拉格朗日函数为
 \begin{equation}
@@ -477,20 +479,22 @@ FP8 & 权重+激活+KV & 原生低精度浮点格式动态缩放 & 原生硬件�
  +\mu(\vect{e}_q^{\mathrm{T}}\Delta \vect{w}+w_q).
 \end{equation}
 驻点条件 $\mat{H}\Delta \vect{w}+\mu \vect{e}_q=0$ 给出 $\Delta \vect{w}=-\mu \mat{H}^{-1}\vect{e}_q$。代入约束，得到
-\begin{equation}
- \mu=\frac{w_q}{(\mat{H}^{-1})_{qq}},\qquad
- \Delta \vect{w}^*=-\frac{w_q}{(\mat{H}^{-1})_{qq}}\mat{H}^{-1}\vect{e}_q,
- \qquad
- \Delta\mathcal L^*=\frac{w_q^2}{2(\mat{H}^{-1})_{qq}}.
- \label{eq:compress-obs}
+\begin{equation}\label{eq:compress-obs}
+\begin{aligned}
+ \mu &= \frac{w_q}{(\mat{H}^{-1})_{qq}}, \\
+ \Delta \vect{w}^* &= -\frac{w_q}{(\mat{H}^{-1})_{qq}}\mat{H}^{-1}\vect{e}_q, \\
+ \Delta\mathcal L^* &= \frac{w_q^2}{2(\mat{H}^{-1})_{qq}}.
+\end{aligned}
 \end{equation}
 这表达了利用参数耦合补偿删除误差的思想，属于 Optimal Brain Surgeon 的核心二阶框架。\cite{hassibi1992obs} 完整逆 Hessian 需要 $\mat{P}\times \mat{P}$ 的存储，大模型通常采用局部、分块或其他可扩展近似。
 
 取 $\mat{H}=\begin{bmatrix}2&1\\1&2\end{bmatrix}$，$\vect{w}=(1,2)^{\mathrm{T}}$，删除第一个权重。$\mat{H}^{-1}=\frac13\begin{bmatrix}2&-1\\-1&2\end{bmatrix}$，因而
 \begin{equation}
- \Delta \vect{w}^*=(-1,0.5)^{\mathrm{T}},\qquad
- \vect{w}'=(0,2.5)^{\mathrm{T}},\qquad
- \Delta\mathcal L^*=\frac{1}{2(\frac{2}{3})}=0.75.
+\begin{aligned}
+ \Delta \vect{w}^* &= (-1,0.5)^{\mathrm{T}}, \\
+ \vect{w}' &= (0,2.5)^{\mathrm{T}}, \\
+ \Delta\mathcal L^* &= \frac{1}{2(\frac{2}{3})}=0.75.
+\end{aligned}
 \end{equation}
 若只置零而不补偿，$\Delta \vect{w}=(-1,0)^{\mathrm{T}}$，代价为1。补偿利用第二个权重分担变化，局部二次模型给出了对应的补偿代价。
 
@@ -502,7 +506,7 @@ FP8 & 权重+激活+KV & 原生低精度浮点格式动态缩放 & 原生硬件�
 对任一输出行的参数，曲率为 $\frac{2\mat{X}\mat{X}^{\mathrm{T}}}{N}$。它可通过输入统计构造，但可能奇异，常需阻尼或稳定分解。SparseGPT 将可扩展的局部重建与补偿用于大模型剪枝，说明校准激活和执行约束可以共同进入压缩设计。\cite{frantar2023sparsegpt} 校准重建损失衡量局部输出，任务评估还需覆盖预期输入分布。
 
 \subsubsection{结构化剪枝的联动关系}
-\term{结构化剪枝}{Structured Pruning}{}删除完整通道、注意力头或层，使张量尺寸真正改变。对前馈网络
+\term{结构化剪枝}{Structured Pruning}{}删除完整通道、注意力头或层，直接改变张量尺寸。对前馈网络
 \begin{equation}
  f(\vect{x})=\mat{W}_d\phi(\mat{W}_u\vect{x}+\vect{b}_u)+\vect{b}_d,
 \end{equation}
@@ -510,7 +514,7 @@ FP8 & 权重+激活+KV & 原生低精度浮点格式动态缩放 & 原生硬件�
 \begin{equation}
  \widehat f(\vect{x})=\mat{W}_d\mat{P}_S^{\mathrm{T}}\phi(\mat{P}_S\mat{W}_u\vect{x}+\mat{P}_S\vect{b}_u)+\vect{b}_d.
 \end{equation}
-因此上投影删除对应行及偏置，下投影删除对应列，外部 $d$ 维接口保持不变。门控前馈结构有两条上投影路径，两者都应保留相同中间索引，并同步缩减下投影；只调整一侧无法保持逐元素乘法的语义。
+因此\emph{上投影}删除对应行及偏置，\emph{下投影}删除对应列，外部 $d$ 维接口保持不变。门控前馈结构有两条上投影路径，两者都应保留相同中间索引，并同步缩减下投影；只调整一侧无法保持逐元素乘法的语义。
 
 \begin{figure}[htbp]
 \centering
@@ -522,15 +526,14 @@ FP8 & 权重+激活+KV & 原生低精度浮点格式动态缩放 & 原生硬件�
 \draw[->] (x)--(u);\draw[->] (u)--(a);\draw[->] (a)--(d);
 \draw[->] (d.west)--++(-.7,0) node[left] {$\widehat f(\vect{x})\in\mathbb R^d$};
 \end{tikzpicture}
-\caption{前馈中间通道剪枝必须同步改变上下投影，保持外部残差接口。}
-\label{fig:compress-prune}
+\caption[结构化通道剪枝投影协同]{结构化通道剪枝投影协同。前馈网络中间通道剪枝必须同步调整上投影与下投影维度，保持外部残差连接接口不变。}\label{fig:compress-prune}
 \end{figure}
 
 取 $\mat{W}_u=\begin{bmatrix}1&0\\0&1\\1&1\end{bmatrix}$、$\mat{W}_d=\begin{bmatrix}1&0&0.1\\0&1&0.1\end{bmatrix}$，偏置为零，$\phi$ 为 ReLU。输入 $\vect{x}=(1,2)^{\mathrm{T}}$ 时中间激活为 $(1,2,3)^{\mathrm{T}}$，输出为 $(1.3,2.3)^{\mathrm{T}}$。删除第三通道后，输出为 $(1,2)^{\mathrm{T}}$，误差范数为 $\sqrt{0.3^2+0.3^2}\approx0.4243$。权重数从 $3\cdot2+2\cdot3=12$ 降为8，减少三分之一，但是否值得仍取决于任务与输入分布。
 
 注意力头删除同样需要调整查询、键、值和输出投影中对应的布局，并检查分组查询的共享关系。删除整层会改变残差路径的深度；删除残差主宽度则还涉及归一化、嵌入与共享权重。结构化压缩必须输出一致的模型配置、参数形状与序列化格式，只改一个参数文件不够。
 
-\subsection{稀疏性何时产生执行收益}
+\subsection{稀疏计算的加速条件}
 
 \term{稀疏率}{Sparsity}{}为零元素比例，但稀疏矩阵仍需要存储非零值和位置。设非零数量为 $k$，数值每个 $s$ 字节，索引每个 $s_i$ 字节。以按行压缩的一种简化格式为例，存储约为
 \begin{equation}
@@ -538,14 +541,18 @@ FP8 & 权重+激活+KV & 原生低精度浮点格式动态缩放 & 原生硬件�
 \end{equation}
 而稠密存储为 $mns$。忽略行指针时，只有 $\frac{k}{mn}<\frac{s}{s+s_i}$ 才节省空间。例如两字节数值配四字节索引，需要非零比例低于三分之一，才能抵消逐元素索引开销。实际块稀疏或位图格式可改变这个阈值，因此该数只对应按行压缩这一种格式。
 
-\term{半结构化稀疏}{Semi-structured Sparsity}{}限制每个小组内的非零数量，例如常见的2:4模式在规定分组中保留两个非零值。固定模式降低索引和调度复杂度，却约束了哪些权重能够保留。同样50\%的零元素，任意分布与满足2:4布局的分布，对硬件可能完全不同。专用库对数据类型、矩阵维度、布局和稀疏格式有具体要求，cuSPARSELt 就明确面向受支持的结构化稀疏矩阵运算。\cite{nvidia2026cusparselt}
+\term{半结构化稀疏}{Semi-structured Sparsity}{}在局部几何窗口内施加确定性的非零值数量约束。例如现代 GPU 张量核心支持的 $2:4$ 稀疏模式要求每连续 $4$ 个元素中保留 $2$ 个非零值。这种高度规则的稀疏拓扑消除了复杂的任意索引指针，允许硬件采用紧凑的元数据编码实现双倍吞吐的稀疏稠密矩阵乘法。然而，尽管 $2:4$ 布局在全矩阵层面同样对应 $50\%$ 的全局稀疏度，但由于强制施加了细粒度局部窗口约束，权重的选择自由度显著受限，相较于无约束的非结构化剪枝会引入更大的表征损失。专用稀疏计算库（如 cuSPARSELt）对输入数据类型、张量对齐步幅及物理布局格式有严格约束\cite{nvidia2026cusparselt}。
+
+\begin{warning}[非结构化稀疏的硬件加速陷阱]
+将稠密权重置零（非结构化稀疏）能有效压缩静态检查点体积与降低理论浮点操作数，但现代 GPU 张量核心通常仍按完整矩阵形状执行规整分块乘法；若缺乏专用稀疏内核支持，不规则非零索引寻址与线程束分流开销甚至会导致实际推理时延显著高于同等尺寸的稠密矩阵。
+\end{warning}
 
 稠密内核通常仍按完整矩阵形状计算零元素。使用稀疏内核后，索引读取、不规则访存、负载不均与较低计算密度也可能抵消运算减少。块结构越规则，越容易形成可用执行路径，但其误差预算也更受约束。剪枝前就应确定后端可消费的形式，否则训练完任意掩码之后只能还原成稠密矩阵运行。
 
 剪枝后的恢复训练必须明确掩码是否固定。如果置零后仍对完整参数自由更新，零权重可能重新生长；如果只对保留结构训练，应确保优化器状态与结构同步。恢复训练调整保留参数，质量恢复程度取决于压缩率、结构与训练数据。
 
 \section{低秩分解}
-\subsection{低秩分解与最优近似}
+\subsection{低秩压缩}
 
 \subsubsection{SVD 与谱尾误差}
 \term{奇异值分解}{Singular Value Decomposition}{SVD}写成
@@ -558,10 +565,11 @@ FP8 & 权重+激活+KV & 原生低精度浮点格式动态缩放 & 原生硬件�
  \mat{W}_r=\sum_{i=1}^{r}\sigma_i \vect{u}_i\vect{v}_i^{\mathrm{T}}
 \end{equation}
 舍弃较小奇异方向。由秩一分量在 Frobenius 内积下正交，
-\begin{equation}
- \|\mat{W}-\mat{W}_r\|_F^2=\sum_{i=r+1}^{q}\sigma_i^2,
- \qquad\|\mat{W}-\mat{W}_r\|_2=\sigma_{r+1}.
- \label{eq:compress-svdtail}
+\begin{equation}\label{eq:compress-svdtail}
+\begin{aligned}
+ \|\mat{W}-\mat{W}_r\|_F^2 &= \sum_{i=r+1}^{q}\sigma_i^2, \\
+ \|\mat{W}-\mat{W}_r\|_2 &= \sigma_{r+1}.
+\end{aligned}
 \end{equation}
 前式给出总平方误差，后式给出最大方向放大误差；$r=q$ 时尾项为零。截断 SVD 的最佳低秩近似性质由 Eckart--Young 定理刻画。\cite{eckart1936approximation}
 
@@ -585,8 +593,11 @@ FP8 & 权重+激活+KV & 原生低精度浮点格式动态缩放 & 原生硬件�
 \subsubsection{参数量与计算阈值}
 \term{低秩分解}{Low-rank Factorization}{}以两个较窄矩阵替换原矩阵。可将奇异值分配到两因子，例如
 \begin{equation}
- \mat{A}=\mat{U}_r\mat{\Sigma}_r^{\frac{1}{2}},\qquad \mat{B}=\mat{\Sigma}_r^{\frac{1}{2}}\mat{V}_r^{\mathrm{T}},
- \qquad \mat{W}_r=\mat{A}\mat{B}.
+\begin{aligned}
+ \mat{A} &= \mat{U}_r\mat{\Sigma}_r^{\frac{1}{2}}, \\
+ \mat{B} &= \mat{\Sigma}_r^{\frac{1}{2}}\mat{V}_r^{\mathrm{T}}, \\
+ \mat{W}_r &= \mat{A}\mat{B}.
+\end{aligned}
 \end{equation}
 于是 $y\approx \mat{A}(\mat{B}\vect{x})+\vect{b}$。两个线性层之间插入新的非线性，就不再表示同一个低秩矩阵。因子分配也不唯一，$\mat{A}\mat{D}$ 与 $\mat{D}^{-1}\mat{B}$ 对任意可逆 $\mat{D}$ 给出相同乘积，但它们的数值范围和后续量化误差可能不同。
 
@@ -608,17 +619,16 @@ FP8 & 权重+激活+KV & 原生低精度浮点格式动态缩放 & 原生硬件�
 \draw[->] (x)--(b);\draw[->] (b)--node[above]{$r$ 维}(a);
 \node[below=8mm of b,align=center] {两层之间无新增非线性；偏置在输出端保持};
 \end{tikzpicture}
-\caption{低秩因子替换原矩阵，实际执行两次投影。}
-\label{fig:compress-lowrank}
+\caption[低秩矩阵分解结构]{低秩矩阵分解结构。将高维密集权重矩阵分解为低秩因子相乘，前向计算转为连续两次降维与升维投影。}\label{fig:compress-lowrank}
 \end{figure}
 
 \begin{example}
 
 
 令 $\mat{W}=\operatorname{diag}(4,2,1,0)$。它的平方 Frobenius 范数为 $16+4+1=21$。秩1近似为 $\mat{W}_1=\operatorname{diag}(4,0,0,0)$，误差平方为5，相对误差为 $\sqrt{\frac{5}{21}}\approx0.4880$。可取
-\begin{equation}
- \mat{A}=(2,0,0,0)^{\mathrm{T}},\qquad \mat{B}=(2,0,0,0),
-\end{equation}
+\begin{align*}
+ \mat{A} &= (2,0,0,0)^{\mathrm{T}}, & \mat{B} &= (2,0,0,0),
+\end{align*}
 以8个稠密存储参数替代16个参数。输入 $\vect{x}=(1,1,1,1)^{\mathrm{T}}$ 时，原输出为 $(4,2,1,0)^{\mathrm{T}}$，近似输出为 $(4,0,0,0)^{\mathrm{T}}$，实际误差范数为 $\sqrt5$。
 
 秩2近似保留4和2，误差范数降为1，但因子参数为 $2(4+4)=16$，已经没有参数节省；秩3完全恢复原矩阵，因子参数却为24。秩增加时近似误差减小，因子参数量也随之增加。实际模型若奇异值谱下降缓慢，低秩参数节省与质量预算之间可能根本没有共同可行区间。
@@ -647,7 +657,7 @@ FP8 & 权重+激活+KV & 原生低精度浮点格式动态缩放 & 原生硬件�
  \widehat{\mat{W}}=\mat{Z}_r\mat{C}_x^{-\frac{1}{2}}.
  \label{eq:compress-whiten}
 \end{equation}
-这是给定输入分布下最小化线性输出误差的低秩解；一般不等于直接截断 $\mat{W}$。
+该闭式解在给定校准输入分布下实现了线性层输出均方误差的理论极小化；由于特征协方差矩阵对不同特征空间施加了各向异性加权，所得最优因子与直接对未加权权重矩阵 $\mat{W}$ 执行截断 SVD 存在本质拓扑差异。
 
 取 $\mat{W}=\operatorname{diag}(3,2)$、$\mat{C}_x=\operatorname{diag}(1,9)$。普通 SVD 秩1近似保留第一方向，输出误差为 $2^2\cdot9=36$。加权矩阵 $\mat{Z}=\operatorname{diag}(3,6)$ 则保留第二方向，回变换得到 $\widehat{\mat{W}}=\operatorname{diag}(0,2)$，输出误差为 $3^2\cdot1=9$。后者的权重 Frobenius 误差平方为9，比前者4更大，但在设定输入分布下输出误差更小。两种目标赋予输入方向不同的权重，因此得到不同解。此例的秩1因子参数量与原矩阵相同。
 
@@ -656,15 +666,17 @@ FP8 & 权重+激活+KV & 原生低精度浮点格式动态缩放 & 原生硬件�
 局部输出误差还会经过后续网络传播。后续层对不同输出方向具有不同敏感度，生成中的分布变化还会改变后续输入。恢复训练可以围绕压缩后激活重新调整，但必须使用与最终测试隔离的数据。
 
 \section{知识蒸馏}
-\subsection{知识蒸馏与温度}
+\subsection{分布蒸馏}
 
 \subsubsection{硬标签和软标签}
 \term{硬标签}{Hard Label}{}用单个类别或目标词元表示监督，\term{软标签}{Soft Label}{}给出完整概率分布。教师分布中不同错误类别的概率差异，可能表达相似性和不确定性；也可能包含教师偏差。蒸馏把教师概率作为带有类别结构的监督信号，学生学习的是教师分布及其偏差。温度软化与硬软目标组合由经典知识蒸馏工作系统阐述。\cite{hinton2015distilling}
 
 设教师和学生 logits 分别为 $\vect{z}_T,\vect{z}_S\in\mathbb R^C$，温度 $\tau>0$，则
 \begin{equation}
- p_{T,j}^\tau=\frac{\conste{}^{\frac{z_{T,j}}{\tau}}}{\sum_k \conste{}^{\frac{z_{T,k}}{\tau}}},\qquad
- p_{S,j}^\tau=\frac{\conste{}^{\frac{z_{S,j}}{\tau}}}{\sum_k \conste{}^{\frac{z_{S,k}}{\tau}}}.
+\begin{aligned}
+ p_{T,j}^\tau &= \frac{\conste{}^{\frac{z_{T,j}}{\tau}}}{\sum_k \conste{}^{\frac{z_{T,k}}{\tau}}}, \\
+ p_{S,j}^\tau &= \frac{\conste{}^{\frac{z_{S,j}}{\tau}}}{\sum_k \conste{}^{\frac{z_{S,k}}{\tau}}}.
+\end{aligned}
 \end{equation}
 增大温度通常使分布更平缓，减小温度使其更集中。类别排序不因共同正温度缩放改变，但类别间的概率差和优化权重会改变。蒸馏使用的训练温度不必等于部署采样温度，二者应分别记录。
 
@@ -679,8 +691,10 @@ FP8 & 权重+激活+KV & 原生低精度浮点格式动态缩放 & 原生硬件�
 \subsubsection{温度平方因子的推导}
 教师冻结时，记 $p_j=p_{T,j}^\tau$、$q_j=p_{S,j}^\tau$，则
 \begin{equation}
- D=\sum_jp_j(\log p_j-\log q_j),\qquad
- \log q_j=\frac{z_{S,j}}\tau-\log\sum_k \conste{}^{\frac{z_{S,k}}{\tau}}.
+\begin{aligned}
+ D &= \sum_jp_j(\log p_j-\log q_j), \\
+ \log q_j &= \frac{z_{S,j}}\tau-\log\sum_k \conste{}^{\frac{z_{S,k}}{\tau}}.
+\end{aligned}
 \end{equation}
 对学生 logit $z_{S,l}$ 求导，
 \begin{equation}
@@ -700,9 +714,10 @@ FP8 & 权重+激活+KV & 原生低精度浮点格式动态缩放 & 原生硬件�
 
 softmax 对公共平移不变，因此分别中心化师生 logits：$\widetilde z_j=z_j-C^{-1}\sum_k z_k$。在 $\tau$ 相对所有中心化 logit 幅度足够大时，
 \begin{equation}
- \conste{}^{\frac{\widetilde z_j}{\tau}}=1+\frac{\widetilde z_j}{\tau}+O(\tau^{-2}),
- \qquad
- p_j^\tau=\frac1C+\frac{\widetilde z_j}{C\tau}+O(\tau^{-2}).
+\begin{aligned}
+ \conste{}^{\frac{\widetilde z_j}{\tau}} &= 1+\frac{\widetilde z_j}{\tau}+O(\tau^{-2}), \\
+ p_j^\tau &= \frac1C+\frac{\widetilde z_j}{C\tau}+O(\tau^{-2}).
+\end{aligned}
 \end{equation}
 故
 \begin{equation}
@@ -722,21 +737,21 @@ softmax 对公共平移不变，因此分别中心化师生 logits：$\widetilde
 
 
 考虑两个类别，$\tau=2$，教师 logits 为 $(2\log4,0)$，学生 logits 为 $(0,0)$，硬标签是第一类，$\lambda=\frac{1}{2}$。温度化教师分布为 $(0.8,0.2)$，学生为 $(0.5,0.5)$。软目标 KL 为
-\begin{align}
+\begin{align*}
  D&=0.8\log(\frac{0.8}{0.5})+0.2\log(\frac{0.2}{0.5})\\
  &=0.8\log1.6+0.2\log0.4\approx0.192745,
-\end{align}
+\end{align*}
 乘以 $\tau^2=4$ 得0.770979。硬标签损失为 $-\log0.5\approx0.693147$，最终混合损失约为
-\begin{equation}
+\begin{equation*}
  \mathcal L=\tfrac12(0.693147+0.770979)\approx0.732063.
-\end{equation}
+\end{equation*}
 软目标对学生 logits 的梯度为
-\begin{equation}
+\begin{equation*}
  2[(0.5,0.5)-(0.8,0.2)]=(-0.6,0.6),
-\end{equation}
+\end{equation*}
 硬标签梯度为 $(-0.5,0.5)$，混合后为 $(-0.55,0.55)$。梯度下降提高第一类 logit并降低第二类 logit。若忘记温度平方，软项梯度变成 $(-0.15,0.15)$，即使混合系数未变，硬软监督的相对强度也已改变。
 
-教师若给出错误分布，学生仍会沿教师方向更新。混入硬标签可以提供另一信号，但效果受标签质量和权重影响，应在独立标签上评价学生表现。比较蒸馏收益时，基线应是同结构学生仅使用硬标签的训练结果，与更大教师对比说明的是另一件事。
+教师若预测错误，学生仍会沿带偏的教师分布更新。引入硬标签交叉熵项可为优化提供真实真值锚点，其抗噪效果取决于硬软损失的权重分配。评估知识蒸馏的相对收益时，严谨的对照基准应当是相同架构与参数量的学生模型在同等训练预算下仅接受硬标签监督的收敛表现，以此独立定量软标签先验对泛化能力的实际贡献。
 
 \begin{figure}[htbp]
 \centering
@@ -748,8 +763,7 @@ softmax 对公共平移不变，因此分别中心化师生 logits：$\widetilde
 \draw[->] (x)--(t);\draw[->] (x)--(s);\draw[->] (t)--(l);\draw[->] (s)--(l);
 \draw[->,dashed] (l.east)--++(1.2,0)|-(s.east);
 \end{tikzpicture}
-\caption{输出分布蒸馏的数据与梯度边界。教师输出为固定目标，硬标签项与软标签项使用各自声明的温度。}
-\label{fig:compress-kd}
+\caption[知识蒸馏数据流与梯度边界]{知识蒸馏数据流与梯度边界。教师模型输出提供固定的软标签目标，交叉熵与 KL 散度项分别按声明温度计算并反向传播至学生模型。}\label{fig:compress-kd}
 \end{figure}
 \end{example}
 
@@ -776,9 +790,10 @@ softmax 对公共平移不变，因此分别中心化师生 logits：$\widetilde
 \end{equation}
 记 $\mat{E}_h=\mat{H}_S\mat{P}_h-\mat{H}_T$，则
 \begin{equation}
- \frac{\partial\mathcal L_h}{\partial \mat{H}_S}=\frac2{N_t}\mat{E}_h\mat{P}_h^{\mathrm{T}},
- \qquad
- \frac{\partial\mathcal L_h}{\partial \mat{P}_h}=\frac2{N_t}\mat{H}_S^{\mathrm{T}}\mat{E}_h.
+\begin{aligned}
+ \frac{\partial\mathcal L_h}{\partial \mat{H}_S} &= \frac2{N_t}\mat{E}_h\mat{P}_h^{\mathrm{T}}, \\
+ \frac{\partial\mathcal L_h}{\partial \mat{P}_h} &= \frac2{N_t}\mat{H}_S^{\mathrm{T}}\mat{E}_h.
+\end{aligned}
 \end{equation}
 投影只承担训练对齐时，可以在部署移除；若它被加入学生推理路径，则应计入最终成本。层数不同时需显式定义层映射，同名层之间没有默认对应。隐藏表示还存在旋转和尺度的不唯一性，直接逐元素拟合会施加比输出一致更强的约束。
 
@@ -793,9 +808,9 @@ softmax 对公共平移不变，因此分别中心化师生 logits：$\widetilde
 
 序列监督通过重新分词教师文本，可以允许师生使用不同词表，但内容质量、终止协议和数据分布仍需校验。\bookxref{ch:verifiable-reasoning}讨论了验证器筛选与推理轨迹蒸馏；筛选会改变教师条件分布，保留样本来自筛选后的条件分布。
 
-输出分布、序列与中间表示三类蒸馏可以组合，但每增加一个目标都增加对齐条件。教师的错误、偏见与不恰当置信度也可能被学生继承。蒸馏数据和教师选择应与最终测试隔离，报告学生对真实标签和任务的表现，“与教师更相似”本身说明不了质量。
+输出分布、序列与中间表示三类蒸馏可以组合，每增加一个目标都需满足相应的对齐条件。学生也可能继承教师的错误、偏见与不恰当置信度。因此，蒸馏数据和教师选择应与最终测试隔离，蒸馏效果应按真实标签和任务要求评估。
 
-\section{组合压缩与误差传播}
+\section{组合压缩}
 
 \subsection{同一矩阵的组合误差}
 设第一次压缩得到 $\mat{W}^{(1)}=\mat{W}+\mat{E}_1$，第二次得到 $\mat{W}^{(2)}=\mat{W}^{(1)}+\mat{E}_2$。总误差为 $\mat{E}_1+\mat{E}_2$，因此
@@ -817,25 +832,24 @@ softmax 对公共平移不变，因此分别中心化师生 logits：$\widetilde
 \end{equation}
 这说明因子尺度分配会影响后续误差：即使乘积相同，一个因子过大也可能放大另一个因子的扰动。
 
-\subsection{组合误差传播}
-\begin{example}
+\begin{example}[组合压缩的误差传播]
 
 
 对无偏置的两层网络 $f(\vect{x})=\mat{W}_2\phi(\mat{W}_1\vect{x})$，压缩后为 $\widehat f(\vect{x})=(\mat{W}_2+\mat{E}_2)\phi((\mat{W}_1+\mat{E}_1)\vect{x})$。若 $\phi$ 为 $L_\phi$-Lipschitz 且 $\phi(0)=0$，加减中间项得到
-\begin{align}
+\begin{align*}
  \|\widehat f(\vect{x})-f(\vect{x})\|_2
  &\leq\|\mat{E}_2\|_2\|\phi((\mat{W}_1+\mat{E}_1)\vect{x})\|_2\\
  &\quad+\|\mat{W}_2\|_2\|\phi((\mat{W}_1+\mat{E}_1)\vect{x})-\phi(\mat{W}_1\vect{x})\|_2\\
  &\leq L_\phi[\|\mat{E}_2\|_2(\|\mat{W}_1\|_2+\|\mat{E}_1\|_2)
  +\|\mat{W}_2\|_2\|\mat{E}_1\|_2]\|\vect{x}\|_2.
-\end{align}
+\end{align*}
 它揭示前层误差受到后层放大的机制，但可能很保守。残差、归一化和自回归反馈需要结合各自结构分析。
 
 用标量线性链展示组合项。原模型 $f(x)=3(2x)=6x$，第一步将内层权重2近似为1.8，第二步将外层权重3近似为2.7。两者分别相对原模型单独使用时，输出误差均为 $-0.6x$；组合后输出为 $2.7\cdot1.8x=4.86x$，误差为 $-1.14x$。展开为
-\begin{equation}
+\begin{equation*}
  3(-0.2)x+(-0.3)2x+(-0.3)(-0.2)x
  =(-0.6-0.6+0.06)x.
-\end{equation}
+\end{equation*}
 两个单独的相对误差均为10\%，组合相对误差为19\%，与简单相加的20\%和平方和都不相同。真实网络中误差相关性更复杂，因此需要保留每个中间产物，才能解释后续变化。
 \end{example}
 
@@ -858,12 +872,11 @@ softmax 对公共平移不变，因此分别中心化师生 logits：$\widetilde
 不变量：每个参数形状与模型配置一致；输出接口和词表契约明确；后端实际消费所声明格式；压缩阈值的调优数据与最终测试分离。
 \end{algorithm}
 
-\section{真实硬件收益与统一比较}
+\section{压缩效果评估}
 
 \begin{table}[htbp]
 \centering
-\caption{大模型优化方法直接改变对象与硬件收益条件对比。}
-\label{tab:rev-optimization-hardware-conditions}
+\caption{模型压缩方法与硬件收益条件}\label{tab:optimization-hardware-conditions}
 \begin{tabularx}{\linewidth}{@{}lXX@{}}
 \toprule
 方法 & 直接改变的对象 & 收益必须满足的条件\\
@@ -881,14 +894,14 @@ softmax 对公共平移不变，因此分别中心化师生 logits：$\widetilde
 \begin{equation}
  S=\frac1{(1-f)+\frac{f}{s_c}}.
 \end{equation}
-例如线性计算占60\%，即便这部分加速两倍，端到端也只有 $\frac{1}{0.4+0.3}\approx1.43$ 倍。实际压缩还可能改变内存流量、通信和调度，可通过分阶段测量校正时间分解。
+例如当线性层耗时占总推理时间比例为 $f=0.6$ 时，即使该部分获得 $s_c=2$ 倍加速，端到端加速比上限也仅为 $\frac{1}{0.4+0.3}\approx 1.43$。实际压缩方案还会改变物理显存搬运流量、跨节点通信频次与内核调度流水线，须结合细粒度时间分解校准。
 
-模型制品大小、加载后权重内存、键值缓存、工作区和峰值内存应分别记录。减少权重未必同比减少长上下文 KV；增加中间低秩激活可能扩大工作区；结构化头删除可能影响缓存形状，但必须按具体结构重新计数。\bookxref{ch:compute-infrastructure}说明了计算与带宽的约束，压缩收益应对应到这些实际路径。
+模型制品存储体积、运行时权重显存、键值缓存、算子中间工作区及峰值显存占用须分别独立计量。仅压缩模型权重无法同比缩减长上下文阶段占据主导地位的 KV 缓存；引入低秩中间张量甚至可能扩大单步激活工作区；结构化注意力头剪枝虽能减少单步 KV 缓存增量，但须基于修改后的张量形状精确核算。\bookxref{ch:compute-infrastructure}系统讨论了硬件算力与显存带宽的物理约束，压缩收益的归因分析应严格对应至上述硬件执行路径。
 
-同样的压缩结构在不同批量和序列长度下可能具有不同表现。小矩阵更容易受启动与带宽影响，大矩阵更可能受计算吞吐影响；稀疏布局打包的启动成本与稳态内核成本也应分开。数值精度、后端版本、实际内核、输入输出长度、冷暖状态和并发都需记录，一次文件缩小或单层操作数下降说明不了完整服务的提速。
+压缩模型的实际加速比随推理并发批量与序列长度动态变化。在小批量、短提示场景中，解码时延主要受显存带宽与内核启动开销制约；在大批量、长生成场景中，前向传播则逐渐进入算力瓶颈区。稀疏矩阵打包解压的初始化开销与稳态计算耗时须严格区分。推理基准测试应完整记录数值格式、算子内核版本、输入输出词元长度分布、GPU 缓存冷热状态及并发队列深度，并在全链路时延中完整计入反量化开销与数据重排耗时。
 
-\begin{note}[压缩的三个完成条件]
-数学近似必须在明确误差目标下成立，模型结构与制品格式必须能够恢复并执行，任务质量和系统成本必须在同一负载契约下满足要求。参数量、任务质量和执行成本共同决定方案是否可用。
+\begin{note}[模型压缩的三元可行性边界]
+模型压缩方案的工程可行性受三大约束联合决定：数学层面的数值近似误差在预设容限内受控；系统层面的模型拓扑与低精度制品能够被目标硬件后端原生或高效执行；服务层面的任务性能指标与基础设施成本在既定生产负载下取得正向收益。
 \end{note}
 
 

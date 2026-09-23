@@ -2,22 +2,22 @@
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
-\bookchapter{文本表示}{ch:rev-tokenization}
+\bookchapter{文本表示}{ch:tokenization}
 
 语言模型通过数值表示处理文本。原始字节先按字符编码解析为文本记录，再按任务规则形成样本，经规范化、分词\footnote{文本语境中的 tokenization 也称“词元化”；本书通常称“分词”，在视觉等非文本模态中使用“词元化”。}和长度处理成为整数张量。嵌入层将词元编号映射为连续向量，供注意力与后续网络使用。
 
-文本编码决定序列长度、稀有字符串的表示方式、输出空间和对话边界。字符、字节和词元是不同层次的表示单位；合并规则、最长匹配和概率分段则提供了不同的分词方法。分词后的离散编号通过嵌入映射为连续向量，供后续网络计算。“大规模训练数据的采集与处理”见\bookxref{ch:data-engineering}。
+文本编码决定序列长度、稀有字符串的表示方式、输出空间和对话边界。字符、字节和词元是不同层次的表示单位；合并规则、最长匹配和概率分段则提供了不同的分词方法。大规模训练数据的采集与处理见\bookxref{ch:data-engineering}。
 
 \section{模型输入构造}
 
 \subsection{文本边界}
-磁盘中的文本首先是按某种字符编码保存的字节，但训练器通常不直接把整个文件当作一个样本。数据还需要区分至少四个层次：\textbf{原始资料}是抓取文件、文档或消息快照；\textbf{逻辑记录}保留一篇文章、一轮对话或一组问答的语义结构；\textbf{训练样本}是按特定任务从记录中选择或切出的消费单位；\textbf{模型序列}则是加入边界符号、完成截断或填充后的词元编号。记录经切分或组合后，样本边界可以与原始资料边界不同。
+磁盘中的文本首先是按某种字符编码保存的字节，但训练器通常不直接把整个文件当作一个样本。数据还需要区分至少四个层次：\emph{原始资料}是抓取文件、文档或消息快照；\emph{逻辑记录}保留一篇文章、一轮对话或一组问答的语义结构；\emph{训练样本}是按特定任务从记录中选择或切出的消费单位；\emph{模型序列}则是加入边界符号、完成截断或填充后的词元编号。记录经切分或组合后，样本边界可以与原始资料边界不同。
 
 例如，同一段包含标题、两个段落和来源字段的 JSONL 记录，可以作为一条完整文档参加预训练，也可以按段落切成两条样本；用于监督微调时，它还可能被转换成带角色边界的消息序列。三种处理读取了相同文字，却定义了不同的条件上下文、结束位置和有效标签。换行、空文档和文档间 EOS 的处理由样本构造规则决定。
 
 \begin{table}[htbp]
 \centering
-\caption{文本数据处理分层体系与语义边界}\label{tab:rev-data-hierarchy}
+\caption{文本数据处理分层体系与语义边界}\label{tab:data-hierarchy}
 \begin{tabularx}{\linewidth}{p{18mm}p{42mm}X}
 \toprule 层次 & 典型对象 & 本层必须明确的决定\\\midrule
 存储层 & UTF-8 文件、JSONL、Parquet & 字节编码、字段与记录边界\\
@@ -28,7 +28,7 @@
 \end{tabularx}
 \end{table}
 
-\subsection{最小输入管线与张量形状}
+\subsection{文本输入的构造}
 设第 $b$ 条原始文本为 $s^{(b)}$，规范化函数为 $N$，固定分词器为 $T$。编码结果是长度可变的编号序列
 \begin{equation}
  s^{(b)}\xrightarrow{N}\widetilde s^{(b)}
@@ -45,9 +45,9 @@
 \end{equation}
 记录边界、特殊词元与填充位置共同决定模型读取的上下文和参与监督的位置。
 
-\section{神经语言模型}
+\section{从 N-gram 到神经序列模型}
 
-\subsection{N-gram 用有限上下文估计序列概率}
+\subsection{N-gram 的条件概率估计}
 自然语言处理（Natural Language Processing，NLP）研究如何让计算系统表示、理解和生成语言。早期统计语言模型常作有限记忆假设，用最近 $n-1$ 个词预测下一个词：
 \begin{equation}
  p(w_1,\ldots,w_T)\approx
@@ -55,32 +55,35 @@
 \end{equation}
 这类模型称为\term{N-gram 语言模型}{N-gram Language Model}{}。二元模型只看前一个词，三元模型看前两个词。条件概率可由计数估计，但未见组合会得到零概率，因此需要加法平滑、回退或插值。$n$ 增大能保留更长的局部模式，同时使组合数量迅速增加，数据稀疏和存储成本也随之加重。
 
-N-gram 的当代价值在于它把语言模型的核心任务刻画得很清楚：根据上下文分配下一词的概率。有限上下文、稀疏计数和泛化之间的矛盾也由此显现。神经语言模型改变了概率的参数化方式，条件预测这一目标保持不变。
+N-gram 通过上下文计数估计下一词的概率，便于分析上下文长度、计数稀疏性与泛化之间的关系。神经语言模型改变了概率的参数化方式，仍以条件预测为目标。
 
 \subsection{离散符号的连续嵌入}
 独热向量能区分词的身份，却不能直接表达词之间的相似性。词向量为每个词分配一个低维可学习向量。早期方法可以从词与上下文的共现统计中分解矩阵，也可以通过预测上下文或中心词学习表示。训练完成后，语义或句法关系可能表现为向量距离和方向上的规律。
 
-词向量的含义来自训练目标和语料，几何接近只反映表示空间中的邻近，与事实是否相同分属两个问题。传统静态词向量为同一个词提供固定表示，无法随句子消解一词多义；后来的上下文表示会根据整段输入产生不同向量。本章后文将从嵌入查表继续讨论离散身份的连续表示，\bookxref{ch:attention}和\bookxref{ch:position-representation}再分别建立注意力计算与位置表示。
+词向量的几何距离仅反映其在训练语料中的共现统计与分布语义相似度，并不等同于客观事实层面的真伪。传统静态词向量为同一个词分配单一固定表征，无法随语境消解一词多义；而上下文动态表征则结合注意力机制生成依赖全序列的隐向量。\bookxref{ch:attention}与\bookxref{ch:position-representation}将进一步推导注意力交互与位置编码机制。
 
-\section{神经序列模型}
 
-\subsection{前馈网络依赖固定宽度输入}
+\subsection{前馈网络的固定窗口}
 前馈神经网络（Feedforward Neural Network，FNN）中的信息只从输入流向输出，不保存跨步状态。用于语言建模时，可以把固定窗口内的若干词向量拼接或汇总，再预测下一个词：
 \begin{equation}
- \vect{h}=\phi(\mat{W}_x[\vect{x}_{t-k};\ldots;\vect{x}_{t-1}]+\vect{b}),\qquad
- p(w_t\mid w_{t-k:t-1})=\softmax(\mat{W}_o\vect{h}+\vect{c}).
+ \begin{aligned}
+  \vect{h}&=\phi(\mat{W}_x[\vect{x}_{t-k};\ldots;\vect{x}_{t-1}]+\vect{b}),\\
+  p(w_t\mid w_{t-k:t-1})&=\softmax(\mat{W}_o\vect{h}+\vect{c}).
+ \end{aligned}
 \end{equation}
 与 N-gram 相比，不同上下文通过共享词向量和网络参数获得统计共享，未见过的完整组合也可能得到合理预测。但窗口长度仍需预先固定，超过窗口的信息无法进入当前预测。
 
-\subsection{RNN 用隐藏状态汇总历史}
+\subsection{RNN 的递归状态}
 循环神经网络（Recurrent Neural Network，RNN）在每一步更新隐藏状态：
 \begin{equation}
- \vect{h}_t=\phi(\mat{W}_x\vect{x}_t+\mat{W}_h\vect{h}_{t-1}+\vect{b}),\qquad
- \vect{y}_t=\mat{W}_o\vect{h}_t+\vect{c}.
+ \begin{aligned}
+  \vect{h}_t&=\phi(\mat{W}_x\vect{x}_t+\mat{W}_h\vect{h}_{t-1}+\vect{b}),\\
+  \vect{y}_t&=\mat{W}_o\vect{h}_t+\vect{c}.
+ \end{aligned}
 \end{equation}
 $\vect{h}_t$ 是对截至位置 $t$ 的历史摘要，同一组参数在所有时间步共享，因此模型可以处理变长序列。训练时把循环按时间展开，再通过时间反向传播计算梯度。虽然依赖路径原则上可以很长，反复乘以状态雅可比会使梯度指数衰减或增长，造成梯度消失或爆炸；隐藏状态容量也限制了远距离信息的保留。
 
-\subsection{LSTM 用门控制记忆读写}
+\subsection{LSTM 的门控记忆}
 长短期记忆网络（Long Short-Term Memory，LSTM）在隐藏状态之外维护记忆单元 $\vect{c}_t$，并用门控制遗忘、写入和输出：
 \begin{align}
  \vect{f}_t&=\sigma(\mat{W}_f[\vect{x}_t;\vect{h}_{t-1}]+\vect{b}_f),&
@@ -105,15 +108,15 @@ $\vect{h}_t$ 是对截至位置 $t$ 的历史摘要，同一组参数在所有�
 
 \subsection{变长映射与符号约定}
 对合法文本集合 $\mathcal S$，确定性编码器写为
-\begin{equation}\label{eq:rev-tok-map}
+\begin{equation}\label{eq:tok-map}
  T:\mathcal S\longrightarrow \bigcup_{L\ge0}\{0,\ldots,V-1\}^{L},
  \qquad T(s)=(x_1,\ldots,x_{L(s)}).
 \end{equation}
-这里 $L(s)$ 随输入变化，不能在定义域之外将它视为固定长度。解码器 $D$ 将词元序列恢复为文本或字节。为了讨论原文可逆性，本章默认普通文本编码时不额外插入控制词元；加入控制词元后的序列需要按明确协议解释。表\ref{tab:rev-tokenization-notations}列出了本章核心数学符号。
+这里 $L(s)$ 随输入变化，不能在定义域之外将它视为固定长度。解码器 $D$ 将词元序列恢复为文本或字节。为了讨论原文可逆性，本章默认普通文本编码时不额外插入控制词元；加入控制词元后的序列需要按明确协议解释。表\ref{tab:tokenization-notations}列出了本章核心数学符号。
 
 \begin{table}[htbp]
 \centering
-\caption{文本表示与分词算法核心数学符号}\label{tab:rev-tokenization-notations}
+\caption{文本表示与分词算法数学符号}\label{tab:tokenization-notations}
 \begin{tabularx}{\linewidth}{p{24mm}X}
 \toprule 符号 & 含义\\\midrule
 $s$；$N(s)$ & 原始文本；规范化后的文本。\\
@@ -136,8 +139,7 @@ $B,T_{\max},d$ & 批大小、填充后长度及模型隐藏维数。\\
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=.96\linewidth]{\subfix{../../figures/theory/revision-ch05-pipeline.pdf}}
-\caption{文本编码与模型协议的分层结构。训练过程产生词表及算法参数；运行过程使用固定制品编码。}
-\label{fig:rev-tok-pipeline}
+\caption[文本编码与模型协议分层结构]{文本编码与模型协议分层结构。训练过程产生词表及算法参数；运行过程使用固定制品编码。}\label{fig:tok-pipeline}
 \end{figure}
 
 例如，空格可以作为预分词边界，也可以被保留为词元内容或边界标记。若预处理只保留切出的非空片段而丢弃所有间隔，连续空格、换行与制表符便无法恢复。规范化、词表和合并规则共同决定分词所得的整数序列。
@@ -148,7 +150,7 @@ $B,T_{\max},d$ & 批大小、填充后长度及模型隐藏维数。\\
 字节对编码（Byte Pair Encoding，BPE）通过逐次合并相邻基本符号构造词表。将这一思想用于子词表示，是处理未登录词的一种经典方法\cite{sennrichSubwordUnits2016}。现代字节级变体以字节为基础符号；字符级变体则以字符为基础。具体实现应明确初始字母表，算法名称沿用了历史称呼。
 
 设训练语料经预处理后包含片段 $s^{(1)},\ldots,s^{(m)}$，片段权重为正整数 $w_1,\ldots,w_m$，表示出现次数。在第 $k$ 轮，片段的当前表示为符号序列 $s^{(j,k)}$。相邻对计数为
-\begin{equation}\label{eq:rev-tok-paircount}
+\begin{equation}\label{eq:tok-paircount}
  c_k(a,b)=\sum_{j=1}^{m}w_j
  \sum_{i=1}^{|s^{(j,k)}|-1}
  \mathbf1[s_i^{(j,k)}=a,\ s_{i+1}^{(j,k)}=b].
@@ -162,43 +164,43 @@ $B,T_{\max},d$ & 批大小、填充后长度及模型隐藏维数。\\
 \AlgoInput{带权预分词片段、基础符号集合、目标词表大小和确定性平局决胜规则。}
 \AlgoOutput{词表、ID 映射以及按学习顺序排列的合并规则。}
 \begin{myalgorithmic}[1]
-\State Expand each segment into base symbols while preserving boundaries and weights; initialize an empty rule list
-\While{the vocabulary size is below the target size}
-  \State Count valid adjacent pairs within segments using Equation~\eqref{eq:rev-tok-paircount}
-  \If{the valid candidate set is empty}
-    \State Terminate the merge loop
+\State 将每个片段展开为基础符号，同时保留片段边界与权重；初始化空规则列表
+\While{词表大小小于目标大小}
+  \State 利用式\eqref{eq:tok-paircount}统计片段内的有效相邻对频数
+  \If{有效候选集为空}
+    \State 终止合并循环
   \Else
-    \State Select a pair by frequency and the fixed tie-breaking rule; record the rule and merged symbol
-    \For{each weighted segment}
-      \State Replace non-overlapping occurrences of the selected pair from left to right while preserving the segment weight
+    \State 按频数与确定并列规则选取符号对；记录合并规则与合并后符号
+    \For{each 加权片段}
+      \State 从左至右替换选定对的非重叠出现，同时保持片段权重
     \EndFor
   \EndIf
 \EndWhile
-\State \Return the vocabulary, ID mapping, and ordered merge rules
+\State \Return 词表、ID 映射与有序合并规则
 \end{myalgorithmic}
 合并不改变片段所代表的字节串。基础字节覆盖不因某轮未出现而删除。朴素重计数每轮扫描当前语料，若初始总符号数为 $N$、执行 $M$ 次合并，扫描成本上界为 $O(MN)$；局部计数索引可降低重复扫描，规则语义保持不变。
 \end{algorithm}
 
 \begin{example}
 取三个训练片段：\texttt{abab} 出现两次，\texttt{abac} 出现一次，\texttt{ac} 出现一次。以 $a,b,c$ 为初始符号，不允许跨片段合并。初始加权总长度为
-\begin{equation}
+\begin{equation*}
  N_0=2\times4+1\times4+1\times2=14.
-\end{equation}
+\end{equation*}
 初始相邻对中，$(a,b)$ 在 \texttt{abab} 内出现两次，考虑权重后贡献四次；在 \texttt{abac} 中再贡献一次，因此总计为五。相似地，$(b,a)$ 计数为三，$(a,c)$ 计数为二。第一轮合并 $(a,b)\mapsto ab$，得到
-\begin{equation}
+\begin{equation*}
  (ab,ab)\times2,\qquad (ab,a,c)\times1,\qquad(a,c)\times1.
-\end{equation}
+\end{equation*}
 总长度变为 $N_1=2\times2+3+2=9$，减少五，与本轮五次非重叠替换一致。
 
 第二轮中，$(ab,ab)$ 与 $(a,c)$ 的计数都为二，$(ab,a)$ 的计数为一。为使过程确定，规定比较两个符号所代表的字节串，按有序对的字典序处理平局；由此本例选择 $(a,c)$，得到
-\begin{equation}
+\begin{equation*}
  (ab,ab)\times2,\qquad(ab,ac)\times1,\qquad(ac)\times1.
-\end{equation}
+\end{equation*}
 总长度变为 $N_2=7$。第三轮选择计数为二的 $(ab,ab)$，得到 $(abab)\times2$、$(ab,ac)\times1$、$(ac)\times1$，于是 $N_3=5$。
 
 \begin{table}[htbp]
 \centering
-\caption{BPE 合并轮次演进与词元数压缩示例。}\label{tab:rev-bpe-rounds}
+\caption{BPE 合并轮次演进示例}\label{tab:bpe-rounds}
 \begin{tabularx}{\linewidth}{@{}cllX@{}}
 \toprule 轮次 & 选中规则 & 频数 & 合并后加权词元数\\\midrule
 1 & $(a,b)\mapsto ab$ & 5 & 9\\
@@ -223,13 +225,13 @@ $B,T_{\max},d$ & 批大小、填充后长度及模型隐藏维数。\\
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.96\linewidth]{\subfix{../../figures/theory/bpe-merge-tree.pdf}}
-\caption{BPE 词表训练优先级与推理分词切分树对比。左图展示由训练语料统计频数决定的有序合并规则队列；右图展示推理阶段基于该规则集合自底向上对输入字符序列执行贪心聚合、最终生成完整词元的语法树。}\label{fig:bpe-merge-tree}
+\caption[BPE 训练规则队列与推理切分树对比]{BPE 训练规则队列与推理切分树对比。左图展示由训练语料统计频数决定的有序合并规则队列；右图展示推理阶段基于该规则集合自底向上执行贪心聚合生成词元的语法树。}\label{fig:bpe-merge-tree}
 \end{figure}
 
-BPE 编码与从最终词表选择最长前缀是两种不同的算法。设另一套有效规则依次为 $(b,c)\mapsto bc$、$(a,b)\mapsto ab$。对输入 \texttt{abc}，BPE 先得到 $(a,bc)$，不能再合并；若只看词表并优先选最长前缀，则会得到 $(ab,c)$。两种结果都能还原原文，却给模型提供不同的输入。无损解码因而不是两种编码实现等价的充分条件。
+BPE 基于优先级的贪心合并与基于词表的最长前缀匹配属于两种不同的分词算法。设有效规则依次为 $(b,c)\mapsto bc$ 与 $(a,b)\mapsto ab$。对输入 \texttt{abc}，BPE 依据优先级先合并 $(b,c)$ 得到 $(a,bc)$；若采用最长匹配则会贪心匹配前缀得到 $(ab,c)$。两种分词结果虽均能无损重构原文，但映射为完全不同的词元 ID 序列。因此，无损解码并不等价于分词逻辑的一致性。
 
 \subsection{分词合并不变量}
-对 $(a,a,a)$，相邻对 $(a,a)$ 的位置计数为二，但两次出现共享中间符号，无法同时替换。规定从左向右处理后，一轮替换结果为 $(aa,a)$，长度只减少一。频数与实际压缩量在自重叠候选中因而不相等。对于自重叠候选，应明确计数方式与非重叠替换规则，式\eqref{eq:rev-tok-paircount}只给出频数，不给出精确压缩收益。
+对 $(a,a,a)$，相邻对 $(a,a)$ 的位置计数为二，但两次出现共享中间符号，无法同时替换。规定从左向右处理后，一轮替换结果为 $(aa,a)$，长度只减少一。频数与实际压缩量在自重叠候选中因而不相等。对于自重叠候选，应明确计数方式与非重叠替换规则，式\eqref{eq:tok-paircount}只给出频数，不给出精确压缩收益。
 
 训练平局需要稳定的规则；编码平局还涉及同一合并在不同位置重叠的处理顺序。实现可以采用高效数据结构维护局部候选，但优化不能改变这两种语义。最直接的正确性不变量是
 \begin{equation}
@@ -245,7 +247,7 @@ WordPiece 同样使用子词词表，但常见 BERT 编码器按从左到右的�
 
 设词表包含 \texttt{play}、\texttt{player}、\texttt{\#\#ing}、\texttt{\#\#s}。对预分词后的 \texttt{playing}，从词首尝试能够匹配的最长片段，找到 \texttt{play}，剩余 \texttt{ing} 使用续接词元 \texttt{\#\#ing}。对 \texttt{players}，词首直接选择更长的 \texttt{player}，再选择 \texttt{\#\#s}。已经选定的前缀不因后续概率更高而自动回退。
 
-这一不回退的性质值得单独注意。取词表 $\{a,ab,\texttt{\#\#bc}\}$，输入 \texttt{abc}。最长匹配首先选择 $ab$，但剩余 $c$ 没有续接项；原始 BERT 的这一路径会把整个词替换为未知词元，而不会回退到 $(a,\texttt{\#\#bc})$。后一条分段虽然存在，却不在这条贪心路径的搜索范围内。超过实现规定的最大词长也可能触发未知词元，属于应记录的实现边界。
+贪心匹配可能在存在合法分段时仍返回未知词元。取词表 $\{a,ab,\texttt{\#\#bc}\}$，输入 \texttt{abc}。最长匹配首先选择 $ab$，但剩余 $c$ 没有续接项；原始 BERT 的这一路径会把整个词替换为未知词元，而不会回退到 $(a,\texttt{\#\#bc})$。后一条分段未被贪心路径搜索到。超过实现规定的最大词长也可能触发未知词元，使用时应记录这一限制。
 
 \subsection{WordPiece 训练边界}
 词表训练决定保留哪些片段，最长匹配决定给定词表后怎样编码，两者属于不同阶段。WordPiece 的历史训练方法与似然改进有关，而不同实现的候选构造、打分和停止规则并不完全相同。还原词表训练过程需要训练语料、候选构造、评分与停止规则；BERT 发布的词表和编码源文件只记录推断侧制品。
@@ -264,9 +266,11 @@ BPE 保存有序合并规则，WordPiece 的常见编码路径依赖最终词表
 Unigram 分词模型为候选词元赋予概率，并在能够拼接出原文本的分段中选择或采样\cite{kudoSubwordRegularization2018}。与逐次合并不同，它允许同一文本同时存在多条有权重的分段路径。
 
 设普通词表中的每个非空词元 $v$ 具有参数 $q(v)>0$，且 $\sum_vq(v)=1$。对分段 $z=(z_1,\ldots,z_K)\in\mathcal Z(s)$，定义权重
-\begin{equation}\label{eq:rev-tok-unigram-weight}
- w_q(z)=\prod_{i=1}^{K}q(z_i),\qquad
- Z_q(s)=\sum_{z\in\mathcal Z(s)}w_q(z).
+\begin{equation}\label{eq:tok-unigram-weight}
+ \begin{aligned}
+  w_q(z)&=\prod_{i=1}^{K}q(z_i),\\
+  Z_q(s)&=\sum_{z\in\mathcal Z(s)}w_q(z).
+ \end{aligned}
 \end{equation}
 给定字符串后的分段分布为
 \begin{equation}
@@ -274,30 +278,32 @@ Unigram 分词模型为候选词元赋予概率，并在能够拼接出原文本
 \end{equation}
 分母只汇总能够重构同一字符串的路径。词元概率之积体现一元独立假设，但约束“必须拼出 $s$”使候选位置之间并非可以任意独立选择。\footnote{在本章，$Z_q(s)$ 用作分段边缘权重。若要将其解释为所有任意长度文本上的正规概率，还需补充终止或长度生成机制；仅有 $\sum_vq(v)=1$ 不足以规范化所有有限词元序列。}
 
-\subsection{分段与数值比较}
-\begin{example}
-\optional
+\begin{example}[\optional{}Unigram 分段的权重与概率]
 取词表 $\{a,b,ab,ba\}$，分别赋值 $0.2,0.2,0.4,0.2$。对字符串 \texttt{aba}，全部候选分段如下：
 \begin{table}[htbp]
 \centering
-\caption{Unigram 模型候选分段权重与后验概率计算示例。}
+\caption{Unigram 候选分段概率计算示例}
 \label{tab:repr-unigram-segments}
+{\renewcommand{\arraystretch}{1.8}%
 \begin{tabularx}{\linewidth}{@{}lXX@{}}
 \toprule 分段 & 权重计算 & 给定字符串的概率\\\midrule
-$(ab,a)$ & $0.4\times0.2=0.08$ & $\frac{0.08}{0.128}=0.625$\\
-$(a,ba)$ & $0.2\times0.2=0.04$ & $\frac{0.04}{0.128}=0.3125$\\
-$(a,b,a)$ & $0.2\times0.2\times0.2=0.008$ & $\frac{0.008}{0.128}=0.0625$\\
+$(ab,a)$ & $0.4\times0.2=0.08$ & $\dfrac{0.08}{0.128}=0.625$\\
+$(a,ba)$ & $0.2\times0.2=0.04$ & $\dfrac{0.04}{0.128}=0.3125$\\
+$(a,b,a)$ & $0.2\times0.2\times0.2=0.008$ & $\dfrac{0.008}{0.128}=0.0625$\\
 \bottomrule
-\end{tabularx}
+\end{tabularx}}
 \end{table}
 最可能分段是 $(ab,a)$。若将参数改为 $q(a)=q(b)=0.3$、$q(ab)=0.1$、$q(ba)=0.3$，则三条路径权重分别变为 $0.03,0.09,0.027$，最优分段成为 $(a,ba)$。词表没有改变，概率变化却改变了分段结果；只保存词表不能完整描述 Unigram 编码器。
 \end{example}
 
 \subsection{动态规划与 Viterbi 路径}
 直接枚举全部分段可能随长度指数增长。利用每条路径最后一个词元的位置，可以建立动态规划。令 $s_{1:n}$ 为长度 $n$ 的基本字符序列，$\alpha_j$ 为前 $j$ 个字符所有分段的总权重，初始化 $\alpha_0=1$。则
-\begin{equation}\label{eq:rev-tok-forward}
- \alpha_j=\sum_{\substack{0\le i<j\\s_{i+1:j}\in\mathcal V_{\mathrm{text}}}}
- \alpha_i q(s_{i+1:j}),\qquad Z_q(s)=\alpha_n.
+\begin{equation}\label{eq:tok-forward}
+ \begin{aligned}
+  \alpha_j&=\sum_{\substack{0\le i<j\\s_{i+1:j}\in\mathcal V_{\mathrm{text}}}}
+  \alpha_i q(s_{i+1:j}),\\
+  Z_q(s)&=\alpha_n.
+ \end{aligned}
 \end{equation}
 每一项对应以 $s_{i+1:j}$ 为最后一个词元的全部前缀路径。不同最后词元的起点划分了候选集合，因此求和既不重复也不遗漏。
 
@@ -312,14 +318,16 @@ $(a,b,a)$ & $0.2\times0.2\times0.2=0.008$ & $\frac{0.008}{0.128}=0.0625$\\
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=.82\linewidth]{\subfix{../../figures/theory/revision-ch05-lattice.pdf}}
-\caption{字符串 \texttt{aba} 的分段格。每条从位置 0 到位置 3 的路径是一种分段；路径权重为边权之积。}\label{fig:rev-tok-lattice}
+\caption[字符串分段格示例]{字符串分段格示例。以字符串 \texttt{aba} 为例，每条从位置 0 到位置 3 的路径代表一种分段方式，路径权重为对应边权重之积。}\label{fig:tok-lattice}
 \end{figure}
 
 求最优路径时，将求和改为取最大值，并在对数空间计算：
 \begin{equation}
- \delta_0=0,\qquad
- \delta_j=\max_{\substack{0\le i<j\\s_{i+1:j}\in\mathcal V_{\mathrm{text}}}}
- [\delta_i+\log q(s_{i+1:j})].
+ \begin{aligned}
+  \delta_0&=0,\\
+  \delta_j&=\max_{\substack{0\le i<j\\s_{i+1:j}\in\mathcal V_{\mathrm{text}}}}
+  [\delta_i+\log q(s_{i+1:j})].
+ \end{aligned}
 \end{equation}
 同时保存取得最大值的起点，最后反向追溯即可恢复分段，这就是此处的 Viterbi 计算。前向求和在长序列上也应使用对数和指数技巧，避免很小的概率乘积下溢。最大路径权重与全部路径总权重不可混淆：前者用于确定性最优编码，后者用于边缘化与概率采样。
 
@@ -357,17 +365,17 @@ $(a,b,a)$ & $0.2\times0.2\times0.2=0.008$ & $\frac{0.008}{0.128}=0.0625$\\
 
 SentencePiece 是可承载不同子词模型的工具系统，支持 BPE 和 Unigram 等方法，并包含规范化和空白表示规则\cite{googleSentencePiece}。模型类型、规范化与空白处理配置共同决定其编码结果和原文可逆性。
 
-\section{可逆性、偏移与语言覆盖}
+\section{分词器的评价}
 
 \subsection{字节覆盖边界}
 若普通词表包含所有 $256$ 个基础字节，所有合并只连接字节而不删除内容，且前处理无损，则对合法 UTF-8 文本有
-\begin{equation}\label{eq:rev-tok-roundtrip}
+\begin{equation}\label{eq:tok-roundtrip}
  D(T(s))=\operatorname{UTF8Decode}
  \bigl(b(x_1)\Vert\cdots\Vert b(x_L)\bigr)=s.
 \end{equation}
-未见词或未见字符仍能分解为基础字节，词表缺少整词时无需退化为未知词元。但是，能够表示一种语言与善于表示这种语言是两件事：一个文本若大量退回单字节，序列可能明显增长，参数中也未必学习到充分的组合知识。
+未见词或未见字符仍能分解为基础字节，词表缺少整词时无需退化为未知词元。但是，支持任意字节序列编码并不等价于具备高效的建模压缩能力：若特定语种在词表中缺乏整词或常用子词，分词将退化为单字节碎片序列，不仅成倍消耗上下文窗口长度，还显著削弱自注意力对长程语义的建模效率。
 
-对“中”，若编码得到分别对应 \texttt{E4} 和 \texttt{B8 AD} 的两个词元，两个词元都不是独立完整的 UTF-8 字符。对每个词元分别进行严格字符解码会失败；若使用替代字符继续解码，则原信息可能被破坏。正确做法是先连接完整字节流，再解码。流式显示同样需要保留尚未组成完整字符的尾部字节。
+以汉字“中”为例，若分词切分为对应 \texttt{E4} 和 \texttt{B8 AD} 的两个词元，二者均非完整合法的 UTF-8 字符。若在流式输出中逐词元独立执行严格字符解码将引发解码异常；若粗暴替换为非法占位符则会破坏原始文本信息。正确的流式解码实现须维护未完成字节缓冲队列，待后续字节拼接成合法 UTF-8 码点后再递交给显示层。
 
 \subsection{规范化的不可逆性}
 设 $N$ 将大小写折叠，则 $N(\texttt{A})=N(\texttt{a})$。两种输入变成同一规范形式后，无论后续编码多么精确，编码结果都无法区分原文是哪一种。一般地，若存在 $s_1\ne s_2$ 且 $N(s_1)=N(s_2)$，那么不保留额外信息的系统无法同时满足对两者的原文恢复。
@@ -376,22 +384,21 @@ SentencePiece 是可承载不同子词模型的工具系统，支持 BPE 和 Uni
 \begin{equation}
  D(T(s))=N(s),
 \end{equation}
-而非式\eqref{eq:rev-tok-roundtrip}。统一兼容字符、折叠空白和清除控制字符各自具有用途，也各自删除不同信息。代码缩进、数学符号、文件路径和专有名词可能依赖这些差异，规范化策略应由任务语义决定。
+而非式\eqref{eq:tok-roundtrip}。统一兼容字符、折叠空白和清除控制字符各自具有用途，也各自删除不同信息。代码缩进、数学符号、文件路径和专有名词可能依赖这些差异，规范化策略应由任务语义决定。
 
 \subsection{词元偏移与原文对齐}
 抽取式问答、命名实体识别和搜索高亮需要把词元位置映射回原文区间。偏移应明确单位是字节、码点还是其他字符索引。一个中文词元可能只含部分字节，却在用户界面对应同一个可见字符；规范化又可能让一个原字符映射到多个输出字符，或反过来。偏移映射因而不一定构成逐词元一一、不重叠的区间划分。
 
 特殊词元没有原文来源位置，应使用约定的空区间或独立标志表示，占位偏移并不指向文本开头。解码输出中的空白清理也可能改变文本，故原文恢复检验必须记录清理和跳过特殊词元的选项。可读的词表字符串只是检查视图，原始字节与位置协议才是判断依据。
 
-\section{词表规模、序列长度与计算代价}
+\section{词表规模的选择}
 
 \subsection{常见模型的词表大小}
 词表大小描述模型能够区分的离散编号规模，单位是词元，词元可以是字节、子词或控制符号。表~\ref{tab:tokenizer-vocabulary-sizes}列出若干常见模型的具体配置，便于理解数万至十余万词元的数量级。
 
 \begin{table}[htbp]
 \centering
-\caption{常见模型的词表维度（官方配置，核查于2026年9月16日）}
-\label{tab:tokenizer-vocabulary-sizes}
+\caption[常见模型词表维度]{常见模型词表维度。基于官方配置整理，核查于2026年9月16日。}\label{tab:tokenizer-vocabulary-sizes}
 \begin{tabularx}{\linewidth}{XrX}
 \toprule
 模型制品 & \texttt{vocab\_size} & 配置来源\\
@@ -410,7 +417,7 @@ DeepSeek-V3 & \num{129280} & DeepSeek 官方仓库\cite{deepseekv3Config2026}\\
 
 词表容量与上下文长度分别约束可选择的词元种类和一次处理的序列位置数。更大的词表有机会缩短文本编码，收益取决于训练语料及语言覆盖；模型能力还取决于网络结构、训练数据和训练过程，词表大小只是其中一个维度。
 
-\subsection{参数与计算的两种方向}
+\subsection{分词粒度的计算代价}
 扩大词表可能使高频片段由多个词元合为一个，减少序列长度；同时增加输入嵌入和输出投影的参数。设隐藏维数为 $d$，不计输出偏置，输入和输出矩阵独立时需要约 $2Vd$ 个参数，权重共享时需要约 $Vd$ 个。全词表输出投影每个位置的乘加规模仍与 $Vd$ 成正比，权重共享不会消除该计算。
 
 例如，把词表从 $\num{32000}$ 增至 $\num{64000}$，在 $d=\num{4096}$ 且权重共享时，额外参数为
@@ -433,14 +440,14 @@ DeepSeek-V3 & \num{129280} & DeepSeek 官方仓库\cite{deepseekv3Config2026}\\
 \end{equation}
 这里 BPB 表示每字节比特数，$N_{\mathrm{bytes}}$ 为指定文本编码下的原始字节数。该量仍需统一文本、规范化、终止词元和上下文边界；若多个词元序列可解码为同一字符串，单一路径分数也未必等于字符串全部概率质量。共同单位之外，比较还需固定上述输入与概率计算条件。
 
-\section{特殊词元与序列协议}
+\section{序列编码协议}
 
 \subsection{角色、字面形式、编号和行为}
-特殊词元（Special Token）承担控制职责，但其语义由训练和执行协议共同建立。应分别识别四个对象：词元的角色、配置中的字面形式、实际编号以及运行时行为。登记一个字符串为 EOS 不会自动教会未训练的模型何时结束，设置 BOS 属性也不一定意味着编码器会自动插入它。
+特殊词元（Special Token）承担控制职责，但其语义由训练和执行协议共同建立。必须在系统设计中严格解耦四个对象：\emph{词元角色}、\emph{字面形式}、\emph{词表编号}以及\emph{运行时行为}。登记一个字符串为 EOS 不会自动教会未训练的模型何时结束，设置 BOS 属性也不一定意味着编码器会自动插入它。
 
 \begin{table}[htbp]
 \centering
-\caption{大语言模型常见特殊词元角色与协议语义}\label{tab:rev-special-tokens}
+\caption{常见特殊词元角色与协议语义}\label{tab:special-tokens}
 \begin{tabularx}{\linewidth}{p{20mm}p{38mm}X}
 \toprule 角色 & 含义 & 需要区分的边界\\\midrule
 BOS & Beginning of Sequence，序列开始 & 不一定存在，也不一定由后处理自动加入。\\
@@ -455,11 +462,11 @@ MASK & Mask，输入扰动符号 & 与注意力掩码、损失掩码是不同对
 \end{tabularx}
 \end{table}
 
-BERT 类句对输入可以采用 \texttt{[CLS] A [SEP] B [SEP]}；某些自回归模型采用起始符号、提示、回答和终止符号的序列；编码器—解码器则分别构建源序列与目标序列。现代主流开源大语言模型在实际制品中对上述特殊词元的具体字面命名与协议约定见表\ref{tab:rev-cross-arch-special-tokens}。具体模型可能采用不同变体，应读取制品协议，架构名称不足以确定固定编号或固定模板。句段编号和位置编号是附加输入，属于特殊词元之外的对象。
+BERT 类句对输入可以采用 \texttt{[CLS] A [SEP] B [SEP]}；某些自回归模型采用起始符号、提示、回答和终止符号的序列；编码器—解码器则分别构建源序列与目标序列。现代主流开源大语言模型在实际制品中对上述特殊词元的具体字面命名与协议约定见表\ref{tab:cross-arch-special-tokens}。具体模型可能采用不同变体，应读取制品协议，架构名称不足以确定固定编号或固定模板。句段编号和位置编号是附加输入，属于特殊词元之外的对象。
 
 \begin{table}[htbp]
 \centering
-\caption{典型大语言模型开源制品特殊词元协议与命名对照}\label{tab:rev-cross-arch-special-tokens}
+\caption{典型大模型特殊词元命名对照}\label{tab:cross-arch-special-tokens}
 \begin{tabularx}{\linewidth}{p{22mm}p{22mm}p{25mm}p{22mm}X}
 \toprule
 模型制品 & BOS 标记 & EOS 标记 & PAD 标记 & 结构与对话控制标记 \\\midrule
@@ -476,6 +483,10 @@ DeepSeek-V3 & \texttt{<｜begin of sentence｜>} & \texttt{<｜end of sentence�
 
 用户正文中出现与控制符号相同的字面字符串，应由输入策略明确处理为普通文本、转义文本或被允许的控制符号。正文自行改变角色边界会破坏协议，控制词元本身也无法独立消除提示注入。结构解析和模型对内容的遵循属于不同层次。
 
+\begin{warning}[特殊词元转义与注入风险]
+若用户输入的原始文本包含与特殊控制标记完全一致的字面串（例如包含 \texttt{<|im\_start|>}），未加清洗转义直接分词将导致控制标记被解析为系统结构词元，引发提示注入攻击（Prompt Injection）。分词接口必须严格区分普通字面输入与系统结构控制标记。
+\end{warning}
+
 截断同样需要理解结构。截去回答尾部会删除真实结束位置；截去消息头部可能留下没有角色的内容；截去工具调用的括号或字段会破坏结构。序列长度预算应在模板展开后计算，再按任务规则保留完整片段和必要边界。特殊词元的数量本身也占用上下文容量。
 
 \section{填充、因果可见性与损失选择}
@@ -488,19 +499,18 @@ DeepSeek-V3 & \texttt{<｜begin of sentence｜>} & \texttt{<｜end of sentence�
 实现可以把不允许的位置映射为注意力分数上的负无穷偏置，也可以使用等价的稀疏或内核接口。填充查询位置通常不承担输出任务；若额外将其整行全部屏蔽，应处理全屏蔽行的数值边界。
 
 损失掩码 $\ell_{bt}\in\{0,1\}$ 则决定目标位置是否参与训练：
-\begin{equation}\label{eq:rev-tok-maskloss}
+\begin{equation}\label{eq:tok-maskloss}
  \mathcal L=-\frac{1}{\sum_{b,t}\ell_{bt}}
  \sum_{b,t}\ell_{bt}\log p_{\vect{\theta}}(y_{bt}\mid\text{该位置可见输入}),
  \qquad \sum_{b,t}\ell_{bt}>0.
 \end{equation}
-提示词可以作为可见条件而不计入损失，真实 EOS 可以同时可见且接受监督，PAD 则通常既不是有效键也不接受监督。因果掩码控制未来信息，填充掩码控制虚构位置，损失掩码控制学习目标，三者各自承担独立的职责。
+提示词可以作为可见条件而不计入损失，真实 EOS 可以同时可见且接受监督，PAD 则通常既不是有效键也不接受监督。\keyconcept{因果掩码控制时间方向的可见性，填充掩码屏蔽批处理对齐补白，损失掩码划定优化监督区域，三者在模型流水线中承担截然不同的语义职责。}
 
-\subsection{下一词元对齐}
-\begin{example}
+\begin{example}[下一词元标签的对齐]
 设一个自回归训练样本由提示词元 $p$、回答词元 $a$ 与真实 EOS 构成；批处理需要再补齐两个位置。以下表格将输入与目标显式错开一位：相对于目标，解码器输入在开头加入 BOS 并右移；等价地，相对于完整词元串，目标向左错开一位。输入位置 $t$ 的输出预测下一词元 $y_t$：
 \begin{table}[htbp]
 \centering
-\caption{自回归训练中输入序列、目标序列与掩码的移位对齐示例。}
+\caption{自回归训练序列移位对齐示例}
 \label{tab:repr-next-token-alignment}
 \begin{tabular}{lccccc}
 \toprule 预测位置 $t$ & 1 & 2 & 3 & 4 & 5\\\midrule
@@ -516,7 +526,7 @@ DeepSeek-V3 & \texttt{<｜begin of sentence｜>} & \texttt{<｜end of sentence�
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=.9\linewidth]{\subfix{../../figures/theory/revision-ch05-masks.pdf}}
-\caption{填充、因果可见性和损失选择的职责。提示词进入条件上下文，不要求同时成为监督目标。}\label{fig:rev-tok-masks}
+\caption[填充掩码与因果可见性职责分工]{填充掩码与因果可见性职责分工。提示词进入条件上下文，不要求同时成为监督目标。}\label{fig:tok-masks}
 \end{figure}
 
 若 PAD 与 EOS 共享编号，表中真实 EOS 与两个填充目标在数值上相同，按“编号等于 EOS 就忽略”处理将误删第三个监督位置。区分依据是样本长度与位置来源。标签忽略值如 $-100$ 是某些损失接口的约定，不属于词表，送入嵌入层会得到无意义的结果。
@@ -536,14 +546,14 @@ DeepSeek-V3 & \texttt{<｜begin of sentence｜>} & \texttt{<｜end of sentence�
 
 标准分词接口通常可分为三层理解：加载工厂依据配置选择实现；包装层处理批处理和任务选项；后端执行具体编码流程。分层有助于定位差异，例如整数序列相同而特殊词元位置不同，应优先检查模板和后处理，词表训练通常与此无关。批输出除了编号，还可能包含有效性掩码、句段编号、特殊位置标记和原文偏移。
 
-注册新增词元以后，输入嵌入和输出投影必须包含其对应行。对于稠密连续编号，参数行数应与包含新增词元的完整词表大小一致；如果制品使用非连续编号，还需检查最大编号，词表项数本身不足以保证行数正确。新增行的随机初始化不等于获得语义，模型还需要相应训练。已有词元的编号置换更危险：张量形状可能完全合法，语义却已错位。
+注册新增词元以后，输入嵌入和输出投影必须包含其对应行。对于稠密连续编号，参数行数应与包含新增词元的完整词表大小一致；如果制品使用非连续编号，还需检查最大编号，词表项数本身不足以保证行数正确。新增行由随机初始化提供参数起点，再通过包含相应词元的训练学习其语义。已有词元的编号置换更危险：张量形状可能完全合法，语义却已错位。
 
 \subsection{分词器语义一致性}
 对两套实现 $T_1,T_2$，若目标是兼容同一模型，核心要求是在指定输入集合上逐项比较 $T_1(s)=T_2(s)$，并分别核对特殊位置、偏移和批处理行为。条件 $D_1(T_1(s))=D_2(T_2(s))=s$ 检查文本还原；模型输入一致性还需比较两组词元编号。
 
-检验集合应覆盖普通文本、重复空白、不同规范形式、混合语言、未见字符、特殊符号字面量、空文本、长输入以及长度差异显著的批次。重载应跨越实际序列化边界，避免原对象内存中的参数掩盖缺失文件。确定性编码与概率采样分别检验：随机不一致只能说明算法确实随机，发布配置差异则要在固定随机源后单独比较。
+检验集合应覆盖普通文本、重复空白、不同规范形式、混合语言、未见字符、特殊符号字面量、空文本、长输入以及长度差异显著的批次。重载检验应跨越实际序列化边界，避免进程内存中的遗留状态掩盖缺失的配置文件。对于包含随机子词采样的分词器，应在固定伪随机数种子后对比输出序列；确定性编码则需对全部边界用例实现严格精确对齐。
 
-制品身份可由配置内容、训练来源摘要和文件哈希共同记录。数据来源、许可和分词器训练划分属于可追溯元数据，所有加载库不一定识别这些字段。分词器升级还会改变预编码训练数据、检索切块、服务计费单位和缓存键，故应与模型权重及上游预处理协同发布。序列可读性、算法等价性和模型任务效果分别需要不同证据，每一项都要单独核查。
+制品元数据通常由结构配置、训练数据来源摘要和文件哈希共同记录。分词器升级会联动改变预编码语料格式、检索切块边界、推理计费单位和键值缓存兼容性，必须与模型权重协同发布并做版本锁定。序列可读性、算法等价性与下游基准效果各自对应独立的验证口径，需分别通过无损重构、编号一致性及下游基准指标核验。
 
 
 
@@ -557,9 +567,9 @@ DeepSeek-V3 & \texttt{<｜begin of sentence｜>} & \texttt{<｜end of sentence�
 本节从查表的数学形式解释嵌入参数如何学习，以及输入输出权重共享为何改变梯度来源。词元嵌入表示离散身份，却不单独提供序列中的绝对或相对位置；\bookxref{ch:attention}将在形状为 $[B,T,d]$ 的连续表示之上建立注意力计算，\bookxref{ch:position-representation}再讨论顺序信息如何进入模型。
 
 \section{嵌入表示}
-\label{ch:rev-embeddings}
+\label{ch:embeddings}
 
-\subsection{嵌入矩阵与张量形状}
+\subsection{嵌入查表}
 设词表大小为 $V_{\mathrm{vocab}}$，模型宽度为 $d$。\term{嵌入}{Embedding}{}参数构成矩阵 $\mat{E}\in\Real^{V_{\mathrm{vocab}}\times d}$，其中每一行对应词表中的一个编号。对批量编号张量 $\mat{K}\in\{1,\ldots,V_{\mathrm{vocab}}\}^{B\times T}$，输入表示定义为
 \begin{equation}
  \mat{X}_{bt,:}=\mat{E}_{K_{bt},:},\qquad \mat{X}\in\Real^{B\times T\times d}.
@@ -570,7 +580,7 @@ DeepSeek-V3 & \texttt{<｜begin of sentence｜>} & \texttt{<｜end of sentence�
 
 \begin{table}[htbp]
 \centering
-\caption{词元嵌入主要符号与张量形状。}
+\caption{词元嵌入主要符号与张量形状}
 \label{tab:repr-embedding-symbols}
 \begin{tabularx}{\linewidth}{@{}lXl@{}}
 \toprule 符号 & 含义 & 形状或范围\\\midrule
@@ -588,41 +598,39 @@ $\mat{X}$ & 单条序列的嵌入，省略批量轴 & $T\times d$\\
  (\vect{e}_k^{\mathrm{T}}\mat{E})_r
  =\sum_{j=1}^{V_{\mathrm{vocab}}}\mathbf1[j=k]E_{jr}=E_{kr}.
 \end{equation}
-因此查表与独热矩阵乘法表示同一个函数。前者直接选择参数行，后者将选择操作写成了线性代数形式。\bookxref{ch:rev-tensors}已经用这一等价关系解释反向传播；在词表规模较大时，它还决定输入表示的资源代价。
+因此查表与独热矩阵乘法表示同一个函数。前者直接选择参数行，后者将选择操作写成了线性代数形式。\bookxref{ch:tensors}已经用这一等价关系解释反向传播；在词表规模较大时，它还决定输入表示的资源代价。
 
 显式独热张量需要 $BTV_{\mathrm{vocab}}$ 个元素，整数编号需要 $BT$ 个元素，查表输出需要 $BTd$ 个元素。即使独热张量绝大多数元素为零，若按稠密数组保存仍须承担完整存储量。稀疏选择无需形成这份中间数组，但不会消除嵌入参数本身的 $V_{\mathrm{vocab}}d$ 个元素。
 
-\paragraph{三词元嵌入查表}
-\begin{example}
+\begin{example}[三词元嵌入查表]
 设一个三词元词表的参数为
-\begin{equation}
+\begin{equation*}
  \mat{E}=\begin{bmatrix}1&0\\0&2\\1&1\end{bmatrix},\qquad
  (k_0,k_1,k_2)=(3,1,3).
-\end{equation}
+\end{equation*}
 选择矩阵与输出分别为
-\begin{equation}
+\begin{equation*}
  \mat{S}=\begin{bmatrix}0&0&1\\1&0&0\\0&0&1\end{bmatrix},\qquad
  \mat{X}=\mat{S}\mat{E}=\begin{bmatrix}1&1\\1&0\\1&1\end{bmatrix}.
-\end{equation}
+\end{equation*}
 第0与第2个位置读取了同一参数行，因此在加入上下文和位置之前，两个输出完全相同。词元在句中承担的不同作用要由后续计算建立，固定查表本身只提供与位置无关的向量。
 \end{example}
 
-\subsection{重复编号与梯度累加}
+\subsection{嵌入参数的梯度累加}
 设上游梯度为 $\mat{G}_X=\frac{\partial\mathcal L}{\partial \mat{X}}$。由 $\mat{X}=\mat{S}\mat{E}$ 得到
-\begin{equation}
- \frac{\partial\mathcal L}{\partial \mat{E}}=\mat{S}^{\mathrm{T}}\mat{G}_X,
- \qquad
- \frac{\partial\mathcal L}{\partial \mat{E}_{j,:}}
- =\sum_{t:k_t=j}(\mat{G}_X)_{t,:}.
- \label{eq:repr-embedding-grad}
+\begin{equation}\label{eq:repr-embedding-grad}
+ \begin{aligned}
+  \frac{\partial\mathcal L}{\partial \mat{E}}&=\mat{S}^{\mathrm{T}}\mat{G}_X,\\
+  \frac{\partial\mathcal L}{\partial \mat{E}_{j,:}}&=\sum_{t:k_t=j}(\mat{G}_X)_{t,:}.
+ \end{aligned}
 \end{equation}
 对于上述例子，若三个位置的上游梯度为 $(1,2)$、$(3,4)$、$(5,6)$，则三行参数梯度依次为 $(3,4)$、$(0,0)$、$(6,8)$。重复词元并不是两份独立参数，因此其梯度必须合并。对批量输入，还要同时沿样本轴累加。
 
 未被读取的行在这一条计算路径上的梯度为零，该参数在整个训练步骤中仍然可能变化，其他使用该参数的计算路径、动量以及权重衰减都会带来贡献。嵌入查表也不对整数编号提供通常的连续导数：可学习的是连续表项，编号与编号之间的算术关系没有对应梯度。
 
-\section{输入输出权重共享与语义几何}
+\subsection{嵌入权重共享}
 
-\subsection{词表输出投影}
+\subsubsection{词表输出投影}
 设上下文模块产生隐藏状态 $\vect{h}_t\in\Real^d$，未共享时的输出投影为 $\mat{W}_{\mathrm{out}}\in\Real^{d\times V_{\mathrm{vocab}}}$。词元 $\vect{v}$ 的分数为
 \begin{equation}
  u_{tv}=\vect{h}_t^{\mathrm{T}}(\mat{W}_{\mathrm{out}})_{:,v}+c_v.
@@ -634,12 +642,16 @@ $\mat{X}$ & 单条序列的嵌入，省略批量轴 & $T\times d$\\
 \end{equation}
 这一约束称为\term{权重绑定}{Weight Tying}{}，也称权重共享，输入查表与输出预测复用同一组词表参数\cite{press2017outputembedding}。两个独立的 $V_{\mathrm{vocab}}d$ 参数块因此合并为一个。若隐藏宽度不同，则还需要相容的投影，仅靠转置无法完成共享。
 
-权重绑定让输入与输出复用参数，两侧却承担不同职责。输入侧回答词元如何参与上下文计算，输出侧回答当前状态与候选词元是否匹配。约束这两个角色可以减少自由参数，也可能限制模型可表达的组合。质量变化取决于数据分布、模型结构与任务要求。
+权重绑定使输入嵌入与输出投影共享参数，减少自由参数量。输入嵌入将离散编号映射为连续向量，作为后续自注意力与前馈网络的输入；输出投影则计算上下文隐藏状态与各词元向量的内积，给出预测 logits。若输入与输出在几何上需要非对称的表示容量（例如词频差异引起的各向异性分布），绑定共享可能对预测表达能力带来一定约束\cite{press2017outputembedding}。实际收益取决于语料词频分布与模型宽度。
 
-\subsection{同一参数收到两条梯度路径}
+\subsubsection{共享权重的梯度累加}
 将所有参与计算的位置合并为 $N$ 行，写作
 \begin{equation}
- \mat{X}=\alpha \mat{S}\mat{E},\qquad \mat{H}=F_{\vect{\theta}}(\mat{X}),\qquad \mat{U}=\mat{H}\mat{E}^{\mathrm{T}}+\mathbf1_N\vect{c}^{\mathrm{T}},
+ \begin{aligned}
+  \mat{X}&=\alpha \mat{S}\mat{E},\\
+  \mat{H}&=F_{\vect{\theta}}(\mat{X}),\\
+  \mat{U}&=\mat{H}\mat{E}^{\mathrm{T}}+\mathbf1_N\vect{c}^{\mathrm{T}},
+ \end{aligned}
 \end{equation}
 其中 $\alpha$ 是固定的输入缩放系数，$F_{\vect{\theta}}$ 表示上下文模块。令 $\mat{G}_U=\frac{\partial\mathcal L}{\partial \mat{U}}$，$\mat{G}_X=\frac{\partial\mathcal L}{\partial \mat{X}}$。总微分包含输入侧和输出侧两个显式出现的 $\mat{E}$：
 \begin{align}
@@ -669,23 +681,23 @@ $\mat{X}$ & 单条序列的嵌入，省略批量轴 & $T\times d$\\
 \draw[->] (e.north) -- ++(0,.5) -| node[pos=.65,above]{同一参数的转置} (u.north);
 \node[align=center] at (4.6,-1.25) {输入查表梯度与输出投影梯度\\在同一参数 $\mat{E}$ 上相加};
 \end{tikzpicture}
-\caption{输入输出权重共享的两条参数路径。图中省略输出偏置；参数存储只有一份，反向贡献有两类。}\label{fig:rev-tok-weight-sharing}
+\caption[权重共享的参数路径]{权重共享的参数路径。图中省略输出偏置；参数矩阵仅有一份，梯度同时包含输入端汇聚项与输出端投影项。}\label{fig:tok-weight-sharing}
 \end{figure}
 
-\subsection{距离的含义依赖训练目标}
+\subsection{嵌入空间的语义}
 连续向量允许定义长度、内积和夹角。对两个非零嵌入向量 $\vect{u},\vect{v}$，\term{余弦相似度}{Cosine Similarity}{}为
 \begin{equation}
  \operatorname{cos}(\vect{u},\vect{v})=\frac{\vect{u}^{\mathrm{T}}\vect{v}}{\|\vect{u}\|_2\|\vect{v}\|_2},
 \end{equation}
 其值位于 $[-1,1]$。欧氏距离同时受方向和长度影响；余弦相似度消除了各自的正比例缩放，对零向量则没有定义。度量方式的选择依据是模型的训练目标和后续使用方式。
 
-嵌入能够在训练中承载有关共现与预测的规律，向量接近却只表示表示空间中的邻近。反义词可能出现在相似句法环境中，词元片段也未必对应完整概念。固定查表将一个编号对应到同一向量；上下文表示 $\vect{h}_t$ 则同时依赖其他词元和位置。前者的邻近关系与后者的语境相似性分属两类量，二维投影中的聚类要结合原空间距离与邻域检查。
+词元静态嵌入反映训练语料中的共现与预测关联，但向量几何邻近不完全等价于人类直觉的同义语义。反义词常处于相似句法上下文中，其静态嵌入可能具有较高的余弦相似度；且基于子词切分的片段本身往往不对应独立概念。静态嵌入 $\mat{E}_{k,:}$ 仅依赖离散编号，与序列上下文无关；深层网络输出的动态隐藏状态 $\vect{h}_t$ 则融合了位置与全序列注意力信息。在利用 t-SNE 或 UMAP 进行低维可视化分析时，应结合高维欧氏或余弦距离与近邻结构核验，避免仅依赖降维投影的主观归纳。
 
-还应注意表示的坐标并不天然可解释。对相邻的两个线性映射 $\mat{E}\mat{W}$，任取可逆矩阵 $\mat{A}$，有
+嵌入坐标的物理含义并不具备绝对独立性。对于输入侧的连续线性映射 $\mat{E}\mat{W}$，对任意可逆矩阵 $\mat{A}\in\Real^{d\times d}$ 均有
 \begin{equation}
  (\mat{E}\mat{A})(\mat{A}^{-1}\mat{W})=\mat{E}\mat{W}.
 \end{equation}
-在这个组合中，改变中间坐标并相应改变下游权重，输出保持不变，嵌入距离却可能变化。正交变换保持内积，一般可逆变换则不保持。某一坐标轴的语义命名因而缺少依据。上述等价仅针对所写的线性组合；含归一化、非线性或权重共享约束的完整网络，不一定允许任意这样的重参数化。
+该恒等变换表明，在未加入非线性激活、层归一化或权重共享等约束的前提下，嵌入空间坐标轴的方向并非唯一确定。正交变换保持内积与欧氏距离，一般可逆变换则改变几何距离结构。因此，不能对未施加旋转约束的独立坐标轴赋予孤立的语义标签；嵌入向量的表征能力主要体现在不同词元相对几何关系的度量上。
 
 \chapterreferences
 \myendchapterdocument

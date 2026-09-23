@@ -2,15 +2,15 @@
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
-\bookappendix{参数量、显存与算力估算}{app:resource-estimation}{2}
+\bookappendix{模型资源估算}{app:resource-estimation}{2}
 
-本附录给出建立资源预算时可直接套用的公式和记录表。所有结果都应先声明模型结构、执行阶段、数值格式、批量与长度分布，再区分理论元素数、运行时峰值和实测值。公式的推导及系统边界见\bookxref{ch:resource-budget}，硬件供给、并行切分和服务测量分别见\bookxref{ch:compute-infrastructure}、\bookxref{ch:distributed-training}与\bookxref{ch:serving-architecture}。
+本附录汇总参数量、显存与计算时间的估算公式及预算记录项。估算结果取决于模型结构、执行阶段、数值格式、批量与序列长度分布；理论存储量、运行时峰值与实测值分别反映静态规模、执行需求和硬件表现。公式推导见\bookxref{ch:resource-budget}，硬件供给、并行切分和服务测量分别见\bookxref{ch:compute-infrastructure}、\bookxref{ch:distributed-training}与\bookxref{ch:serving-architecture}。
 
-\section{先统一计量口径}
+\section{计量约定}
 
 \begin{table}[htbp]
 \centering
-\caption{资源估算中必须分开的计量对象}\label{tab:appendix-resource-units}
+\caption{资源估算的计量对象、单位与换算关系}\label{tab:appendix-resource-units}
 \begin{tabularx}{\linewidth}{p{.22\linewidth}p{.28\linewidth}X}
 \toprule
 对象 & 常用单位 & 含义与换算\\\midrule
@@ -32,7 +32,7 @@
 \end{equation}
 实际分配还可能包含对齐、填充、量化元数据、内存碎片、框架保留池和临时工作区。估算表应把式\eqref{eq:appendix-elements-bytes}得到的理论值与运行时附加项分列。
 
-\section{参数量速算}
+\section{参数量计算}
 
 考虑层数 $L$、隐藏宽度 $d$、词表大小 $V$、查询头数 $H_q$、键值头数 $H_{kv}$、每头宽度 $d_h$ 和前馈宽度 $d_f$ 的自回归 Transformer。若 $H_qd_h=d$，单层注意力参数为
 \begin{equation}
@@ -52,7 +52,7 @@
  \label{eq:appendix-total-params}
 \end{equation}
 
-参数核算应逐项回答以下问题：输入输出是否共享；前馈是两矩阵还是门控三矩阵；键值头数是多少；是否含偏置、查询键归一化、位置表、专家、适配器或任务头；参数是否跨层共享。MoE 中总专家参数按专家总数 $E$ 计算，本次执行的专家矩阵主要按每词元激活数 $k$ 计算。
+参数量取决于输入输出权重共享、前馈结构、键值头数和跨层共享方式。偏置、查询键归一化、位置表、专家、适配器与任务头的参数按实际结构分别计入。MoE 的专家总参数量由专家数 $E$ 决定，每词元参与计算的专家参数量则由激活数 $k$ 决定。
 
 \begin{table}[htbp]
 \centering
@@ -71,7 +71,7 @@ ViT 补丁投影 & $(CP_hP_w)d+d$ & 含偏置；与补丁数量 $N$ 无关。\\
 \end{tabularx}
 \end{table}
 
-\section{权重与训练状态显存}
+\section{模型状态的显存开销}
 
 推理权重的基础存储为
 \begin{equation}
@@ -93,7 +93,7 @@ ViT 补丁投影 & $(CP_hP_w)d+d$ & 含偏置；与补丁数量 $N$ 无关。\\
 
 \begin{table}[htbp]
 \centering
-\caption{一种混合精度 Adam 配置的每参数状态示例}\label{tab:appendix-adam-bytes}
+\caption{混合精度 Adam 每参数状态示例}\label{tab:appendix-adam-bytes}
 \begin{tabular}{lcc}
 \toprule
 状态 & 每元素字节 & 每参数贡献\\\midrule
@@ -109,7 +109,7 @@ ViT 补丁投影 & $(CP_hP_w)d+d$ & 含偏置；与补丁数量 $N$ 无关。\\
 
 表\ref{tab:appendix-adam-bytes}只描述一种配置。若梯度以 FP32 累积、没有独立主权重、使用低精度优化器或采用不同分片策略，每参数字节数都会变化。LoRA/QLoRA 仍需保留基座权重，并为穿过冻结模块的反向路径保存或重算激活，不能把全参数训练显存简单乘以可训练参数比例。
 
-理想的数据并行状态驻留可以速记为
+在理想均匀分片条件下，各数据并行方案的单设备常驻状态存储量为
 \begin{align}
  M_{\mathrm{DDP}}&=M_w+M_g+M_o,\\
  M_{\mathrm{Z1}}&=M_w+M_g+\frac{M_o}{N_d},\\
@@ -118,14 +118,14 @@ ViT 补丁投影 & $(CP_hP_w)d+d$ & 含偏置；与补丁数量 $N$ 无关。\\
 \end{align}
 其中 $N_d$ 是数据并行组大小。单设备峰值还需加入参数聚合、通信桶、预取、激活和工作区；这些项不应统一除以设备总数。
 
-\section{激活、KV 缓存与运行时峰值}
+\section{运行时显存开销}
 
-训练激活可先用
+训练激活存储量的线性近似为
 \begin{equation}
  M_{\mathrm{act}}\approx c_aLBTdb_a
  \label{eq:appendix-activation-memory}
 \end{equation}
-建立线性基线。系数 $c_a$ 表示每层每位置实际保存的隐藏宽度等效元素数，必须根据模型结构、融合算子、重计算策略和实测峰值校准。若显式保存注意力概率，还可能出现 $O(LBH_qT^2)$ 元素；分块注意力和激活重计算会改变保存集合。
+其中，系数 $c_a$ 表示每层每位置实际保存的隐藏宽度等效元素数，其取值由模型结构、融合算子和重计算策略决定，并通过实测峰值校准。若显式保存注意力概率，还可能出现 $O(LBH_qT^2)$ 元素；分块注意力和激活重计算会改变保存集合。
 
 同构 GQA 的 KV 缓存对第 $i$ 个请求已处理长度 $T_i$ 的理论字节数为
 \begin{equation}
@@ -141,9 +141,9 @@ ViT 补丁投影 & $(CP_hP_w)d+d$ & 含偏置；与补丁数量 $N$ 无关。\\
  +M_{\mathrm{comm}}+M_{\mathrm{workspace}}+M_{\mathrm{reserve}}.
  \label{eq:appendix-training-peak}
 \end{equation}
-推理峰值则通常包含权重、KV 缓存、当前批次激活、采样或束搜索状态、工作区和运行时保留。各项是否同时处于峰值应由执行时间线确认；保守初算可以先相加，测量后再收紧。
+推理峰值通常包含权重、KV 缓存、当前批次激活、采样或束搜索状态、工作区和运行时保留。各项峰值之和给出保守估计，实际峰值取决于这些状态在执行过程中的同时驻留情况。
 
-\section{计算量与时间}
+\section{计算时间估算}
 
 矩阵 $[n,a]$ 乘 $[a,b]$ 的前向工作量约为
 \begin{equation}
@@ -176,23 +176,25 @@ ViT 补丁投影 & $(CP_hP_w)d+d$ & 含偏置；与补丁数量 $N$ 无关。\\
 \end{equation}
 预填充通常具有较高矩阵复用，逐词元解码则常反复读取权重与缓存。两阶段应分别测量首词元时间、逐输出词元时间和吞吐。
 
-\section{一个快速算例}
+\begin{example}[权重、训练状态与 KV 缓存的容量估算]
 
 设模型有 $P=7\times10^9$ 个参数。两字节权重的理论存储为
-\begin{equation}
+\begin{equation*}
  7\times10^9\times2=\SI{14e9}{\byte}\approx\SI{13.04}{\gibi\byte}.
-\end{equation}
+\end{equation*}
 若采用表\ref{tab:appendix-adam-bytes}的16字节训练状态配置，则未分片状态约为
-\begin{equation}
+\begin{equation*}
  \SI{112e9}{\byte}\approx\SI{104.31}{\gibi\byte}.
-\end{equation}
+\end{equation*}
 这两个结果都没有包含激活、通信缓冲、工作区和运行时保留。
 
 再设 $L=32,H_{kv}=8,d_h=128$，KV 缓存采用两字节元素。每请求每位置为
-\begin{equation}
+\begin{equation*}
  2(32)(8)(128)(2)=\SI{131072}{\byte}=\SI{128}{\kibi\byte}.
-\end{equation}
+\end{equation*}
 单请求缓存8192个位置正好为1 GiB；16个同长请求为16 GiB。分页取整、共享前缀和分布式切分会改变物理驻留量，因此部署容量还要代入实际长度分布和缓存管理方式。
+
+\end{example}
 
 \section{资源预算记录表}
 
@@ -219,7 +221,7 @@ ViT 补丁投影 & $(CP_hP_w)d+d$ & 含偏置；与补丁数量 $N$ 无关。\\
 \bottomrule
 \end{longtable}
 
-最终预算至少给出三个结果：容量是否可行、期限是否可行、哪些系数仍需在目标硬件上测量。参数量只能回答模型中有多少独立标量；显存、计算与时间必须沿实际执行路径分别建立模型。
+资源预算的结论包括容量约束、完成时间和待校准系数。参数量描述独立标量的数量，显存需求取决于执行状态的驻留方式，计算时间取决于工作量、数据搬运与设备利用率。
 
 \chapterreferences
 \myendchapterdocument

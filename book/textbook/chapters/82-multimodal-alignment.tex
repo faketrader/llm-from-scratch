@@ -4,11 +4,11 @@
 \fi
 \bookchapter{多模态建模}{ch:multimodal-alignment}
 
-一幅图像和描述它的句子可以指向同一场景，却具有不同的数据结构。图像由空间采样构成，文本由离散词元构成；音频具有密集时间采样，视频同时具有空间和时间维度。多模态模型必须先建立可计算的接口，再通过学习使这些接口保留任务所需的关系。向量维数规定计算接口，语义对应关系由跨模态训练目标建立。
+图像、文本、音频和视频具有不同的数据结构：图像保留空间采样，文本由离散词元构成，音频沿时间采样，视频同时具有空间和时间维度。多模态模型先将这些数据编码为可供网络处理的表示，再通过跨模态训练学习场景、对象、语句或事件之间的对应关系。
 
-矩阵反向传播承接\bookxref{ch:rev-tensors}，空间与时间位置的作用承接\bookxref{ch:position-representation}。视觉、音频与视频编码器将感知数据映射为序列，对比学习建立跨模态匹配，条件生成学习利用媒体信息输出文本。图像生成则需要像素或潜变量的解码器及相应目标。
+矩阵反向传播承接\bookxref{ch:tensors}，空间与时间位置的作用承接\bookxref{ch:position-representation}。视觉、音频与视频编码器将感知数据映射为序列，对比学习建立跨模态匹配，条件生成学习利用媒体信息输出文本。图像生成则需要像素或潜变量的解码器及相应目标。
 
-\section{模态、任务与表示接口}
+\section{多模态表示}
 
 \term{模态}{Modality}{}是信息的观测或表达方式。\term{视觉语言模型}{Vision-Language Model}{VLM}联合利用视觉和语言信息，可以实现匹配、分类、问答或条件生成，但具体能力由输入输出接口和训练目标决定。图文对比模型输出匹配分数，文本解码器属于可选组件；感知型生成模型读取图像并输出文本，图像生成器同样不在其中。
 
@@ -18,9 +18,8 @@
 
 \begin{table}[htbp]
 \centering
-\caption{本章主要符号。矩阵推导未写批量轴时，对每个样本分别应用。}
-\label{tab:multimodal-symbols}
-\begin{tabularx}{\linewidth}{@{}lX@{}}
+\caption[多模态对齐核心符号]{多模态对齐核心符号。矩阵推导未显式写出批量轴时，表示对批量中每个样本分别应用。}\label{tab:multimodal-symbols}
+\begin{tabular}{ll}
 \toprule 符号 & 含义与形状\\
 \midrule
 $\mat{I}$ & 图像批量，$\mathbb R^{B\times C_{\mathrm{img}}\times H\times W}$。\\
@@ -33,14 +32,14 @@ $\mat{Q},\mat{K},\mat{V},\mat{A}$ & 重采样查询 $M\times d_k$、键 $N_v\tim
 $m_j$ & 目标位置 $j$ 是否参与损失的二值掩码，与可见性掩码不同。\\
 $f_s,h,F$ & 音频采样率（样本/秒）、声学窗口步长（样本）、视频选取帧数。\\
 \bottomrule
-\end{tabularx}
+\end{tabular}
 \end{table}
 
 视觉编码器通常产生局部特征序列；图文检索还会通过池化等操作得到全局向量。全局向量适合快速比较整幅图像与文本的关系，局部序列则保留供计数、位置和文字识别使用的空间信息。细粒度任务通常还需局部特征与空间对应关系。
 
 \section{视觉词元化}
 
-\subsection{切块、投影和空间位置}
+\subsection{视觉补丁编码}
 \term{补丁}{Patch}{}是视觉序列中的局部输入单元。把每个 $P_h\times P_w$ 块展平为 $\vect{x}_n\in\mathbb R^{C_{\mathrm{img}}P_hP_w}$，使用共享矩阵
 \begin{equation}
  \vect{e}_n=\vect{x}_n\mat{W}_e+\vect{b}_e,\qquad
@@ -48,7 +47,7 @@ $f_s,h,F$ & 音频采样率（样本/秒）、声学窗口步长（样本）、�
 \end{equation}
 映射到隐藏维。卷积核大小与步幅均为块大小、无重叠且采用相同展平顺序时，这与一次卷积后展平空间轴等价。块投影建立局部线性组合，后续编码器使各位置交互。\term{视觉 Transformer}{Vision Transformer}{ViT}采用块序列进行图像建模，是这一表示路线的代表\cite{dosovitskiyImageWorth16x162022}。
 
-二维位置必须以位置表示、相对偏置或结构化计算等方式进入模型；展平顺序本身只建立数组地址，无位置自注意力无法从中读出上下左右。多图输入还需区分图像编号与图内坐标。高分辨率分块处理时，局部裁剪坐标应能映射回全图，否则模型难以判断不同裁剪中的对象是否为同一对象。
+二维位置必须以位置表示、相对偏置或结构化计算等方式进入模型；\emph{展平顺序本身只建立数组地址}，无位置自注意力无法从中读出上下左右。多图输入还需区分图像编号与图内坐标。高分辨率分块处理时，局部裁剪坐标应能映射回全图，否则模型难以判断不同裁剪中的对象是否为同一对象。
 
 若 $H=W=224$、$P_h=P_w=16$，则 $N_v=14\times14=196$。将两边都增大到448而保持块大小，得到784个块，是原来的4倍。若编码器采用完整自注意力，其位置对数从 $196^2$ 增至 $784^2$，为原来的16倍；该比例描述注意力矩阵的规模变化。投影、前馈、内存访问和实现方式同样影响耗时。
 
@@ -57,7 +56,7 @@ $f_s,h,F$ & 音频采样率（样本/秒）、声学窗口步长（样本）、�
 
 \term{动态分辨率}{Dynamic Resolution}{}根据输入尺寸或内容调整视觉序列长度。它要求批量中的有效长度和补齐位置可追踪，并把视觉词元预算纳入请求限制。可变长度仍需上限约束；多图、多页和视频要在空间细节与覆盖范围之间分配预算。对于需要精确读取局部内容的问题，保留相关高分辨率区域可能比均匀增加所有帧的细节更合适，但选择区域的错误也必须计入系统误差。
 
-\section{视觉与文本的对比对齐}
+\section{图文对比学习}
 
 \subsection{双向匹配目标}
 \term{跨模态对齐}{Cross-modal Alignment}{}通过训练使不同模态的相关表示在任务所需意义上对应。对齐可以表现为全局匹配、局部区域与词语对应，或使语言模型能够利用视觉条件生成；这些目标各自解决不同问题。
@@ -70,8 +69,10 @@ $f_s,h,F$ & 音频采样率（样本/秒）、声学窗口步长（样本）、�
 \end{equation}
 $S_{ij}$ 是相似度经温度缩放后的逻辑值。对图像 $i$ 在批内文本中分类，对文本 $j$ 在批内图像中分类，分别得到
 \begin{equation}
- R_{ij}=\frac{\conste{}^{S_{ij}}}{\sum_k \conste{}^{S_{ik}}},\qquad
- C_{ij}=\frac{\conste{}^{S_{ij}}}{\sum_k \conste{}^{S_{kj}}}.
+ \begin{aligned}
+  R_{ij} &= \frac{\conste{}^{S_{ij}}}{\sum_k \conste{}^{S_{ik}}}, \\
+  C_{ij} &= \frac{\conste{}^{S_{ij}}}{\sum_k \conste{}^{S_{kj}}}.
+ \end{aligned}
 \end{equation}
 矩阵 $\mat{R}$ 各行和为1，矩阵 $\mat{C}$ 各列和为1；二者通常不同。单正对假设下，对角线为目标，平均损失为
 \begin{align}
@@ -95,8 +96,10 @@ $S_{ij}$ 是相似度经温度缩放后的逻辑值。对图像 $i$ 在批内文
 \end{equation}
 代入 $\mathrm d\mathcal L=\operatorname{tr}(\mat{G}^{\mathrm{T}}\mathrm d\mat{S})$ 并整理迹，得到
 \begin{equation}
- \nabla_{\mat{U}}\mathcal L=\frac{\mat{G}\mat{V}_c}{\tau},\qquad
- \nabla_{\mat{V}_c}\mathcal L=\frac{\mat{G}^{\mathrm{T}}\mat{U}}{\tau}.
+ \begin{aligned}
+  \nabla_{\mat{U}}\mathcal L &= \frac{\mat{G}\mat{V}_c}{\tau}, \\
+  \nabla_{\mat{V}_c}\mathcal L &= \frac{\mat{G}^{\mathrm{T}}\mat{U}}{\tau}.
+ \end{aligned}
 \end{equation}
 每幅图像的梯度不仅来自其配对文本，还来自所有参与分母的候选；“负样本”是目标函数内部的竞争关系，无需在正对损失之外额外添加惩罚项。
 
@@ -116,30 +119,29 @@ $S_{ij}$ 是相似度经温度缩放后的逻辑值。对图像 $i$ 在批内文
 \end{equation}
 缩放增大会使分布更集中，但错误配对或近似重复样本也可能被更强地惩罚。温度调节对比学习的概率集中度与梯度尺度。
 
-\subsection{双样本对比损失}
-\begin{example}
+\begin{example}[两个样本的对比损失]
 
 取 $B=2,d_c=2$，图像和文本单位向量均为 $\vect{u}_1=\vect{v}_1=(1,0)^{\mathrm{T}}$、$\vect{u}_2=\vect{v}_2=(0,1)^{\mathrm{T}}$，取 $\tau=1$。则
-\begin{equation}
- \mat{S}=\begin{bmatrix}1&0\\0&1\end{bmatrix},\qquad
- \mat{R}=\mat{C}=\begin{bmatrix}p&1-p\\1-p&p\end{bmatrix},\quad
+\begin{align*}
+ \mat{S} &= \begin{bmatrix}1&0\\0&1\end{bmatrix}, \\
+ \mat{R} &= \mat{C}=\begin{bmatrix}p&1-p\\1-p&p\end{bmatrix},\quad
  p=\frac{\conste}{\conste+1}\approx0.731059.
-\end{equation}
+\end{align*}
 两方向损失均为 $-\log p=\log(1+\conste{}^{-1})\approx0.313262$，故平均损失不变。式\ref{eq:mm-logit-grad}给出
-\begin{equation}
+\begin{equation*}
  \mat{G}=\begin{bmatrix}-0.134471&0.134471\\0.134471&-0.134471\end{bmatrix}.
-\end{equation}
+\end{equation*}
 由于 $\mat{V}_c$ 为单位矩阵，$\nabla_{\mat{U}}\mathcal L=\mat{G}$。若 $\vect{a}_1=\vect{u}_1$，式\ref{eq:mm-normalize-grad}去掉第一坐标方向，得到 $\nabla_{\vect{a}_1}\mathcal L=(0,0.134471)^{\mathrm{T}}$。梯度下降会让第一幅图像表示朝远离第二条文本的方向移动；更新方向由正对、负对与归一化共同决定。对数缩放梯度为两个对角项之和，即 $-0.268942$，在此构造数据上下降更新会增大缩放。若批内都是错误标注，则这种扩大间隔也可能扩大错误。
 \end{example}
 
 \subsection{负样本、多正对和语义边界}
 \term{批内负例}{In-Batch Negative}{}把同批其他配对的样本作为竞争候选，计算方便但依赖标签含义。两幅相同图像、同一场景的不同描述，或两条都正确的简短字幕，可能被误当负样本。这类\term{假负例}{False Negative}{}会使目标要求语义相近项彼此远离。简单扩大批量不保证监督更干净。
 
-若图像 $i$ 的合法文本集合为 $\mathcal P_i$，可定义归一化多正对目标 $T_{ij}=\frac{1}{|\mathcal P_i|}$（$j\in\mathcal P_i$），使用 $-\sum_jT_{ij}\log R_{ij}$；另一选择是 $-\log\sum_{j\in\mathcal P_i}R_{ij}$。前者鼓励所有正对按目标分布获得概率，后者只要求正对集合获得总质量，可能由某一个容易正对承担。两者是两种不同的目标，应根据标注语义选择。
+若图像 $i$ 的合法文本集合为 $\mathcal P_i$，可定义归一化多正对目标 $T_{ij}=\frac{1}{|\mathcal P_i|}$（$j\in\mathcal P_i$），使用 $-\sum_jT_{ij}\log R_{ij}$；另一选择是 $-\log\sum_{j\in\mathcal P_i}R_{ij}$。前者促使模型向全部正对均匀分配概率质量，后者仅优化正对集合的总似然质量，在标注存在歧义或多粒度描述时应按任务语义明确选取。
 
 困难负样本应在保持真实不匹配的前提下增加辨别难度，例如对象相同但关系不同。只利用背景、文件水印或文本模板区分配对，会形成捷径。图像增强也应保留文本所描述的事实：随机裁剪如果裁掉唯一红色物体，原字幕就可能不再成立。对比对齐组织全局匹配空间；计数、否定、空间关系与字符识别需要相应数据和任务评估。
 
-跨设备汇集表示扩大候选集合时，需明确远端表示是否参与梯度和损失如何归一化。将远端表示当常量与使用可微汇集产生不同梯度；前向分数矩阵相同推不出训练等价。这里的分布式实现应与全局批量目标保持一致。
+跨设备汇集表示扩大候选集合时，需明确远端表示是否参与梯度和损失如何归一化。将远端表示当常量与使用可微汇集，可能得到相同的前向分数，却产生不同梯度。分布式实现应同时核对前向计算与反向传播，使其符合全局批量目标。
 
 \section{多模态连接器}
 
@@ -166,40 +168,39 @@ $S_{ij}$ 是相似度经温度缩放后的逻辑值。对图像 $i$ 在批内文
  \mat{Z}_v&=\mat{A}\mat{V}.
  \label{eq:mm-resample}
 \end{align}
-$\mat{Q}\in\mathbb R^{M\times d_k}$ 为可训练查询，输出长度为 $M$。每一输出是值向量的加权组合，与选择某一个原始块是两种操作。查询固定时，注意力权重 $\mat{A}$ 仍随输入键变化。查询间可加入自注意力与前馈层；这些设计改变表达能力，“输出长度受控”的接口目的保持不变。
+$\mat{Q}\in\mathbb R^{M\times d_k}$ 为可训练查询，输出长度为 $M$。每一输出向量为全部视觉特征值向量的自适应连续凸组合，提供可微的全局压缩表示。查询向量固定时，注意力权重矩阵 $\mat{A}$ 仍动态依赖于输入的键特征。查询间可进一步叠加自注意力与前馈变换层，在固定输出序列长度 $M$ 的前提下增强特征解耦与交互能力。
 
 查询式连接器有不同具体实现。BLIP-2 的\term{查询变换器}{Querying Transformer}{Q-Former}用可学习查询从冻结图像编码器提取特征，并通过表示学习与生成学习两个阶段连接语言模型\cite{li2023blip2}；Flamingo 使用重采样与语言侧视觉读取模块\cite{alayrac2022flamingo}。式\ref{eq:mm-resample}描述查询读取视觉特征的单层计算。\footnote{投影、重采样与前缀是不同维度的设计选择：前两者描述表示变换，前缀描述语言模型如何接收结果。一个系统可以同时使用三者，因此不宜把它们列为互斥的三个模型类别。}
 
 对于固定注意力矩阵 $\mat{A}$，若 $M<N_v$，其秩至多为 $M$，存在非零方向 $\Delta \mat{V}$ 使 $\mat{A}\Delta \mat{V}=0$。所以 $\mat{A}\mat{V}$ 区分不出沿该零空间的差异，任意 $\mat{V}$ 也就不能从输出唯一还原。完整重采样器的 $\mat{A}$ 依赖输入，形成非线性压缩。训练目标与细粒度评估用于确定任务所需信息的保留程度。
 
-\subsection{重采样梯度}
-\begin{example}
+\begin{example}[查询重采样的梯度]
 
 取 $N_v=2,M=1,d_k=1,d=2$，$Q=[1]$，$K=[0,\log3]^{\mathsf T}$，值为
-\begin{equation}
+\begin{equation*}
  V=\begin{bmatrix}2&0\\0&4\end{bmatrix}.
-\end{equation}
+\end{equation*}
 由于缩放因子为1，权重 $A=[\frac{1}{4},\frac{3}{4}]$，输出为 $Z_v=[\frac{1}{2},3]$。它与两个值的简单平均 $[1,2]$ 不同，也不同于原始的任何一行。
 
-为说明梯度，取 $\mathcal L=\tfrac12\|Z_v-Z^*\|^2$，$Z^*=[1,2]$，则 $D_Z=[-\frac{1}{2},1]$。首先
-\begin{equation}
- D_V=A^{\mathsf T}D_Z
- =\begin{bmatrix}-\frac{1}{8}&\frac{1}{4}\\-\frac{3}{8}&\frac{3}{4}\end{bmatrix},\qquad
- D_A=D_ZV^{\mathsf T}=[-1,4].
-\end{equation}
+为说明梯度，取 $\mathcal L=\frac{1}{2}\|Z_v-Z^*\|^2$，$Z^*=[1,2]$，则 $D_Z=[-\frac{1}{2},1]$。首先
+\begin{align*}
+ D_V &= A^{\mathsf T}D_Z
+ =\begin{bmatrix}-\frac{1}{8}&\frac{1}{4}\\-\frac{3}{8}&\frac{3}{4}\end{bmatrix}, \\
+ D_A &= D_ZV^{\mathsf T}=[-1,4].
+\end{align*}
 对注意力逻辑值 $r=[0,\log3]$，Softmax 导数给出
-\begin{equation}
+\begin{equation*}
  (D_r)_i=A_i\left((D_A)_i-\sum_jA_j(D_A)_j\right).
-\end{equation}
+\end{equation*}
 加权和为 $-\frac{1}{4}+3=\frac{11}{4}$，故 $D_r=[-\frac{15}{16},\frac{15}{16}]$。进一步有
-\begin{equation}
- D_Q=D_rK=\frac{15}{16}\log3,\qquad
- D_K=D_r^{\mathsf T}Q=[-\frac{15}{16},\frac{15}{16}]^{\mathsf T}.
-\end{equation}
+\begin{align*}
+ D_Q &= D_rK=\frac{15}{16}\log3, \\
+ D_K &= D_r^{\mathsf T}Q=[-\frac{15}{16},\frac{15}{16}]^{\mathsf T}.
+\end{align*}
 损失通过值路径和键路径同时传回视觉表示。视觉编码器冻结时，连接器仍通过损失梯度学习注意力分配。
 \end{example}
 
-\section{融合位置与计算代价}
+\section{多模态融合}
 
 \subsection{前缀拼接}
 \term{前缀融合}{Prefix Fusion}{}把 $M$ 个视觉向量与 $N_t$ 个文本嵌入沿序列轴拼接，得到 $B\times(M+N_t)\times d$。视觉向量是连续条件，不要求具有文本词表 ID。视觉占位符可以指示插入位置，但插入后真实位置数必须由处理器和模型契约一致确定。
@@ -229,12 +230,11 @@ $\mat{Q}\in\mathbb R^{M\times d_k}$ 为可训练查询，输出长度为 $M$。�
 \draw[->] (i)--(v);\draw[->] (v)--(c);\draw[->] (c)--(l);\draw[->] (t)--(l);\draw[->] (l)--(o);
 \draw[->,dashed] (o.east)--++(8mm,0)|-node[pos=.55,right,font=\small]{梯度路径}(c.east);
 \end{tikzpicture}
-\caption{感知型视觉语言模型的模块边界。冻结参数不会自动切断对上游可训练输入所需的梯度。}
-\label{fig:mm-architecture}
+\caption[感知型视觉语言模型模块协同边界]{感知型视觉语言模型模块协同边界。视觉编码器、跨模态投影器与语言主干的职责边界，冻结模块参数不影响对上游可训练输入的梯度回传。}\label{fig:mm-architecture}
 \end{figure}
 
 
-\section{监督区域和分阶段训练}
+\section{多模态训练}
 
 \subsection{可见性掩码与监督掩码}
 \term{注意力掩码}{Attention Mask}{}决定一个位置可以读取哪些其他位置；\term{损失掩码}{Loss Mask}{}决定哪些目标参与优化。视觉与用户提示可以不承担预测标签，却仍是后续答案的有效条件。把“不监督”实现为“不可读取”，会一并移除模型完成任务所需的信息。
@@ -253,8 +253,7 @@ $\mat{Q}\in\mathbb R^{M\times d_k}$ 为可训练查询，输出长度为 $M$。�
 取 $M=2$，随后是起始标记、一个提示词元、两个答案词元及结束标记。位置与标签关系如下：
 \begin{table}[htbp]
 \centering
-\caption{目标掩码与上下文有效性的区别。位置5的标签由位置4的输出预测。}
-\label{tab:mm-labels}
+\caption[多模态输入掩码与目标标签对齐]{多模态输入掩码与目标标签对齐。区分输入上下文有效性掩码与损失计算目标掩码，自回归生成中下一词元标签由前一位置输出预测。}\label{tab:mm-labels}
 \begin{tabular}{ccll}
 \toprule 位置 & 内容 & 该位置作为上下文 & 该位置的目标标签\\\midrule
 1 & $V_1$ & 有效 & 忽略\\
@@ -267,11 +266,11 @@ $\mat{Q}\in\mathbb R^{M\times d_k}$ 为可训练查询，输出长度为 $M$。�
 \end{tabular}
 \end{table}
 若三个目标的正确词元概率分别为0.5、0.25和0.8，则
-\begin{equation}
+\begin{equation*}
  \mathcal L_{\mathrm{gen}}
  =-\frac{\log0.5+\log0.25+\log0.8}{3}
  =\frac{\log10}{3}\approx0.767528.
-\end{equation}
+\end{equation*}
 起始位置、视觉位置和提示位置没有对应的直接目标损失；但是 $A_1$ 的概率由提示位置4的输出预测，位置4的输出仍需保留在计算中。若将视觉向量加入后仍沿用原文本的绝对标签位置，答案标签就会错位两个位置。
 
 对于批量中的不同回答长度，按所有受监督词元求平均与先按每样本求平均再对样本平均不同。前者给予长答案更大权重，后者使每个样本总权重相同。训练配置应明确归约方式；全掩码样本的 $N_s=0$ 需要单独处理，避免未定义除法，也不应通过加入虚假标签凑数。
@@ -287,21 +286,20 @@ $\mat{Q}\in\mathbb R^{M\times d_k}$ 为可训练查询，输出长度为 $M$。�
 \end{equation}
 即使只在答案位置计算损失，答案仍可通过注意力依赖视觉条件，从而产生 $\nabla_\phi\mathcal L$。冻结语言参数 $\theta$ 时，其参数保持不变，输入梯度仍沿 $g_\theta$ 传播。如果连接器仍需训练，必须保留对其输入输出所需的反向路径。相反，若视觉编码器冻结且其输入也不需要梯度，可以缓存或停止该编码器内部的反向计算，但连接器部分仍保留计算图。
 
-\begin{warning}[参数更新与梯度路径]
-参数是否更新、输入是否参与反向、位置是否被读取、目标是否计入损失，是四个不同问题。它们分别决定优化范围、梯度路径、信息流与监督区域；混用这四种控制，会使张量形状正确而学习机制错误。
+\begin{warning}[梯度传播、参数更新与监督区域的作用域界定]
+参数是否更新、输入是否参与反向、位置是否被读取以及目标是否计入损失，分别对应优化作用域、反向计算图连续性、注意力信息流与有效监督区域；混用这四种控制，会使张量形状虽然对齐但实际训练机制出现偏差。
 \end{warning}
 
 \subsection{指令学习接口}
 先冻结视觉编码器和语言模型、只训练连接器，可以利用已有表示并降低待优化参数规模。该阶段通常让视觉条件支持描述或其他明确文本目标。复杂视觉任务还需任务数据覆盖，并依赖编码器保留的局部信息。
 
-随后可用交错图文或多模态指令数据训练连接器与部分主干。\term{视觉指令微调}{Visual Instruction Tuning}{}以图像、问题和答案组织监督，使模型学习遵循视觉相关任务请求；LLaVA工作是这一训练路线的代表\cite{liu2023visualinstruction}。联合解冻增强调整能力，但也会增加语言能力遗忘、视觉表示漂移及对合成描述偏差的拟合。是否解冻、解冻多少层和是否保留纯文本数据，应由目标能力与评估决定；照搬固定阶段表会跳过这一步判断。主流视觉语言模型连接器架构与多阶段对齐训练配方对比见表\ref{tab:rev-vlm-connectors}。
+随后可用交错图文或多模态指令数据训练连接器与部分主干。\term{视觉指令微调}{Visual Instruction Tuning}{}以图像、问题和答案组织监督，使模型学习遵循视觉相关任务请求；LLaVA工作是这一训练路线的代表\cite{liu2023visualinstruction}。联合解冻增强调整能力，但也会增加语言能力遗忘、视觉表示漂移及对合成描述偏差的拟合。是否解冻、解冻多少层和是否保留纯文本数据，应由目标能力与评估决定；照搬固定阶段表会跳过这一步判断。主流视觉语言模型连接器架构与多阶段对齐训练配方对比见表\ref{tab:vlm-connectors}。
 
 \begin{table}[htbp]
 \centering
 \small
 \setlength{\tabcolsep}{3pt}
-\caption{主流视觉语言模型 (VLM) 连接器架构与多阶段对齐训练配方对比。}
-\label{tab:rev-vlm-connectors}
+\caption{视觉语言模型连接器与对齐策略对比}\label{tab:vlm-connectors}
 \begin{tabularx}{\linewidth}{@{}p{1.5cm}p{2.2cm}p{2.2cm}p{2.2cm}X@{}}
 \toprule
 模型族 & 视觉编码 & 连接器架构 & 词元压缩机制 & 对齐训练配方 \\
@@ -328,20 +326,20 @@ InternVL & 动态切片 ViT & MLP 空间重排 & $2\times2$ 补丁合并 ($\frac
 \AlgoInput{媒体、提示、回答及其长度与坐标元数据。}
 \AlgoOutput{当前阶段的损失和可训练参数梯度。}
 \begin{myalgorithmic}[1]
- \State Decode media with the fixed-version processor and record dimensions, crops, timestamps, and valid positions; select media segments within budget while preserving inputs required to supervise the answer
- \State Compute perceptual features and obtain language-side representations through projection and optional resampling; retain the mapping from each media object to its output-position interval
- \State Construct text embeddings and insert media representations at the agreed positions; generate separate masks for context validity, causal visibility, and target loss
- \State Shift targets exactly once, aligning target position $j$ with output position $j-1$; skip samples without valid targets or report a data error according to the contract
- \State Compute the answer distribution and loss under the selected token- or sample-level normalization; if an auxiliary contrastive objective is present, use its separate pairing and visibility rules
- \State Backpropagate through required input-gradient paths and update only parameters enabled in the current stage; record valid media and text lengths, supervised-token counts, and each objective loss
- \State End the step after processing the current batch; govern the full training run by the specified step count, data epochs, and independent validation criteria, and save both model and processor contracts at stage transitions
+ \State 使用固定版本的处理器解码多媒体数据，记录尺寸、裁剪、时间戳与有效位置；在预算内选取媒体片段，同时保留监督回答所需输入
+ \State 计算感知特征，并通过投影与可选重采样获得语言侧表示；保留各媒体对象到其输出位置区间的映射
+ \State 构建文本嵌入并在约定位置插入媒体表示；为上下文有效性、因果可见性与目标损失分别生成独立掩码
+ \State 将目标严格右移一次，使目标位置 $j$ 与输出位置 $j-1$ 对齐；跳过无有效目标的样本或按契约报告数据错误
+ \State 在选定的词元级或样本级归一化下计算回答分布与损失；若存在辅助对比目标，使用其独立的配对与可见性规则
+ \State 沿所需输入梯度路径反向传播，仅更新当前阶段启用的参数；记录有效媒体与文本长度、受监督词元数及各目标损失
+ \State 处理完当前批次后结束单步；完整训练由指定步数、数据轮数与独立验证准则控制，阶段切换时保存模型与处理器契约
 \end{myalgorithmic}
 不变量是媒体位置映射与标签长度始终一致，所有受监督答案只依赖允许的条件，冻结语言权重不阻断连接器需要的梯度。
 \end{algorithm}
 
-\section{音频表示和时间压缩}
+\section{音频编码}
 \optional
-\subsection{波形、声学特征与文本}
+\subsection{音频表示层次}
 \term{采样率}{Sampling Rate}{}是单位时间的离散样本数。若单通道波形以 $f_s$ 样本/秒记录 $T_a$ 秒，样本数约为 $f_sT_a$。把长波形逐样本作为语言序列通常过长，因此声学编码器通过窗口特征或学习的下采样形成较短表示。
 
 一种常见表示来自\term{短时傅里叶变换}{Short-Time Fourier Transform}{STFT}。设窗口长 $L_w$、步长 $h$、窗函数 $w[n]$，不补齐边界时
@@ -354,7 +352,7 @@ InternVL & 动态切片 ViT & MLP 空间重排 & $2\times2$ 补丁合并 ($\frac
 \begin{equation}
  N_a=1+\left\lfloor\frac{32000-400}{160}\right\rfloor=198.
 \end{equation}
-编码器若再以步幅2并按“奇数补齐一帧”的规则下采样一次，则输出99个声学位置。这里明确了边界规则；中心补齐或不同卷积核会得到不同长度，“每秒约100帧”替代不了精确的形状契约。
+编码器若再以步幅2并按“奇数补齐一帧”的规则下采样一次，则输出99个声学位置。输出长度由边界规则、卷积核与步幅共同决定；中心补齐或不同卷积核可能得到不同长度，因此输入接口需记录精确的长度计算规则。
 
 \subsection{Whisper：以音频为条件的文本生成}
 Whisper把语音识别组织为编码器--解码器Transformer的条件生成问题\cite{radford2022whisper}。按照论文中的输入协议，音频先重采样为\SI{16}{\kilo\hertz}，截取或补齐为\SI{30}{\second}片段，再用\SI{25}{\milli\second}窗口和\SI{10}{\milli\second}步长计算80通道对数梅尔谱。固定长度处理得到的声学张量可记为
@@ -408,16 +406,16 @@ Whisper没有为语言识别、转写、翻译和时间定位各设一套输出�
 \small
 \texttt{<|startoftranscript|> <|zh|> <|transcribe|> <|notimestamps|> ... <|endoftranscript|>}.
 \end{center}
-这里展示中文无时间戳转写；换用其他语言、翻译任务或时间戳输出时，相应位置随任务协议改变。论文记号与具体模型制品中的词元字符串可能不同，实际名称、顺序和允许组合由配套分词器定义。论文中的时间戳相对于当前\SI{30}{\second}片段表示，并量化到\SI{20}{\milli\second}网格。时间戳属于离散输出符号，不等于交叉注意力权重本身，也不保证单个词元与某一声学帧形成硬对齐。
+这里展示中文无时间戳转写；换用其他语言、翻译任务或时间戳输出时，相应位置随任务协议改变。论文记号与具体模型制品中的词元字符串可能不同，实际名称、顺序和允许组合由配套分词器定义。论文中的时间戳相对于当前\SI{30}{\second}片段表示，并量化到\SI{20}{\milli\second}网格。时间戳作为离散符号由解码器输出；交叉注意力则给出对声学表示的连续权重。词元到声学帧的硬对齐需要另行定义对齐规则。
 
 这种格式把多项任务统一为条件词元预测。语言词元改变后续文本分布，任务词元区分原语言转写与译为英语，无语音词元则为片段级判断提供输出位置。模型使用字节级字节对编码（BPE）表示文本；音频帧没有先被离散化为同一套BPE词元，而是经编码器形成连续记忆。共享目标格式允许模型复用声学和语言结构，但任务能否完成仍取决于训练数据覆盖。
 
-Whisper论文报告的弱监督训练语料总量约为\SI{680000}{\hour}\cite{radford2022whisper}。这里的规模说明监督来源与任务覆盖，不把每个训练片段的转写都视为人工逐帧精确标注。数据筛选、语言分布、转写质量和任务比例共同决定模型学到的条件分布；总小时数不能单独说明某种语言、口音或噪声条件下的准确率。
+Whisper论文报告的弱监督训练语料总量约为 \qty{680000}{\hour}\cite{radford2022whisper}。该规模反映通用声学与多语言任务的覆盖广度，其转写主要由弱监督采集流水线生成。数据筛选、语种分布、转写质量和任务比例共同决定模型学到的条件概率分布；针对特定低资源方言、重口音或高背景噪声场景，模型表现仍须依据受控测试集的独立评测验证。
 
 模型一次处理固定时长片段，长音频需要分段推理。Whisper的长音频流程利用已生成时间戳决定下一窗口的推进位置，并结合前文条件及解码规则继续转写。若简单把窗口独立切开，边界处可能截断词语或重复内容；若无条件携带全部旧文本，又可能让早期错误进入后续条件。窗口推进、历史保留、无语音判断和解码回退都是推理协议的一部分，应与模型权重和音频处理器一同固定版本。
 
 \begin{example}
-某\SI{30}{\second}片段经预处理得到3000个梅尔帧，卷积前端按时间步幅2输出1500个位置。若解码器已经生成24个目标词元，则下一步因果自注意力只读取这24个目标位置，交叉注意力可以读取全部有效声学位置。两类注意力的分数矩阵分别随目标前缀长度和声学记忆长度增长；“生成第25个文字词元”不要求它机械对应第25个声学位置。
+某 \qty{30}{\second} 片段经预处理得到3000个梅尔帧，卷积前端按时间步幅2输出1500个位置。若解码器已经生成24个目标词元，则下一步因果自注意力只读取这24个目标位置，交叉注意力可以读取全部有效声学位置。两类注意力的分数矩阵分别随目标前缀长度和声学记忆长度增长；“生成第25个文字词元”不要求它机械对应第25个声学位置。
 \end{example}
 
 \subsection{从语音识别器到语音大模型}
@@ -432,27 +430,27 @@ Whisper解码器可以看作以音频编码结果为条件的语言模型，但�
 
 因此，先转写再交给语言模型的级联系统便于复用文本能力，但会丢失非语言线索并传播转写错误；直接声学融合有机会保留这些信息，却要求相应训练数据与时间处理。对于语音理解，应分别评估语义、说话人、噪声和事件；对于语音输出，还需评估时延、可懂度、音色一致性及授权范围。输出模态由相应解码器与训练目标决定。
 
-\section{视频采样、同步与流式因果性}
+\section{视频编码}
 \optional
 \subsection{帧预算和观测边界}
-视频可表示为带时间戳的图像序列 $\{(I_f,t_f)\}_{f=1}^F$。逐帧编码后，未压缩视觉长度约为 $FN_v$；每帧重采样到 $M$ 个位置时为 $FM$，全视频联合重采样则可进一步限制总长度。不同策略分别保留空间与时间信息，输出形状相同并不意味着二者等价。
+视频可表示为带时间戳的图像序列 $\{(I_f,t_f)\}_{f=1}^F$。逐帧编码后，未压缩视觉长度约为 $FN_v$；每帧重采样到 $M$ 个位置时为 $FM$，全视频联合重采样则可进一步限制总长度。逐帧重采样在每帧内部聚合空间信息，联合重采样还跨帧聚合时间信息；输出形状相同时，两种策略仍具有不同的信息来源和依赖关系。
 
 设均匀采样间隔为 $\Delta t$。在忽略端点、事件持续 $\delta<\Delta t$ 且事件起点相位均匀分布的构造模型下，至少一个采样时刻落入事件的概率为
 \begin{equation}
  p_{\mathrm{hit}}=\frac{\delta}{\Delta t}.
 \end{equation}
-例如每秒取2帧，间隔0.5秒，持续0.1秒的事件命中概率仅为0.2。该概率衡量采样是否覆盖事件，覆盖后的识别率由视觉模型决定。没有任何采样帧记录的短暂动作，缺失观测留在那里，更大的语言模型也恢复不了。
+例如每秒取 2 帧，采样间隔为 \qty{0.5}{\second}，持续 \qty{0.1}{\second} 的事件命中概率仅为 0.2。该概率衡量采样是否覆盖事件，覆盖后的识别率由视觉模型决定。没有任何采样帧记录的短暂动作，缺失观测留在那里，更大的语言模型也恢复不了。
 
 周期采样还可能使快速重复动作混淆。任务驱动采样可以增加变化处的帧密度，但事件检测器会引入自己的漏检。需要长时间范围与局部细节时，可先粗采样定位候选区间，再保留原时间戳细采样；粗阶段没有覆盖的事件仍可能被遗漏。视频与一组无序照片的差别正在于帧顺序与间隔，二者都是输入含义的一部分。
 
-\subsection{声画同步与时钟偏差}
+\subsection{声画同步}
 \term{时间对齐}{Temporal Alignment}{}把不同模态的观测映射到共同时间轴。数组下标属于各自的序列，音频第100个窗口与视频第100帧通常发生在不同时间。可将某音频设备的时间 $t_a$ 映射为参考时间
 \begin{equation}
  t_{\mathrm{ref}}=\alpha t_a+\beta,
 \end{equation}
 其中 $\beta$ 表示起始偏移，$\alpha$ 表示时钟尺度误差。恒定偏移只需平移；时钟漂移会随时长积累，仅在开头对齐一次是不够的。
 
-例如假定音频时钟每秒多计 $10^{-4}$ 秒，经过600秒会产生0.06秒偏差。若还有0.08秒起始偏移，末端未校正偏差为0.14秒。这个构造例子说明短片段可忽略的误差在长会话中可能改变事件对应关系。时间戳应说明是窗口起点、中心还是终点；窗口中心只能定位代表时间，不表示编码器从未读取其后的样本。
+例如假定音频时钟每秒多计 $10^{-4}$ 秒，经过 \qty{600}{\second} 会产生 \qty{0.06}{\second} 偏差。若存在 \qty{0.08}{\second} 起始偏移，末端未校正偏差将达 \qty{0.14}{\second}。这个构造例子说明短片段可忽略的误差在长会话中可能改变事件对应关系。时间戳应说明是窗口起点、中心还是终点；窗口中心只能定位代表时间，不表示编码器从未读取其后的样本。
 
 对视频帧 $t_f$ 与音频窗口代表时间 $t_m$，可按 $|t_f-(\alpha t_m+\beta)|\le\epsilon_t$ 建立候选对应关系。容差 $\epsilon_t$ 的选择取决于任务分辨率和采样精度；容差过宽会混合相邻事件，过窄则出现无匹配。对应关系可为多对多，每帧恰好配一个音频位置的约束在这里并不成立。
 
@@ -467,18 +465,17 @@ Whisper解码器可以看作以音频编码结果为条件的语言模型，但�
 \foreach \x in {1,3,5}{\draw[fill=gray!30] (\x-.12,2.95) rectangle (\x+.12,3.45);\draw[dashed] (\x,2.95)--(\x,0);}
 \draw[<->] (2.5,.55)--(3.5,.55) node[midway,above]{允许对应窗口};
 \end{tikzpicture}
-\caption{不同模态通过时间区间建立对应，数组位置在这里没有配对含义。}
-\label{fig:mm-time}
+\caption[多模态时序连续对齐与区间映射]{多模态时序连续对齐与区间映射。不同连续模态通过物理时间区间建立语义对应，离散张量索引本身不具备天然配对含义。}\label{fig:mm-time}
 \end{figure}
 
 \subsection{流式输入的可用时刻}
-\term{流式因果性}{Streaming Causality}{}要求某时刻输出只依赖当时已经到达并被允许使用的数据。若一个声学特征来自窗口 $[t,t+25\mathrm{ms}]$，它最早在窗口结束后才完整可用；使用中心时间戳不消除这12.5毫秒的未来等待。双向声学编码器还可能读取后续窗口，因此训练时的注意力范围决定真实前瞻量。
+\term{流式因果性}{Streaming Causality}{}要求某时刻输出只依赖当时已经到达并被允许使用的数据。若一个声学特征来自窗口 $[t,t+\qty{25}{\milli\second}]$，它最早在窗口结束后才完整可用；使用中心时间戳不消除这 \qty{12.5}{\milli\second} 的未来等待。双向声学编码器还可能读取后续窗口，因此训练时的注意力范围决定真实前瞻量。
 
 视频与音频具有不同到达抖动。融合层可以等待一个有限同步窗口，再对尚未到达模态标记缺失；无限等待则破坏服务时延，直接沿用旧帧则可能错误绑定到新语音。\term{背压}{Backpressure}{}让下游处理能力约束上游发送或缓存速度，避免媒体队列持续增长。丢帧、降采样或分段策略应保存时间空洞，把剩余序列重新编号会伪装成连续观测。
 
-流式输出还需区分暂定转写与最终片段，处理用户打断、输出取消和语音文本同步。多模态模型输出操作建议时，感知置信度与执行授权是两套判断；对视觉界面或物理环境的理解错误应在受控执行边界被拦截。生成画面的逼真程度也支撑不起可靠控制器的结论。
+流式输出还需区分暂定转写与最终片段，处理用户打断、输出取消和语音文本同步。多模态模型输出操作建议时，模型的感知置信度并不等价于操作执行授权；对视觉界面或物理环境的感知偏差须由受控执行器前置拦截，视觉逼真度不作为控制器安全可用的判定条件。
 
-\section{模型能力和制品一致性}
+\section{多模态模型的兼容性}
 
 \subsection{形状语义一致性}
 形状检查验证组件接口，监督位置检查验证标签与因果移位。视觉理解通过带标注的受控任务评估，检查输出是否随对应视觉事实正确变化。
@@ -490,7 +487,7 @@ Whisper解码器可以看作以音频编码结果为条件的语言模型，但�
 \subsection{依赖与能力边界}
 模型制品应保存感知编码器、连接器、语言主干、输出解码器、预处理器、分词器、模板、精度与后端配置。多组件许可和使用条件也应逐一核对，语言主干的许可覆盖不到视觉编码器、训练数据和整个组合模型。
 
-服务预算需同时记录分辨率、图像数、帧率、媒体时长、压缩前后视觉及声学长度、文本长度和生成长度。高分辨率、多页与长视频分属不同的压力来源；入口应在解码前后都控制资源，压缩文件体积小但解码后极大的输入同样会耗尽服务资源。
+服务预算需同时记录分辨率、图像数、帧率、媒体时长、压缩前后视觉及声学长度、文本长度和生成长度。高分辨率静态图像主要消耗单步补丁投影显存，多页文档与长视频则显著拉长注意力上下文序列；入口网关须在解码前后统一施加显式配额检查，避免紧凑封装的多媒体文件在内存展开后引发工作节点资源耗尽。
 
 媒体中的文字和声音仍属于外部数据，系统权限不受其影响。跨模态提示注入、身份或声音冒用、来源不明素材与敏感元数据分别需要相应的数据和执行边界。输出图像、音频和视频的系统还需保留来源与生成记录，并明确允许的使用范围。感知理解、内容生成和行动执行的错误后果各不相同，应分别验收。
 

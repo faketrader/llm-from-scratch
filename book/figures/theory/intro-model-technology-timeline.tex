@@ -1,0 +1,127 @@
+\documentclass[tikz,border=6pt]{standalone}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,calc}
+\input{diagram_styles.tex}
+
+\begin{document}
+\begin{tikzpicture}[
+  my picture,
+  event/.style={text width=57mm,inner sep=0pt,font=\small},
+  date/.style={fill=white,text=MyGray,font=\scriptsize,inner xsep=2pt,inner ysep=1pt},
+  phase/.style={font=\small\bfseries,text=MyGray,fill=white,inner xsep=4pt}
+]
+
+\newcommand{\timelinedate}[2]{\node[date] at (0,#1) {#2};}
+\newcommand{\methodnode}[3]{%
+  \node[event,anchor=east,align=right] at (-0.95,#1) {%
+    \textcolor{MyGreen}{\bfseries #2}\;{\color{MyGray}\scriptsize[#3]}%
+  };%
+  \draw[MyGreen,line width=0.7pt] (-0.86,#1)--(-0.72,#1);%
+  \fill[MyGreen] (-0.72,#1) circle (1.25pt);%
+}
+\newcommand{\modelnode}[3]{%
+  \node[event,anchor=west,align=left] at (0.95,#1) {%
+    \textcolor{MyBlue}{\bfseries #2}\;{\color{MyGray}\scriptsize[#3]}%
+  };%
+  \draw[MyBlue,line width=0.7pt] (0.72,#1)--(0.86,#1);%
+  \fill[MyBlue] (0.72,#1) circle (1.25pt);%
+}
+\newcommand{\recentmodelnode}[3]{%
+  \node[event,anchor=west,align=left] at (0.95,#1) {%
+    \textcolor{MyPurple}{\bfseries #2}\;{\color{MyGray}\scriptsize[#3]}%
+  };%
+  \draw[MyPurple,line width=0.7pt] (0.72,#1)--(0.86,#1);%
+  \draw[MyPurple,line width=0.8pt,fill=white] (0.72,#1) circle (1.25pt);%
+}
+\newcommand{\lanehead}[1]{%
+  \node[font=\small\bfseries,text=MyGreen,anchor=east] at (-0.95,#1) {方法与架构};%
+  \node[font=\scriptsize,text=MyGray] at (0,#1) {时间};%
+  \node[font=\small\bfseries,text=MyBlue,anchor=west] at (0.95,#1) {基础模型};%
+}
+
+% 第一阶段：架构与预训练
+\draw[MyGray!35,line width=0.6pt] (-6.7,0.92)--(6.7,0.92);
+\node[phase] at (0,0.92) {架构与预训练（2017--2022）};
+\lanehead{0.48}
+\draw[MyGray!55,line width=0.8pt] (0,0.20)--(0,-5.18);
+
+\timelinedate{-0.10}{2017.06}
+\methodnode{-0.10}{Transformer}{论文}
+
+\timelinedate{-0.82}{2018.06}
+\modelnode{-0.82}{GPT}{开放权重}
+
+\timelinedate{-1.54}{2018.10}
+\modelnode{-1.54}{BERT}{开放权重}
+
+\timelinedate{-2.26}{2019.02}
+\modelnode{-2.26}{GPT-2}{分阶段开放}
+
+\timelinedate{-2.98}{2020.01}
+\methodnode{-2.98}{神经语言模型缩放定律}{论文}
+
+\timelinedate{-3.70}{2020.05}
+\modelnode{-3.70}{GPT-3}{API}
+
+\timelinedate{-4.42}{2022.01}
+\methodnode{-4.42}{InstructGPT / RLHF}{论文}
+
+\timelinedate{-5.14}{2022.03}
+\methodnode{-5.14}{Chinchilla缩放规律}{论文}
+
+% 第二阶段：多模态与推理模型
+\draw[MyGray!35,line width=0.6pt] (-6.7,-5.93)--(6.7,-5.93);
+\node[phase] at (0,-5.93) {多模态与推理模型（2023--2026）};
+\lanehead{-6.37}
+\draw[MyGray!55,line width=0.8pt] (0,-6.65)--(0,-15.40);
+
+\timelinedate{-6.94}{2023.02}
+\modelnode{-6.94}{LLaMA}{研究权重}
+
+\timelinedate{-7.66}{2023.03}
+\modelnode{-7.66}{GPT-4 · Claude 1}{API}
+
+\timelinedate{-8.38}{2024.02}
+\modelnode{-8.38}{Gemini 1.5}{API}
+
+\timelinedate{-9.10}{2024.03}
+\modelnode{-9.10}{Claude 3}{API}
+
+\timelinedate{-9.82}{2024.05}
+\modelnode{-9.82}{DeepSeek-V2 · GPT-4o}{权重 / API}
+
+\timelinedate{-10.54}{2024.09}
+\methodnode{-10.54}{推理时计算}{训练范式}
+\modelnode{-10.54}{OpenAI o1}{API}
+
+\timelinedate{-11.26}{2024.12}
+\modelnode{-11.26}{DeepSeek-V3}{开放权重}
+
+\timelinedate{-11.98}{2025.01}
+\methodnode{-11.98}{可验证推理强化学习}{公开方法}
+\modelnode{-11.98}{DeepSeek-R1}{开放权重}
+
+\timelinedate{-12.70}{2025.02}
+\modelnode{-12.70}{Claude 3.7 Sonnet}{API}
+
+\timelinedate{-13.42}{2025.05}
+\modelnode{-13.42}{Claude 4}{API}
+
+\timelinedate{-14.14}{2025.08}
+\modelnode{-14.14}{GPT-5}{API}
+
+\timelinedate{-14.86}{2026.09.01}
+\recentmodelnode{-14.86}{Claude Fable/Mythos 5.1}{API / 受控}
+
+\timelinedate{-15.58}{2026.09.10}
+\recentmodelnode{-15.58}{DeepSeek-V4.1-Flash}{开放权重}
+
+\node[font=\scriptsize,text=MyGray,anchor=west] at (-6.65,-16.26) {%
+  \textcolor{MyGreen}{\rule{6pt}{6pt}} 方法与架构\quad
+  \textcolor{MyBlue}{\rule{6pt}{6pt}} 基础模型\quad
+  \textcolor{MyPurple}{$\circ$} 新近节点\quad
+  方括号标注发布形态
+};
+
+\end{tikzpicture}
+\end{document}

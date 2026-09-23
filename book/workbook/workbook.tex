@@ -1,7 +1,9 @@
 \ifdefined\HCode
   \PassOptionsToClass{fontset=none}{ctexbook}
+\else
+  \PassOptionsToClass{fontset=founder}{ctexbook}
 \fi
-\documentclass[UTF8,zihao=-4,twoside,openany]{ctexbook}
+\documentclass[UTF8,zihao=5,twoside,openany]{ctexbook}
 \usepackage{subfiles}
 \input{../preamble.tex}
 \input{style.tex}
@@ -11,6 +13,7 @@
 
 \ifdefined\HCode\else
   \hypersetup{pageanchor=false}
+  \pdfbookmark[-1]{书前}{frontmatter}
   \input{cover.tex}
   \cleardoublepage
   \frontmatter
@@ -100,6 +103,16 @@
 
 \part{参考解析}
 \input{answers.tex}
+
+\appendix
+\ctexset{chapter/name={附录,},chapter/number=\Alph{chapter}}
+\renewcommand{\theHchapter}{appendix.\Alph{chapter}}
+\ifdefined\HCode
+  \par\HCode{<div class="partHead">附录</div>}
+\else
+  \bookmarksetup{startatroot}
+\fi
+\subfile{appendices/A-experiment-reporting.tex}
 
 \backmatter
 \part{参考文献}

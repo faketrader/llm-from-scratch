@@ -1,0 +1,76 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex,amsmath,amssymb}
+\usetikzlibrary{arrows.meta,positioning,calc,fit,backgrounds}
+\input{diagram_styles.tex}
+
+\begin{document}
+\begin{tikzpicture}[my picture, node distance=5mm and 6.5mm]
+
+% 顶部：资源预算与算力基础设施
+\node[neutral, text width=70mm, minimum height=13mm] (hw_infra) {
+  \textbf{计算基础设施与通信拓扑}\\[0.8mm]
+  \scriptsize AI 加速卡集群架构、高带宽显存（HBM）\\
+  NVLink 节点内互联与 InfiniBand 跨节点通信（第61章）
+};
+\node[storage, text width=70mm, minimum height=13mm, right=5mm of hw_infra] (mem_budget) {
+  \textbf{显存分析与资源预算建模}\\[0.8mm]
+  \scriptsize 静态参数、梯度、优化器状态与动态激活显存\\
+  训练与推理吞吐、通信开销理论建模（第32章）
+};
+\begin{scope}[on background layer]
+  \node[group, fit=(hw_infra)(mem_budget), label={[font=\footnotesize\bfseries, text=MyGray]above:一、硬件基础设施与显存建模底座}] (g_base) {};
+\end{scope}
+
+% 中部：分布式训练系统
+\node[compute, text width=70mm, minimum height=13mm, below=11mm of hw_infra.south west, anchor=north west] (train_3d) {
+  \textbf{3D 混合分布式并行拓扑}\\[0.8mm]
+  \scriptsize 数据并行（DP）、张量并行（TP）与流水线并行（PP）\\
+  序列并行与通信计算重叠隐藏（第62章）
+};
+\node[compute, text width=70mm, minimum height=13mm, right=5mm of train_3d] (train_zero) {
+  \textbf{ZeRO 显存分片与大规模训练}\\[0.8mm]
+  \scriptsize 优化器、梯度与参数多级切分（ZeRO-1/2/3）\\
+  长序列通信与容灾容错架构（第62章）
+};
+\begin{scope}[on background layer]
+  \node[group, fit=(train_3d)(train_zero), label={[font=\footnotesize\bfseries, text=MyPurple]above:二、大规模分布式训练系统}] (g_train) {};
+\end{scope}
+
+% 底部：推理服务与加速运行时
+\node[interface, text width=45mm, minimum height=14mm, below=11mm of train_3d.south west, anchor=north west] (inf_serv) {
+  \textbf{推理服务与动态调度}\\[0.8mm]
+  \scriptsize 连续批处理（Continuous Batching）\\
+  Prefill/Decode 算力解耦（第63、64章）
+};
+\node[storage, text width=45mm, minimum height=14mm, right=5mm of inf_serv] (inf_cache) {
+  \textbf{增量解码与分页缓存}\\[0.8mm]
+  \scriptsize PagedAttention 显存虚拟化\\
+  KV Cache 显存零碎片调度（第51章）
+};
+\node[block, text width=45mm, minimum height=14mm, right=5mm of inf_cache] (inf_opt) {
+  \textbf{算法加速与模型量化}\\[0.8mm]
+  \scriptsize 投机解码与算子融合\\
+  AWQ/GPTQ/FP8 低比特量化（第52、53章）
+};
+\begin{scope}[on background layer]
+  \node[group, fit=(inf_serv)(inf_cache)(inf_opt), label={[font=\footnotesize\bfseries, text=MyOrange]above:三、高性能推理服务运行时与算子优化}] (g_inf) {};
+\end{scope}
+
+% 层级流动连线
+\draw[data arrow] ($(hw_infra.south)+(15mm,0)$) -- ($(train_3d.north)+(15mm,0)$);
+\draw[data arrow] ($(mem_budget.south)-(15mm,0)$) -- ($(train_zero.north)-(15mm,0)$);
+
+\draw[data arrow] (train_3d.east) -- (train_zero.west);
+\draw[data arrow] (inf_serv.east) -- (inf_cache.west);
+\draw[data arrow] (inf_cache.east) -- (inf_opt.west);
+
+\draw[data arrow] ($(train_3d.south)-(10mm,0)$) -- ($(inf_serv.north)+(0,0)$);
+\draw[data arrow] ($(train_zero.south)+(10mm,0)$) -- ($(inf_opt.north)+(0,0)$);
+
+% 底部总结栏
+\node[neutral, text width=146mm, minimum height=7mm, below=6mm of inf_cache.south] (bot_summary) {
+  \scriptsize \textbf{第四篇系统主线：} 芯片与网络基建 $\longrightarrow$ 显存与通信预算 $\longrightarrow$ 3D分布式并行训练 $\longrightarrow$ 动态批处理服务 $\longrightarrow$ KV缓存虚拟化与量化加速
+};
+
+\end{tikzpicture}
+\end{document}

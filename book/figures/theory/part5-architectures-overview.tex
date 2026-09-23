@@ -1,0 +1,74 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex,amsmath,amssymb}
+\usetikzlibrary{arrows.meta,positioning,calc,fit,backgrounds}
+\input{diagram_styles.tex}
+
+\begin{document}
+\begin{tikzpicture}[my picture, node distance=5mm and 6.5mm]
+
+% 顶部左侧：结构演变与稀疏专家
+\node[block, text width=68mm, minimum height=13mm] (moe_arch) {
+  \textbf{混合专家架构（MoE）}\\[0.8mm]
+  \scriptsize 稀疏门控路由机制、Top-$k$ 专家激活\\
+  负载均衡辅助损失与专家并行（第27章）
+};
+\node[neutral, text width=68mm, minimum height=13mm, below=4mm of moe_arch] (bert_arch) {
+  \textbf{双向掩码语言模型（BERT）}\\[0.8mm]
+  \scriptsize 双向全向上下文编码、掩码语言建模（MLM）\\
+  判别式与生成式表征对比（第25章）
+};
+\begin{scope}[on background layer]
+  \node[group, fit=(moe_arch)(bert_arch), label={[font=\footnotesize\bfseries, text=MyBlue]above:一、结构拓展与稀疏计算}] (g_sparse) {};
+\end{scope}
+
+% 顶部右侧：长上下文与开源演进
+\node[storage, text width=68mm, minimum height=13mm, right=8mm of moe_arch] (ctx_arch) {
+  \textbf{长上下文扩展与外推}\\[0.8mm]
+  \scriptsize 旋转位置编码插值（YaRN、外推缩放）\\
+  超长序列记忆压缩与召回评估（第28章）
+};
+\node[compute, text width=68mm, minimum height=13mm, below=4mm of ctx_arch] (open_arch) {
+  \textbf{开源主流架构演进谱系}\\[0.8mm]
+  \scriptsize LLaMA、Mistral、Qwen、DeepSeek 设计演进\\
+  归一化、激活函数与注意力变体权衡（第29章）
+};
+\begin{scope}[on background layer]
+  \node[group, fit=(ctx_arch)(open_arch), label={[font=\footnotesize\bfseries, text=MyPurple]above:二、容量突破与开源架构谱系}] (g_open) {};
+\end{scope}
+
+% 底部：多模态理解与扩散生成
+\node[storage, text width=45mm, minimum height=14mm, below=11mm of bert_arch.south west, anchor=north west] (vit_arch) {
+  \textbf{视觉 Transformer（ViT）}\\[0.8mm]
+  \scriptsize 图像二维分块（Patch Embedding）\\
+  无偏置自注意力机制（第81章）
+};
+\node[interface, text width=45mm, minimum height=14mm, right=5mm of vit_arch] (mllm_arch) {
+  \textbf{多模态对齐与融合（MLLM）}\\[0.8mm]
+  \scriptsize 跨模态投影器（Projector）\\
+  图文交织自回归统一建模（第82章）
+};
+\node[compute, text width=45mm, minimum height=14mm, right=5mm of mllm_arch] (diff_arch) {
+  \textbf{扩散概率与 DiT 生成}\\[0.8mm]
+  \scriptsize 正向加噪与反向去噪 SDE\\
+  DiT 条件视觉生成架构（第83、84章）
+};
+\begin{scope}[on background layer]
+  \node[group, fit=(vit_arch)(mllm_arch)(diff_arch), label={[font=\footnotesize\bfseries, text=MyOrange]above:三、多模态感知与跨模态生成演进}] (g_multi) {};
+\end{scope}
+
+% 连接线
+\draw[data arrow] (bert_arch.north) -- (moe_arch.south);
+\draw[data arrow] (ctx_arch.south) -- (open_arch.north);
+\draw[data arrow] (vit_arch.east) -- (mllm_arch.west);
+\draw[data arrow] (mllm_arch.east) -- (diff_arch.west);
+
+\draw[data arrow] ($(bert_arch.south)+(15mm,0)$) -- ($(vit_arch.north)+(15mm,0)$);
+\draw[data arrow] ($(open_arch.south)-(15mm,0)$) -- ($(diff_arch.north)-(15mm,0)$);
+
+% 底部总结栏
+\node[neutral, text width=146mm, minimum height=7mm, below=6mm of mllm_arch.south] (bot_summary) {
+  \scriptsize \textbf{第五篇拓展主线：} 双向与稀疏结构创新 $\longleftrightarrow$ 百万长上下文突破 $\longleftrightarrow$ 开源生态架构融合 $\longleftrightarrow$ 视觉理解与扩散生成多模态拓展
+};
+
+\end{tikzpicture}
+\end{document}

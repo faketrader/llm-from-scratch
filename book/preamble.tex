@@ -1,3 +1,6 @@
+\RequirePackage[backend=biber,style=numeric-comp,sorting=none]{biblatex}
+% 允许长网址在字母与数字间断行，保留完整可点击地址。
+\RequirePackage{xurl}
 \usepackage{\subfix{../my-book}}
 
 % 本项目的文档结构、引用与术语索引。
@@ -11,18 +14,31 @@
 \fi
 
 \setcounter{tocdepth}{1}
+\ifdefined\HCode\else
+  \RequirePackage{multicol}
+  \makeatletter
+  \patchcmd{\tableofcontents}{\@starttoc{toc}}
+    {\begin{multicols}{2}\@starttoc{toc}\end{multicols}}
+    {}{\PackageError{my-book}{Cannot set the table of contents in two columns}{Check the tableofcontents definition.}}
+  \makeatother
+\fi
 % 两册采用 openany 让章只换页；篇仍须从右页开始。
 \AddToHook{cmd/part/before}{\cleardoublepage}
-\RequirePackage[backend=biber,style=numeric,sorting=none]{biblatex}
 \newif\ifchaptercitations
 \AtEveryCitekey{\global\chaptercitationstrue}
-% 允许长网址在字母与数字间断行，保留完整可点击地址。
-\RequirePackage{xurl}
-\RequirePackage[unicode]{hyperref}
 \RequirePackage{xr-hyper}
 \RequirePackage{refcount}
 \hypersetup{bookmarksnumbered=true,colorlinks=true,linkcolor=MyPrimary,citecolor=MyPrimary,urlcolor=MyPrimary}
 \RequirePackage{bookmark}
+% 目录类无编号章显式添加书签，先换页以使锚点落在目录首页。
+\ifdefined\HCode\else
+  \AddToHook{cmd/tableofcontents/before}{%
+    \clearpage\pdfbookmark[0]{\contentsname}{book-toc}}
+  \AddToHook{cmd/listoffigures/before}{%
+    \clearpage\pdfbookmark[0]{\listfigurename}{book-lof}}
+  \AddToHook{cmd/listoftables/before}{%
+    \clearpage\pdfbookmark[0]{\listtablename}{book-lot}}
+\fi
 % 引用整体两侧保留文字间距；标点前不追加空白，数学模式保持原排版。
 \RequirePackage{xspace}
 \xspaceaddexceptions{，。；：！？、）》】」』}
@@ -90,7 +106,11 @@
   \ifcsname r@my-textbook-#1\endcsname
   \HCode{<a class="my-bookxref" data-label="#1">}第\getrefnumber{my-textbook-#1}章《\getrefbykeydefault{my-textbook-#1}{name}{#1}》\HCode{</a>}%
   \else
+  \ifcsname r@tb-#1\endcsname
+  \HCode{<a class="my-bookxref" data-label="#1">}第\getrefnumber{tb-#1}章《\getrefbykeydefault{tb-#1}{name}{#1}》\HCode{</a>}%
+  \else
   \PackageWarning{my-book}{Unknown book cross-reference `#1'}\texttt{#1}%
+  \fi
   \fi
   \fi
   \ifstrempty{#2}{}{#2}%
@@ -101,8 +121,12 @@
   \ifcsname r@my-textbook-#1\endcsname
   \mybookxrefwithsuffix{\hyperref[my-textbook-#1]{第\ref*{my-textbook-#1}章《\nameref*{my-textbook-#1}》}}{#2}%
   \else
+  \ifcsname r@tb-#1\endcsname
+  \mybookxrefwithsuffix{\hyperref[tb-#1]{第\ref*{tb-#1}章《\nameref*{tb-#1}》}}{#2}%
+  \else
   \PackageWarning{my-book}{Unknown book cross-reference `#1'}%
   \mybookxrefwithsuffix{\texttt{#1}}{#2}%
+  \fi
   \fi
   \fi
   \fi}
@@ -114,7 +138,11 @@
   \ifcsname r@my-textbook-#1\endcsname
   \HCode{<a class="my-bookxref" data-label="#1">}第\getrefnumber{my-textbook-#1}章\HCode{</a>}%
   \else
+  \ifcsname r@tb-#1\endcsname
+  \HCode{<a class="my-bookxref" data-label="#1">}第\getrefnumber{tb-#1}章\HCode{</a>}%
+  \else
   \PackageWarning{my-book}{Unknown short book cross-reference `#1'}\texttt{#1}%
+  \fi
   \fi
   \fi
   \else
@@ -124,7 +152,11 @@
   \ifcsname r@my-textbook-#1\endcsname
   \hyperref[my-textbook-#1]{第\ref*{my-textbook-#1}章}%
   \else
+  \ifcsname r@tb-#1\endcsname
+  \hyperref[tb-#1]{第\ref*{tb-#1}章}%
+  \else
   \PackageWarning{my-book}{Unknown short book cross-reference `#1'}\texttt{#1}%
+  \fi
   \fi
   \fi
   \fi}
@@ -133,13 +165,29 @@
   \ifcsname r@#1\endcsname
   \HCode{<a class="my-bookxref" data-label="#1">}附录\getrefnumber{#1}\HCode{</a>}%
   \else
+  \ifcsname r@my-textbook-#1\endcsname
+  \HCode{<a class="my-bookxref" data-label="#1">}附录\getrefnumber{my-textbook-#1}\HCode{</a>}%
+  \else
+  \ifcsname r@tb-#1\endcsname
+  \HCode{<a class="my-bookxref" data-label="#1">}附录\getrefnumber{tb-#1}\HCode{</a>}%
+  \else
   \PackageWarning{my-book}{Unknown appendix cross-reference `#1'}\texttt{#1}%
+  \fi
+  \fi
   \fi
   \else
   \ifcsname r@#1\endcsname
   \hyperref[#1]{附录\ref*{#1}}%
   \else
+  \ifcsname r@my-textbook-#1\endcsname
+  \hyperref[my-textbook-#1]{附录\ref*{my-textbook-#1}}%
+  \else
+  \ifcsname r@tb-#1\endcsname
+  \hyperref[tb-#1]{附录\ref*{tb-#1}}%
+  \else
   \PackageWarning{my-book}{Unknown appendix cross-reference `#1'}\texttt{#1}%
+  \fi
+  \fi
   \fi
   \fi}
 
@@ -150,8 +198,11 @@
 \fi
 \pdfstringdefDisableCommands{\def\bookcode#1{#1}}
 
-% 章号统一使用阿拉伯数字；中西文边界间距交由 XeCJK 或网页排版引擎处理。
-\ctexset{chapter/number=\arabic{chapter}}
+% 篇名使用“第x篇”，章号统一使用阿拉伯数字；中西文边界间距交由 XeCJK 或网页排版引擎处理。
+\ctexset{
+  part/name={第,篇},
+  chapter/number=\arabic{chapter}
+}
 
 % Standalone chapters derive their number from the current textbook AUX.
 \NewDocumentCommand{\bookchapter}{mm}{%
@@ -247,6 +298,11 @@
       \RenewDocumentCommand{\term}{mmm}
         {
           \my_index_term:nnn {#1}{#2}{#3}
+          \exp_args:Nne \regex_match:nnTF
+            { \A ( \$ | [A-Za-z0-9] ) }
+            { \tl_to_str:n {#1} }
+            { \CJKecglue }
+            { \CJKglue }
           \my_index_original_term:nnn {#1}{#2}{#3}
         }
     }

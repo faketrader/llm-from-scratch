@@ -1,7 +1,8 @@
+# latexmk 的 PDF 模式 5 使用 XeLaTeX；模式 4 才使用 LuaLaTeX。
 $pdf_mode = 5;
 $lualatex = 'lualatex -synctex=1 -shell-restricted -interaction=nonstopmode -halt-on-error -file-line-error %O %S';
 $xelatex = 'xelatex -synctex=1 -shell-restricted -interaction=nonstopmode -halt-on-error -file-line-error %O %S';
-$max_repeat = 5;
+$max_repeat = 8;
 # 每个页码保留独立的术语锚点，不合并为自动页码区间。
 use File::Basename qw(dirname);
 use Cwd qw(abs_path);

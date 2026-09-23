@@ -1,10 +1,10 @@
 \NeedsTeXFormat{LaTeX2e}
-\ProvidesPackage{my-format}[2026/09/18 My book formatting and figures]
+\ProvidesPackage{my-format}[2026/09/18 My book formatting: figures, tables, and typography]
 
 \RequirePackage{iftex}
 \RequireTUTeX
 
-% 中文沿用 ctex 平台默认字体；纸书西文正文使用 Pagella，与数学字形区分。
+% 中文字体由 ctex 类选项配置；纸书西文正文使用 Pagella，与数学字形区分。
 % 按 TeX Live 文件名加载，避免依赖操作系统字体索引。
 \ifdefined\HCode
   \newcommand{\myheadingfont}{\bfseries}
@@ -19,27 +19,31 @@
   % 全角中文标点（包括弯引号）跟随当前 CJK 字体族，不使用西文正文字体。
   \ifXeTeX
     \xeCJKsetup{PunctFamily=false}
+    % 将罗马数字与带圈数字映射至 CJK 字体，防止西文字体缺失字符。
+    \xeCJKDeclareCharClass{CJK}{"2160->"217F,"2460->"2473}
   \fi
   \newcommand{\myheadingfont}{\bfseries\heiti\sffamily}
 \fi
 
 % 正度16开成品尺寸：185 mm × 260 mm。
+% 优化版心容量：正文版心宽 150 mm，五号字（10.5 bp ≈ 3.704 mm）每行排约 40.5 字。
 \RequirePackage[
   paperwidth=185mm,
   paperheight=260mm,
-  inner=30mm,
-  outer=24mm,
-  top=26mm,
-  bottom=26mm,
+  inner=19mm,
+  outer=16mm,
+  top=22mm,
+  bottom=22mm,
   headheight=16pt
 ]{geometry}
-% 内侧 30 mm 已包含装订余量；边注只占外侧，不侵入装订沟。
-\setlength{\marginparwidth}{17mm}
-\setlength{\marginparsep}{3mm}
+% 内侧 19 mm 已包含装订余量；边注只占外侧，不侵入装订沟。
+\setlength{\marginparwidth}{10mm}
+\setlength{\marginparsep}{2.5mm}
 
 \RequirePackage{siunitx}
 \sisetup{mode=match}
 \RequirePackage{enumitem}
+\setlist[enumerate]{noitemsep}
 \RequirePackage{seqsplit,fvextra}
 
 \RequirePackage{newunicodechar}
@@ -81,14 +85,16 @@
 \fi
 
 % 图表可对称侵入页边距，正文版心与行长保持不变。
-% 6 mm 出血后，内侧仍保留 24 mm，外侧仍保留 18 mm。
+% 4 mm 出血后，内侧仍保留 15 mm，外侧仍保留 12 mm。
 \newlength{\myfloatbleed}
-\setlength{\myfloatbleed}{6mm}
+\setlength{\myfloatbleed}{4mm}
 \ifdefined\HCode
   \NewDocumentEnvironment{mywidefloat}{}{}{}
+  \NewDocumentEnvironment{widetable}{O{tbp}}{\begin{table}[#1]}{\end{table}}
+  \NewDocumentEnvironment{table*}{O{tbp}}{\begin{table}[#1]}{\end{table}}
 \else
   \NewDocumentEnvironment{mywidefloat}{}
-    {\begin{adjustwidth}{-\myfloatbleed}{-\myfloatbleed}}
+    {\begin{adjustwidth}{-\myfloatbleed}{-\myfloatbleed}\captionsetup{width=\linewidth}}
     {\end{adjustwidth}}
   \let\myoriginalfigure\figure
   \let\myendoriginalfigure\endfigure
@@ -97,18 +103,78 @@
     {\end{mywidefloat}\myendoriginalfigure}
   \let\myoriginaltable\table
   \let\myendoriginaltable\endtable
+
+  % 表格默认保持在正文版心内（\textwidth），在必要时才超出版面侵入页边距。
+  % 当表格列数较多需要超出版面时，使用 table* 或 widetable 环境，或 table[wide]，亦可在 table 内直接使用 mywidefloat。
+  \ExplSyntaxOn
+  \bool_new:N \l__myformat_table_wide_bool
+  \tl_new:N \l__myformat_table_pos_tl
+
+  \cs_new_protected:Npn \__myformat_parse_table_opt:n #1
+    {
+      \tl_set:Nn \l__myformat_table_pos_tl { #1 }
+      \tl_if_in:NnTF \l__myformat_table_pos_tl { wide }
+        {
+          \bool_set_true:N \l__myformat_table_wide_bool
+          \tl_replace_all:Nnn \l__myformat_table_pos_tl { wide } { }
+          \tl_replace_all:Nnn \l__myformat_table_pos_tl { , } { }
+          \tl_trim_spaces:N \l__myformat_table_pos_tl
+          \tl_if_empty:NT \l__myformat_table_pos_tl
+            { \tl_set:Nn \l__myformat_table_pos_tl { tbp } }
+        }
+        {
+          \bool_set_false:N \l__myformat_table_wide_bool
+        }
+    }
+
+  \cs_new_protected:Npn \__myformat_begin_table:n #1
+    {
+      \myoriginaltable[#1]
+    }
+
   \RenewDocumentEnvironment{table}{O{tbp}}
-    {\myoriginaltable[#1]\begin{mywidefloat}}
-    {\end{mywidefloat}\myendoriginaltable}
+    {
+      \__myformat_parse_table_opt:n { #1 }
+      \exp_args:NV \__myformat_begin_table:n \l__myformat_table_pos_tl
+      \bool_if:NT \l__myformat_table_wide_bool
+        { \begin{mywidefloat} }
+    }
+    {
+      \bool_if:NT \l__myformat_table_wide_bool
+        { \end{mywidefloat} }
+      \myendoriginaltable
+    }
+
+  \RenewDocumentEnvironment{table*}{O{tbp}}
+    {
+      \myoriginaltable[#1]
+      \begin{mywidefloat}
+    }
+    {
+      \end{mywidefloat}
+      \myendoriginaltable
+    }
+
+  \NewDocumentEnvironment{widetable}{O{tbp}}
+    {
+      \myoriginaltable[#1]
+      \begin{mywidefloat}
+    }
+    {
+      \end{mywidefloat}
+      \myendoriginaltable
+    }
+  \ExplSyntaxOff
 \fi
 
 % 图题使用非浮动位置，链接锚点落在图题处；表题统一置于表体上方。
 \captionsetup{hypcap=false}
 \ifdefined\HCode\else
-  \captionsetup{font=sf,labelfont=bf}
+  \captionsetup{font=small,labelfont={bf,sf}}
 \fi
 \captionsetup[figure]{width=\textwidth}
 \captionsetup[table]{position=top,width=\textwidth}
+
 % 表体统一使用小字号；表题继续由 caption 包独立控制。
 \AtBeginEnvironment{tabular}{\small}
 \AtBeginEnvironment{tabularx}{\small}
@@ -122,11 +188,38 @@
 \RequirePackage{fancyhdr}
 \RequirePackage{emptypage} % 双页清页插入的空白页不显示页眉页脚。
 
+\newcommand{\my@partfigure}{}
+\newcommand{\partfigure}[1]{\gdef\my@partfigure{#1}}
+\newcommand{\my@render@partfigure}{%
+  \ifx\my@partfigure\@empty\else
+    \par\vspace{10mm}%
+    \centering
+    \IfFileExists{\my@partfigure}{%
+      \includegraphics[width=0.96\linewidth]{\my@partfigure}%
+    }{%
+      \IfFileExists{book/\my@partfigure}{%
+        \includegraphics[width=0.96\linewidth]{book/\my@partfigure}%
+      }{%
+        \IfFileExists{../\my@partfigure}{%
+          \includegraphics[width=0.96\linewidth]{../\my@partfigure}%
+        }{%
+          \includegraphics[width=0.96\linewidth]{\subfix{\my@partfigure}}%
+        }%
+      }%
+    }%
+    \gdef\my@partfigure{}%
+  \fi
+}
+
 % 纸书正文保留衬线字体；各级标题追加黑体与非衬线西文字体，沿用 ctex 原有字号和间距。
 % 网页标题由 CSS 统一控制，避免把纸书字体命令送入 TeX4ht。
 \ifdefined\HCode\else
   \ctexset{
+    part/name={第,篇},
     part/format+={\heiti\sffamily},
+    part/beforeskip=20pt,
+    part/afterskip=0pt plus 1fil,
+    part/aftertitle={\my@render@partfigure},
     chapter/format+={\heiti\sffamily},
     section/format+={\heiti\sffamily},
     subsection/format+={\heiti\sffamily},

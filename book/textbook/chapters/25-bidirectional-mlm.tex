@@ -2,7 +2,7 @@
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
-\bookchapter{双向语言建模}{ch:rev-mlm}
+\bookchapter{双向语言建模}{ch:mlm}
 
 理解一段已给定文本时，当前位置的意义往往同时依赖左右两侧。例如，“苹果发布了新产品”与“苹果已经成熟”中的同一词语，需要后文帮助消除歧义。自回归模型为了生成必须限制未来信息，理解任务却可以利用完整观测。掩码预测为双向编码器提供自监督目标，分类与抽取任务再利用学到的上下文表示。
 
@@ -14,24 +14,25 @@
 
 \section{双向编码输入}
 
-\subsection{三类嵌入及其职责划分}
+\subsection{输入嵌入}
 对于句对 $A,B$，经典输入组织为
 \begin{equation}
  [\mathrm{CLS}],\ A,\ [\mathrm{SEP}],\ B,\ [\mathrm{SEP}].
 \end{equation}
-词元编码与特殊符号的规则见\bookxref{ch:rev-tokenization}。设批量大小为 $B_0$，填充后长度为 $T$，隐藏宽度为 $d$。使用 $B_0$ 区别于句对中的第二个句段 $B$。三类编号分别选择词元、位置和句段嵌入：
+词元编码与特殊符号的规则见\bookxref{ch:tokenization}。设批量大小为 $B_0$，填充后长度为 $T$，隐藏宽度为 $d$。使用 $B_0$ 区别于句对中的第二个句段 $B$。三类编号分别选择词元、位置和句段嵌入：
 \begin{equation}\label{eq:mlm-input}
- R_{bt}=\mat{E}[x_{bt}]+\mat{P}[t]+\mat{S}[s_{bt}],\qquad
- \mat{H}^{(0)}=\operatorname{Dropout}(\operatorname{LN}(R)).
+ \begin{aligned}
+  R_{bt}&=\mat{E}[x_{bt}]+\mat{P}[t]+\mat{S}[s_{bt}],\\
+  \mat{H}^{(0)}&=\operatorname{Dropout}(\operatorname{LN}(R)).
+ \end{aligned}
 \end{equation}
-其中 $\mat{E}\in\Real^{V\times d}$ 为词元嵌入，$\mat{P}\in\Real^{T_{\mathrm{pos}}\times d}$ 为可学习绝对位置表，$\mat{S}\in\Real^{2\times d}$ 为经典句对的句段表。所有加数均为 $d$ 维向量。位置上限约束实际使用的位置编号；把调用参数中的最大长度改大，超出训练范围的新位置向量仍然没有对应的训练信号。
+其中 $\mat{E}\in\Real^{V\times d}$ 为词元嵌入，$\mat{P}\in\Real^{T_{\mathrm{pos}}\times d}$ 为可学习绝对位置表，$\mat{S}\in\Real^{2\times d}$ 为经典句对的句段表。所有加数均为 $d$ 维向量。位置上限约束实际使用的位置编号；若仅在调用参数中单方面调大最大序列长度，超出预训练范围的位置索引在嵌入表中未经过梯度优化，无法直接获得有效表征。
 
 词元编号说明“出现了什么”，位置编号说明“位于何处”，句段编号说明“属于哪一段”。句段编号标记的是片段归属，与自然语言句子数量及注意力隔离边界都无关。句对中的 $A$、$B$ 虽具有不同句段编号，仍可通过双向自注意力互相读取。若任务要求隔离两个片段，需要另行定义注意力允许关系。
 
 \begin{table}[htbp]
 \centering
-\caption{双向语言建模核心符号与记号约定}
-\label{tab:rev-mlm-symbols}
+\caption{双向语言建模核心符号}\label{tab:mlm-symbols}
 \begin{tabularx}{\linewidth}{lXl}
 \toprule 符号 & 含义 & 形状或范围\\\midrule
 $x,\widetilde x$ & 原词元及损坏后的输入编号 & $B_0\times T$\\
@@ -45,45 +46,43 @@ $C$ & 下游类别数 & 正整数\\
 \end{tabularx}
 \end{table}
 
-\subsection{双向可见性与编码层}
+\subsection{双向编码}
 对于一个有效查询位置 $i$，双向注意力允许读取所有有效键 $j$。定义加性掩码
 \begin{equation}
  M^{\mathrm{bi}}_{bij}=\begin{cases}0,&m_{bj}=1,\\-\infty,&m_{bj}=0.\end{cases}
 \end{equation}
-它没有 $j\le i$ 的约束。用\bookxref{ch:attention}[中的缩放点积注意力]计算后，原始 BERT 的编码层采用注意力和前馈网络两条 Post-LN 残差子层：
+它没有 $j\le i$ 的约束。用\bookxref{ch:attention}中的缩放点积注意力计算后，原始 BERT 的编码层采用注意力和前馈网络两条 Post-LN 残差子层：
 \begin{align}
  A^{(\ell)}&=\operatorname{LN}\bigl(\mat{H}^{(\ell-1)}+
  \operatorname{Dropout}(\operatorname{MHA}(\mat{H}^{(\ell-1)},M^{\mathrm{bi}}))\bigr),\\
  \mat{H}^{(\ell)}&=\operatorname{LN}\bigl(A^{(\ell)}+
  \operatorname{Dropout}(\operatorname{FFN}(A^{(\ell)}))\bigr).
 \end{align}
-前馈网络使用 GELU，原始配置中隐藏层通常扩展为 $4d$。GELU 与 Post-LN 是原始 BERT 的配置选择，编码层结构如图\ref{fig:bert-encoder-layer}所示，归一化和梯度机制见\bookxref{ch:rev-transformer}。
+前馈网络使用 GELU，原始配置中隐藏层通常扩展为 $4d$。GELU 与 Post-LN 是原始 BERT 的配置选择，编码层结构如图\ref{fig:bert-encoder-layer}所示，归一化和梯度机制见\bookxref{ch:transformer}。
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.9\linewidth]{\subfix{../../figures/theory/bert-encoder-layer.pdf}}
-\caption{BERT 双向 Post-LN 编码层结构与残差数据流}
-\label{fig:bert-encoder-layer}
+\caption[BERT 编码层结构与残差数据流]{BERT 编码层结构与残差数据流。双向 Post-LN 编码层结构、自注意力与前馈网络的残差连接与归一化位置。}\label{fig:bert-encoder-layer}
 \end{figure}
 
 多层双向传播使每个有效位置都可聚合整段观测。填充查询行虽然可能得到一个非零输出，但它不应进入任务损失或池化统计。是否把该行输出清零属于实现约定；如果将其所有键都屏蔽，则必须单独处理全屏蔽行的归一化，对全为负无穷的行直接求 Softmax 得不到定义。
 
-\subsection{掩码机制对照}
-\begin{example}
+\begin{example}[双向与因果掩码的对照]
 为隔离可见性的作用，固定同一查询行的原始分数为 $(0,\log2,\log3)$，三个键都有效。位于第2个位置的查询在双向情形下得到
-\begin{equation}
+\begin{equation*}
  a^{\mathrm{bi}}=\frac{1,2,3}{6}=(\frac{1}{6},\frac{1}{3},\frac{1}{2}).
-\end{equation}
+\end{equation*}
 因果情形屏蔽第3个键，并对剩余两项重新归一化，得到
-\begin{equation}
+\begin{equation*}
  a^{\mathrm{causal}}=(\frac{1}{3},\frac{2}{3},0).
-\end{equation}
+\end{equation*}
 若值向量在此简化为标量 $(1,4,10)$，两种输出分别为 $6.5$ 和 $3$。区别不仅在于未来项变为零，原来可见项的权重也因分母变化而改变。若第3个位置实际上是填充，则双向模型同样得到 $(\frac{1}{3},\frac{2}{3},0)$，说明“右侧”与“有效”是两项独立的判断。
 
 两种计算使用相同分数与值向量，输出差异由掩码及其归一化分母产生。
 \end{example}
 
-\section{损坏通道与掩码语言建模}
+\section{掩码语言建模}
 
 \subsection{掩码重建目标}
 如果一个双向编码器在每个位置读取原词元，又以原词元作为同位置监督，模型可能依赖输入查表形成近似恒等映射，而不必学习上下文。\term{掩码语言建模}{Masked Language Modeling}{MLM}通过改变输入的一部分，再要求恢复原词元，降低这一捷径的作用。
@@ -94,9 +93,9 @@ $C$ & 下游类别数 & 正整数\\
  \left[-\frac1{|\mathcal M|}\sum_{t\in\mathcal M}
  \log q_{\vect{\theta}}(x_t\mid\widetilde x)\right],\qquad |\mathcal M|>0.
 \end{equation}
-模型读到的是 $\widetilde x$，标签仍是 $x_t$。输入并不等同于“删除 $\mathcal M$ 后的文本”：被选中位置可能被替换为随机词元，也可能保留原值。显式写出损坏通道才能准确描述训练分布。
+模型读到的是 $\widetilde x$，标签仍是 $x_t$。被选中位置按损坏规则替换为掩码符号、随机词元或保留原值，序列位置随之保留。显式写出损坏通道才能准确描述训练分布。
 
-\subsection{经典损坏配方与概率含义}
+\subsection{输入损坏策略}
 原始 BERT 从可候选位置中选择约 $15\%$ 作为预测位置；条件于一个位置已被选中，约 $80\%$ 替换为 MASK，$10\%$ 随机替换，$10\%$ 保留原词元\cite{devlinBERTPretrainingDeep2019}。按这些理想概率计算，全部候选位置中约 $12\%$ 进入 MASK 分支，$1.5\%$ 进入随机替换分支，$1.5\%$ 进入保留分支。
 
 \keyconcept{监督集合与 MASK 出现位置并不相同。}只对输入中实际等于 MASK 的位置计算损失，会漏掉随机替换和保留分支。随机替换也可能恰好抽到原词元；上述 $1.5\%$ 是进入该分支的比例，不是保证实际改变内容的比例。\footnote{若从含原词元的 $V$ 个候选中均匀抽样，随机替换分支实际改变内容的概率为 $1-\frac{1}{V}$。若候选集合排除特殊词元或原词元，则需按实际抽样集合重新计算。}
@@ -120,11 +119,13 @@ $C$ & 下游类别数 & 正整数\\
 \AlgoInput{原始序列、有效性标志、控制词元位置、损坏规则和随机状态。}
 \AlgoOutput{损坏后的输入、原始值标签、监督集合和有效监督数量。}
 \begin{myalgorithmic}[1]
-\State Build the candidate set from valid positions eligible for supervision; determine provenance from validity flags rather than padding-ID equality alone
-\State Sample $\mathcal M_b$ by the specified method and copy the original input to $\widetilde x_b$; first save the original token label at every selected position
-\State For each selected position, sample one branch: replace with MASK, replace randomly from the specified set, or retain the original value; keep the label unchanged in all three cases
-\State Build a bidirectional mask that reads only valid keys and count $N_M$; if $N_M=0$, resample or skip the batch under the specified policy instead of dividing by zero
-\State Encode the corrupted input, compute vocabulary loss at selected positions, normalize by Equation~\eqref{eq:mlm-batchloss}, and update parameters after backpropagation completes
+\State 由符合监督条件的有效位置构建候选集；依据有效性标记判定来源，而非仅凭填充标识符判断
+\State 按指定方法采样掩码位置集 $\mathcal M_b$ 并复制原始输入到 $\widetilde x_b$；在每个选定位置首先保存原始词元标签
+\For{each 选定位置}
+  \State 采样一个分支：替换为 MASK、从指定集合中随机替换或保留原值；三种情况下监督标签均保持不变
+\EndFor
+\State 构建仅读取有效键的双向掩码并统计 $N_M$；若 $N_M=0$，按指定策略重采或跳过该批，避免被零除
+\State 编码受损输入，计算选定位置的词表损失，按式\eqref{eq:mlm-batchloss}归一化，并在反向传播完成后更新参数
 \end{myalgorithmic}
 \textbf{不变量：}监督标签来自损坏前的文本；参与监督的位置由集合决定，损坏后的词元值不参与这一判断。构造过程线性扫描批量位置，编码器计算成本另计。
 \end{algorithm}
@@ -134,53 +135,54 @@ $C$ & 下游类别数 & 正整数\\
 \subsection{词表分布映射}
 设共享主干输出为 $\mat{H}\in\Real^{B_0\times T\times d}$。MLM 头先对每个位置施加非线性变换，再映射到词表：
 \begin{align}
- G_{bt}&=\operatorname{LN}(\operatorname{GELU}(H_{bt}\mat{W}_h+\vect{b}_h)),\\
- U_{bt}&=G_{bt}\mat{E}^{\mathrm{T}}+\vect{b}_V,\qquad
- q_{bt}=\softmax(U_{bt}).\label{eq:mlm-head}
+ G_{bt}&=\operatorname{LN}(\operatorname{GELU}(H_{bt}\mat{W}_h+\vect{b}_h)),\nonumber\\
+ U_{bt}&=G_{bt}\mat{E}^{\mathrm{T}}+\vect{b}_V,\nonumber\\
+ q_{bt}&=\softmax(U_{bt}).\label{eq:mlm-head}
 \end{align}
-$\mat{W}_h\in\Real^{d\times d}$，$\vect{b}_h\in\Real^d$，$\vect{b}_V\in\Real^V$；输入词元表 $\mat{E}$ 同时作为输出投影权重。共享不省去全词表分类计算，但减少独立参数，并使查表路径与预测路径的梯度相加。其一般机制见\bookxref{ch:rev-tokenization}。
+$\mat{W}_h\in\Real^{d\times d}$，$\vect{b}_h\in\Real^d$，$\vect{b}_V\in\Real^V$；输入词元表 $\mat{E}$ 同时作为输出投影权重。共享不省去全词表分类计算，但减少独立参数，并使查表路径与预测路径的梯度相加。其一般机制见\bookxref{ch:tokenization}。
 
 训练只需要选中位置的分数时，可先从 $\mat{H}$ 收集 $N_M$ 行再执行输出头，将输出张量从 $B_0T\times V$ 缩小为 $N_M\times V$。由于这里的变换逐位置独立，这不改变选中位置的数学结果；主干仍必须编码完整损坏上下文，不能只保留待预测的几个词元。
 
 \begin{example}
 考虑三条序列各贡献一个监督位置：第一处进入 MASK 分支，第二处随机替换，第三处保留原值。为便于核对，假设目标词表仅有三类，原标签依次为第1、2、3类，预测分布为
-\begin{equation}
+\begin{equation*}
  Q=\begin{bmatrix}.6&.3&.1\\.2&.5&.3\\.1&.2&.7\end{bmatrix}.
-\end{equation}
+\end{equation*}
 三个位置全部计入损失，因此
-\begin{equation}
+\begin{equation*}
  \mathcal L=-\frac13(\log .6+\log .5+\log .7)
  =-\frac13\log .21\approx0.520216.
-\end{equation}
-根据\bookxref{ch:rev-tensors}[中的交叉熵求导]，分数梯度为
-\begin{equation}
+\end{equation*}
+根据\bookxref{ch:tensors}中的交叉熵求导，分数梯度为
+\begin{equation*}
  \overline{\mat{U}}=\frac13(Q-I_3)=\frac13
  \begin{bmatrix}-.4&.3&.1\\.2&-.5&.3\\.1&.2&-.3\end{bmatrix}.
-\end{equation}
+\end{equation*}
 每行梯度和为零。若只保留 MASK 行，所得损失变成 $-\log .6\approx0.510826$，数值可能看似相近，却删除了另两行的全部监督，并改变归一化后的梯度尺度。
 
 输出权重共享时，预测路径产生 $\overline{\mat{E}}_{\mathrm{out}}=\overline{\mat{U}}^{\mathrm{T}}\mat{G}$；输入路径还产生按损坏后词元编号聚合的 $\overline{\mat{E}}_{\mathrm{in}}$。最终梯度为两者之和。这里输入编号可能是 MASK 或随机词元，输出目标则仍是原词元，同一参数表的两条路径因此索引到不同位置。
 \end{example}
 
-\section{句对目标与共享主干}
+\section{句对训练目标}
 \optional
 \subsection{下一句预测目标}
 \term{下一句预测}{Next Sentence Prediction}{NSP}使用句对标签 $r\in\{0,1\}$ 区分构造的连续句段与随机负句段。经典正例来自语料中的后续片段，负例由随机选择另一片段形成，配方约为一半正例、一半负例。该目标预测的是训练样例中的句对构造关系；逻辑蕴含和时间因果关系各有自己的任务标签。
 
 取 CLS 位置的最终向量 $\vect{h}_c$，经池化变换 $\vect{z}=\tanh(\vect{h}_c\mat{W}_p+\vect{b}_p)$ 后，二元分数为 $a=\vect{w}^{\mathrm{T}}\vect{z}+b$。以 $\sigma(a)$ 表示正例概率，损失为
 \begin{equation}
- \ell_{\mathrm{NSP}}=-r\log\sigma(a)-(1-r)\log(1-\sigma(a)),\qquad
- \frac{\partial\ell_{\mathrm{NSP}}}{\partial a}=\sigma(a)-r.
+ \begin{aligned}
+  \ell_{\mathrm{NSP}}&=-r\log\sigma(a)-(1-r)\log(1-\sigma(a)),\\
+  \frac{\partial\ell_{\mathrm{NSP}}}{\partial a}&=\sigma(a)-r.
+ \end{aligned}
 \end{equation}
-\paragraph{NSP两样本损失}
-\begin{example}
+\begin{example}[NSP 两样本损失]
 \optional
 若正例预测概率为 $.8$，负例被预测为正例的概率为 $.3$，两例平均损失为 $-\frac{\log .8+\log .7}{2}\approx0.289909$。训练用稳定的分数形式计算，不先取极小概率再取对数。
 
 随机负例若与正例有明显文体或来源差异，模型可能依靠这些线索完成分类。句对目标的难度和有效性取决于负例构造；正负数量平衡只控制类别先验。
 \end{example}
 
-\subsection{多任务损失与梯度汇合}
+\subsection{联合训练}
 设句对平均损失为 $\mathcal L_{\mathrm{NSP}}$，联合目标可写为
 \begin{equation}
  \mathcal L=\mathcal L_{\mathrm{MLM}}+\lambda\mathcal L_{\mathrm{NSP}},\qquad\lambda\ge0.
@@ -196,16 +198,14 @@ $\mat{W}_h\in\Real^{d\times d}$，$\vect{b}_h\in\Real^d$，$\vect{b}_V\in\Real^V
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.92\linewidth]{\subfix{../../figures/theory/bert-pretraining-heads.pdf}}
-\caption{BERT 共享表示与双目标（MLM 与 NSP）联合预训练数据流}
-\label{fig:mlm-heads}
+\caption[BERT 双目标联合预训练数据流]{BERT 双目标联合预训练数据流。共享编码器表示同时接入掩码语言模型（MLM）与下一句预测（NSP）预训练头。}\label{fig:mlm-heads}
 \end{figure}
 
-BERT 开创的双向掩码建模激发了后续一系列改进变体，如表\ref{tab:rev-mlm-variants}所示。
+BERT 开创的双向掩码建模激发了后续一系列改进变体，如表\ref{tab:mlm-variants}所示。
 
 \begin{table}[htbp]
 \centering
-\caption{主流双向语言模型与 BERT 衍生变体架构演进对比}
-\label{tab:rev-mlm-variants}
+\caption{双向语言模型架构演进对比}\label{tab:mlm-variants}
 \begin{tabularx}{\linewidth}{lXXXX}
 \toprule
 模型 & 预训练目标 & 掩码与数据策略 & 关键结构创新 & 核心结论\\\midrule
@@ -218,9 +218,9 @@ DeBERTa & MLM + 增强掩码解码 & 相对位置解耦编码 & 内容与相对�
 \end{tabularx}
 \end{table}
 
-\section{分类、标注与抽取任务}
+\section{下游任务适配}
 \optional
-\subsection{序列级分类与池化}
+\subsection{序列分类}
 对 $C$ 类互斥标签，可令 $\vect{u}=\vect{z}\mat{W}_c+\vect{b}_c\in\Real^C$，最小化序列交叉熵。预训练头与下游标签空间通常不同，下游分类头需要新的参数和标签映射。CLS 向量汇总上下文，其分类能力由预训练与下游任务训练共同形成。
 
 还可以对有效位置取平均，得到
@@ -229,7 +229,7 @@ DeBERTa & MLM + 增强掩码解码 & 相对位置解耦编码 & 内容与相对�
 \end{equation}
 若只池化普通文本，应进一步排除控制词元，并使用相应分母。平均池化与 CLS 池化是不同的读出函数，需要在任务数据上比较。直接把预训练隐藏向量用于余弦检索，也未必得到适合语义相似度的度量空间；这通常需要相应的对比训练。
 
-\subsection{词元级标注与子词对齐}
+\subsection{词元标注}
 \term{命名实体识别}{Named Entity Recognition}{NER}等任务对每个文本位置预测类别，分数形状为 $B_0\times T\times C$。原始标注若以词或字符为单位，而模型输入为子词，就必须建立对齐规则。一个原词拆成三个子词时，可只监督首子词，也可按标注语义传播标签；两种策略的有效位置数和损失权重不同。
 
 特殊词元与填充通常不接受实体标签。若采用带边界语义的标签体系，把词首标签直接复制到所有续接子词会丢失边界信息；解码后还需恢复合法片段并映射到原文偏移。独立位置分类不保证全局标签序列合法，是否增加结构化解码应由任务约束决定。
@@ -237,8 +237,12 @@ DeBERTa & MLM + 增强掩码解码 & 相对位置解耦编码 & 内容与相对�
 \subsection{抽取式问答的起止分布}
 给定问题与包含答案的文段，编码器输出每个位置的向量。两组参数分别给出起点和终点分数：
 \begin{equation}
- a_t=w_s^{\mathrm{T}}\mat{H}_t,\qquad b_t=w_e^{\mathrm{T}}\mat{H}_t,
- \quad p_s=\softmax(a),\quad p_e=\softmax(b).
+ \begin{aligned}
+  a_t&=w_s^{\mathrm{T}}\mat{H}_t,\\
+  b_t&=w_e^{\mathrm{T}}\mat{H}_t,\\
+  p_s&=\softmax(a),\\
+  p_e&=\softmax(b).
+ \end{aligned}
 \end{equation}
 只在允许作为答案的文段位置上归一化。真值为 $(i^*,j^*)$ 时，可以使用
 \begin{equation}
@@ -251,12 +255,11 @@ DeBERTa & MLM + 增强掩码解码 & 相对位置解耦编码 & 内容与相对�
 \section{双向目标与自回归目标的差异}
 
 \subsection{条件预测与联合概率}
-自回归目标利用链式法则定义 $p(x)=\prod_t p(x_t\mid x_{<t})$。MLM 则在损坏输入条件下恢复部分位置，不构成这一有序生成分解。若同时遮盖多个位置，常见输出头分别预测各位置，待恢复变量之间没有逐步生成条件。三大主流语言模型架构范式对比如表\ref{tab:rev-mlm-paradigms}所示。
+自回归目标利用链式法则定义 $p(x)=\prod_t p(x_t\mid x_{<t})$。MLM 在损坏输入条件下分别预测选中位置，其条件变量由损坏规则确定。若同时遮盖多个位置，常见输出头分别预测各位置，待恢复变量之间没有逐步生成条件。表\ref{tab:mlm-paradigms}比较了编码器、解码器和编码器—解码器结构的可见性与监督目标。
 
 \begin{table}[htbp]
 \centering
-\caption{三大经典语言模型架构范式全景对比}
-\label{tab:rev-mlm-paradigms}
+\caption[三类语言模型结构特征对比]{三类语言模型结构特征对比。对比纯自回归、纯编码器与编码器-解码器架构的注意力可见性、监督目标与适用任务。}\label{tab:mlm-paradigms}
 \begin{tabularx}{\linewidth}{lXXXX}
 \toprule
 架构范式 & 注意力可见性掩码 & 预训练监督目标 & 优势任务领域 & 代表模型\\\midrule
@@ -269,8 +272,7 @@ DeBERTa & MLM + 增强掩码解码 & 相对位置解耦编码 & 内容与相对�
 
 例如，两处缺失内容在真实条件下只能取 $(a,a)$ 或 $(b,b)$，两种组合各占一半。两个位置的边缘分布均为 $(.5,.5)$。若独立从两个边缘抽样，将以总概率 $.5$ 产生不合法的 $(a,b)$ 或 $(b,a)$。联合恢复还取决于被遮蔽位置之间的依赖。
 
-\paragraph{伪似然归一化反例}
-\begin{example}
+\begin{example}[伪似然的归一化反例]
 还可以对每个位置单独遮盖并把条件概率相乘，得到类似伪似然的分数。这一乘积通常不在所有序列上归一化。以二元变量 $x_1,x_2$ 为例，若两个条件均赋予“相同”为 $.9$、“不同”为 $.1$，两个同值序列的乘积各为 $.81$，两个异值序列各为 $.01$，总和为 $1.64$，不等于一。把该乘积直接称为整句概率，与归一化要求不符。
 \end{example}
 
@@ -278,10 +280,10 @@ DeBERTa & MLM + 增强掩码解码 & 相对位置解耦编码 & 内容与相对�
 双向编码器可以在给定观测中读取左右上下文；掩码目标通过损坏输入建立恢复任务。严格自回归生成协议需要在这两者之外单独定义。若采用迭代填空生成，还必须定义更新次序、采样规则、终止条件和质量评估。
 \end{note}
 
-\subsection{比较模型时保持任务单位一致}
-MLM 损失取决于损坏率、损坏方式、位置抽样和有效监督数，与因果语言模型的每词元困惑度不属于同一口径，两个不同损坏配方下的 MLM 损失难度也各不相同。比较表示能力应在相同下游任务、数据隔离、适配预算和指标条件下进行。
+\subsection{模型比较条件}
+MLM 交叉熵损失受掩码比例、损坏策略（MASK、随机替换或保留原值）以及动态采样方式直接影响，其数值与自回归因果语言模型按序列因果链计算的每词元交叉熵或困惑度（Perplexity）不具备直接横向可比性。评估双向表征质量时，应统一在 GLUE、SuperGLUE 等标准化下游微调基准以及信息检索召回率上进行客观比较。
 
-部署时必须同时恢复分词器、配置、主干、任务头和标签映射。仅恢复主干而让分类头随机初始化，会得到形状正确但语义无效的预测。训练模式下的随机失活、位置上限、句段编号与填充掩码均属于预测函数的组成部分，需纳入一致性检查。重载一致性与任务质量分别通过制品检查和留出数据评估。
+模型部署与交付时，需保证分词器词表、主干权重、下游任务头投影矩阵及类别标签映射关系的完整持久化与版本对齐。推理阶段需严格切换为评估模式以关闭 Dropout 随机失活，并正确设置填充掩码与句段标识张量。重载一致性通过单元测试核验，任务性能则通过留出测试集评估。
 
 
 

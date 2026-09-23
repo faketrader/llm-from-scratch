@@ -11,7 +11,7 @@
 
 图标表示学习路径上的可延后性，与内容难度没有固定对应关系。扩展内容应能够从主线中独立移开，后续主线论述不得依赖其中尚未交代的定义或结论。危险弯道图标采用单色形式，黑白打印不影响辨认。
 
-建议先完成共同基础，再沿所选方向阅读相关章节，结合问题回读带图标的部分。遇到不熟悉的符号可查书前符号约定，术语可查书末中文术语索引或英文术语索引；实现与实验中需要反复核对的形状、资源公式和记录字段，可分别查\bookappendixref{app:tensor-shapes}、\bookappendixref{app:resource-estimation}和\bookappendixref{app:experiment-reporting}。
+建议先完成共同基础，再沿所选方向阅读相关章节，结合问题回读带图标的部分。遇到不熟悉的符号可查书前符号约定，术语可查书末中文术语索引或英文术语索引；实现中需要反复核对的形状与资源公式，可分别查\bookappendixref{app:tensor-shapes}与\bookappendixref{app:resource-estimation}。
 
 \section*{全书的知识组织}
 全书分为五篇。第一篇“语言模型理论基础”从数学与神经网络语言进入文本表示、注意力、Transformer 整体结构、位置表示和自回归生成，篇末给出评估与安全方法。初读评估与安全时，先掌握评估对象、独立测试集、失败切片、威胁模型和工具授权，专题分析随任务深入。
@@ -23,7 +23,7 @@
 \section*{共同基础及方向选择}
 阅读路线由共同基础和三条方向组成：应用智能体系统、模型训练方法、训练推理系统。第二至第四篇分别展开三条方向，第五篇按模型与任务提供专题。读者可以选择一个方向深入，也可以在补齐前置知识后组合多个方向。
 
-共同基础以理解一次模型请求为目标。先从\bookxrefshort{ch:rev-introduction}建立模型、训练和系统的职责，再从\bookxrefshort{ch:rev-probability}、\bookxrefshort{ch:rev-tensors}和\bookxrefshort{ch:optimization-generalization}掌握条件概率、交叉熵的含义、张量形状、梯度更新与数据划分。随后依次选读\bookxrefshort{ch:rev-tokenization}的分词与嵌入，\bookxrefshort{ch:attention}的查询、键、值与因果掩码，\bookxrefshort{ch:rev-transformer}的整体结构与前向数据流，以及\bookxrefshort{ch:position-representation}的顺序信息。\bookxrefshort{ch:rev-autoregressive}补齐下一词元分布、采样、终止及事实性边界。
+共同基础以理解一次模型请求为目标。先从\bookxrefshort{ch:introduction}建立模型、训练和系统的职责，再从\bookxrefshort{ch:probability}和\bookxrefshort{ch:tensors}掌握条件概率、交叉熵的含义、张量形状、梯度更新与数据划分。随后依次选读\bookxrefshort{ch:tokenization}的分词与嵌入，\bookxrefshort{ch:attention}的查询、键、值与因果掩码，\bookxrefshort{ch:transformer}的整体结构与前向数据流，以及\bookxrefshort{ch:position-representation}的顺序信息。\bookxrefshort{ch:autoregressive}补齐下一词元分布、采样、终止及事实性边界。
 
 共同基础还包括\bookxrefshort{ch:evaluation-statistics}中的评估对象、独立测试集和失败切片，以及\bookxrefshort{ch:model-application-security}中的威胁模型与工具授权。完成这一范围后，应能沿词元、张量、条件分布和生成决策解释一次请求，说明参数更新与运行时上下文各自的作用，并提出可检验的效果指标。完整反向传播、优化推导和系统性能模型随专项学习展开；进入某项推导前，应补齐其使用的定义与假设。
 
@@ -33,7 +33,7 @@
 深入智能体时，依次阅读\bookxrefshort{ch:agent-architecture}和\bookxrefshort{ch:agent-runtime}。其中 Harness 指模型之外的执行与控制系统，负责工具调用、状态持久化、权限、执行隔离和失败恢复。该专题以理解任务执行和终止语义为目标；模型计算、批处理和服务容量由系统方向承接。长上下文和多模态内容按应用需要选读。
 
 \subsection*{模型训练方法}
-专项前置是完整的概率、自动微分、优化与注意力反向传播，以及 Transformer 和自回归训练目标。入门依次阅读\bookxrefshort{ch:data-engineering}、\bookxrefshort{ch:resource-budget}、\bookxrefshort{ch:training-stability}、\bookxrefshort{ch:supervised-finetuning}、\bookxrefshort{ch:parameter-efficient-finetuning}和\bookxrefshort{ch:efficient-finetuning}，建立数据、监督信号、可训练参数、资源与恢复之间的关系。学习终点是能设计适配方案，并用独立测试集检验目标能力、遗忘与失败切片。
+专项前置是完整的概率、自动微分与注意力反向传播，以及 Transformer 和自回归训练目标。先阅读\bookxrefshort{ch:optimization-generalization}，掌握优化方法与泛化分析。入门依次阅读\bookxrefshort{ch:data-engineering}、\bookxrefshort{ch:resource-budget}、\bookxrefshort{ch:training-stability}、\bookxrefshort{ch:supervised-finetuning}、\bookxrefshort{ch:parameter-efficient-finetuning}和\bookxrefshort{ch:efficient-finetuning}，建立数据、监督信号、可训练参数、资源与恢复之间的关系。学习终点是能设计适配方案，并用独立测试集检验目标能力、遗忘与失败切片。
 
 深入内容按训练目标分支。预训练方向阅读\bookxrefshort{ch:pretraining-scaling}，研究数据配比与计算预算；对齐方向依次阅读\bookxrefshort{ch:reinforcement-learning}、\bookxrefshort{ch:preference-alignment}和\bookxrefshort{ch:verifiable-reasoning}，研究人类反馈、奖励建模、偏好优化与可验证奖励。需要扩大训练规模时，再衔接系统方向的分布式训练。
 
@@ -45,9 +45,20 @@
 \subsection*{模型架构拓展}
 数据、评估与安全贯穿三条方向：应用关注知识来源、任务效果与工具权限，模型训练关注采样、泛化与训练资产，系统关注吞吐、延迟与服务隔离。详细方法在对应章节展开，并在所选方向中结合具体对象使用。
 
-\bookxrefshort{ch:rev-mlm}、\bookxrefshort{ch:rev-moe}、\bookxrefshort{ch:long-context}和\bookxrefshort{ch:open-models}按模型与任务选择。视觉理解沿\bookxrefshort{ch:vision-transformer}进入\bookxrefshort{ch:multimodal-alignment}；视觉生成沿\bookxrefshort{ch:diffusion-probability}进入\bookxrefshort{ch:conditional-vision}，并补齐概率与视觉架构前置。涉及具体模型时，先掌握其使用的机制，再分析配置与技术报告。
+\bookxrefshort{ch:mlm}、\bookxrefshort{ch:moe}、\bookxrefshort{ch:long-context}和\bookxrefshort{ch:open-models}按模型与任务选择。视觉理解沿\bookxrefshort{ch:vision-transformer}进入\bookxrefshort{ch:multimodal-alignment}；视觉生成沿\bookxrefshort{ch:diffusion-probability}进入\bookxrefshort{ch:conditional-vision}，并补齐概率与视觉架构前置。涉及具体模型时，先掌握其使用的机制，再分析配置与技术报告。
 
 路线中的主题选读表示当前学习目标所需的范围，章内危险弯道表示相对于该章主线可延后的内容。两者分别服务于方向选择和章内阅读；深入一个主题时，仍需完整掌握其依赖的概念与推导。
+
+\section*{先修基础与推荐书目}
+本书面向能够熟练阅读 Python 代码，并具备多元微积分、线性代数、概率统计与经典神经网络基础的读者。全书第一篇恢复后续推导所需的数学与张量语言，重点聚焦于大语言模型特有的条件概率分解、自注意力机制、因果生成以及评测与安全规范。
+
+对于需要系统巩固统计学习推导或通用深度学习实现的读者，推荐结合以下两部经典著作进行先修储备或同步查阅：
+\begin{itemize}
+  \item \textbf{数理基础与经典统计学习}：李航《统计学习方法》（第2版，清华大学出版社）。该书系统推导监督学习与无监督学习的核心模型，包括概率图模型、极大似然估计、感知机、支持向量机、EM 算法、隐马尔可夫模型及矩阵分解。对于深入理解本书中的概率建模假设、优化目标形式、自监督学习损失与信息论基础具有直接的数理支撑作用。
+  \item \textbf{深度学习框架与动手实现}：Aston Zhang、Zachary C. Lipton、Mu Li（李沐）、Alexander J. Smola 等《动手学深度学习》（Dive into Deep Learning，中文版由人民邮电出版社出版）。该书结合数学原理与可执行代码，系统讲授张量运算、自动求导、多层感知机、卷积神经网络、循环神经网络及基础注意力机制。对于建立神经网络前向计算与反向传播的数值直觉、熟练掌握张量编程，以及完成本书中的机制实现与库迁移提供了坚实的实践基石。
+\end{itemize}
+
+两部参考著作系统覆盖了经典统计学习与通用深度学习的基础全貌；本书则在此基础上展开大语言模型从序列表示、自注意力机制、预训练与微调、对齐推理到智能体与系统工程的完整体系。读者可根据自身基础查漏补缺，建立从经典理论到大模型系统工程的连续认知。
 
 \section*{内容体系}
 正文解释定义、假设、推导和系统关系，例题用明确的数据与中间量展示计算。

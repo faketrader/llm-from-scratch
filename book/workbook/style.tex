@@ -80,8 +80,6 @@
   }
 \NewDocumentCommand{\tbobject}{m}
   {\ifdefined\HCode\HCode{<span~class="my-textbook-ref"~data-label="#1">（教材对象）</span>}\else（\ref{tb-#1}）\fi}
-\NewDocumentCommand{\tbnumberref}{m}
-  {\ifdefined\HCode\HCode{<span~class="my-textbook-ref"~data-label="#1">（教材对象）</span>}\else（\ref{tb-#1}）\fi}
 \NewDocumentEnvironment{exercises}{}
   {\begin{enumerate}[labelwidth=3.2em,leftmargin=4em,labelsep=.6em,align=right]}
   {

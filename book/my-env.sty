@@ -17,12 +17,18 @@
 \newtheorem{corollary}[theorem]{推论}
 \newtheorem{definition}[theorem]{定义}
 \newtheorem{example}[theorem]{例}
+% 例题内部公式不参与章内公式编号与计数
+\AddToHook{env/example/begin}{%
+  \renewenvironment{equation}{\csname equation*\endcsname}{\csname endequation*\endcsname}%
+  \let\make@display@tag\relax
+  \let\incr@eqnum\relax
+}
 \newtheorem{remark}[theorem]{注}
 \renewcommand{\proofname}{证明}
 
 \setminted{fontsize=\small,breaklines,breakanywhere,autogobble,tabsize=4,style=friendly}
-% Pseudocode keeps the standard English algpseudocode vocabulary. Captions,
-% input/output contracts, and surrounding textbook explanations remain Chinese.
+% Pseudocode keeps logic keywords in English (for, do, while, each, if, else, return, etc.),
+% while operations, conditions, contracts, and surrounding textbook explanations use Chinese.
 % 颜色辅助识别，标题仍明确类别，保证灰度打印可读。
 \tcbset{
   mybox/.style={
@@ -34,7 +40,7 @@
   myalert/.style={
     enhanced,breakable,frame hidden,boxrule=0pt,arc=0mm,
     left=3mm,right=2.5mm,top=2mm,bottom=2mm,
-    fonttitle=\myheadingfont,toptitle=0mm,bottomtitle=1mm,
+    fonttitle=\myheadingfont,toptitle=1.5mm,bottomtitle=1mm,
     before skip=8pt,after skip=8pt
   }
 }
@@ -128,6 +134,7 @@
 \else
   \NewDocumentEnvironment{algorithm}{O{计算过程}}{%
     \refstepcounter{algorithm}%
+    \setlist[enumerate]{noitemsep,topsep=2pt}%
     \begin{tcolorbox}[mybox,title={算法\thealgorithm\quad #1}]%
   }{\end{tcolorbox}}
 \fi
@@ -145,7 +152,7 @@
 \NewDocumentCommand{\AlgoOutput}{m}{\AlgoContract{输出}{#1}}
 \NewDocumentCommand{\AlgoState}{m}{\AlgoContract{状态}{#1}}
 % 纸书保留 algorithmicx 的排版；网页使用项目自己的语义列表，避免把
-% algorithmicx 的行号盒模型带入 TeX4ht，同时保持英文伪代码词汇一致。
+% algorithmicx 的行号盒模型带入 TeX4ht，同时保持英文逻辑关键字与中文描述一致。
 \ifdefined\HCode
   \newcommand{\mywebstate}{\item}
   \newcommand{\mywebfor}[1]{\item \textbf{for} #1 \textbf{do}\begin{enumerate}}
@@ -187,9 +194,6 @@
   \fi}
 % 用于不属于术语定义、但需要读者记住的短结论；不得包裹整段正文。
 \DeclareRobustCommand{\keyconcept}[1]{\textbf{#1}}
-% 短边注为辅助提示，不承载公式前提、引用或不可缺失的论证。
-\newcommand{\bookmargin}[1]{\marginnote{\raggedright\footnotesize\color{MyNavy}#1}}
-
 % 教材与习题默认必修；仅选修内容显式调用统一标记，不预留额外间距。
 % 非浮动边注按实际页码选择外侧；左右页均靠近正文边界。
 % 稳定的底层排版宏允许配套册扩展 \optional 的语义，而不复制 xparse 命令入口。

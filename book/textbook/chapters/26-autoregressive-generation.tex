@@ -2,7 +2,7 @@
 \documentclass[../textbook.tex]{subfiles}
 \begin{document}
 \fi
-\bookchapter{自回归语言建模}{ch:rev-autoregressive}
+\bookchapter{自回归语言建模}{ch:autoregressive}
 
 一个语言模型需要同时回答两个不同问题：如何为序列分配概率，以及如何根据这些概率产生实际输出。前者由模型的条件分布与训练目标定义，后者由解码策略与终止规则定义。相同权重可以在贪心选择、随机采样和束搜索下产生不同文本；较低的预测损失与自由生成时的重复、遗漏或事实错误也各有来源。
 
@@ -12,9 +12,11 @@
 
 \subsection{自回归分解的结构范围}
 设词表为有限集合 $\mathcal V$，词表大小为 $V_{\mathrm{vocab}}$。对长度为 $T$ 的词元序列 $x_{1:T}$，概率链式法则给出
-\begin{equation}
- p_\theta(x_{1:T})=\prod_{t=1}^{T}p_\theta(x_t\mid x_{<t}),\qquad
- \log p_\theta(x_{1:T})=\sum_{t=1}^{T}\log p_\theta(x_t\mid x_{<t}).\label{eq:ar-chain}
+\begin{equation}\label{eq:ar-chain}
+ \begin{aligned}
+  p_\theta(x_{1:T})&=\prod_{t=1}^{T}p_\theta(x_t\mid x_{<t}),\\
+  \log p_\theta(x_{1:T})&=\sum_{t=1}^{T}\log p_\theta(x_t\mid x_{<t}).
+ \end{aligned}
 \end{equation}
 \term{自回归}{Autoregression}{}表示后续变量的分布以已经给定的变量为条件。链式分解本身不要求使用神经网络；限定上下文长度、共享各位置参数、采用因果 Transformer 才是具体建模选择。
 
@@ -28,7 +30,7 @@
 
 \begin{table}[htbp]
 \centering
-\caption{自回归建模与解码生成核心数学符号}\label{tab:rev-generation-notations}
+\caption{自回归建模与解码生成核心数学符号}\label{tab:generation-notations}
 \begin{tabularx}{\linewidth}{p{24mm}X}
 \toprule
 符号 & 含义与约束\\\midrule
@@ -63,10 +65,12 @@ $K,L_{\max}$ & 束宽与最多新增词元数，均为正整数。\\
 \term{生成式预训练 Transformer}{Generative Pre-trained Transformer}{GPT}以仅解码器的因果网络为常见结构。输入编号先经嵌入与位置处理变成隐藏向量，再通过多层因果注意力、逐位置前馈变换、残差及归一化，最后映射为词表上的实数分数。具体模型的归一化、位置方案与前馈形式属于结构配置，GPT 这一缩写本身不足以确定这些细节。
 
 取输入前缀 $x_{1:t}$，末位隐藏行向量为 $\vect{h}_t\in\Real^{1\times d}$。词表输出头计算
-\begin{equation}
- \vect{z}_t=\vect{h}_t\mat{W}_{\mathrm{lm}}+\vect{b},\qquad
- \vect{p}_\theta(x_{t+1}=v\mid x_{\leq t})
- =\frac{\exp z_{t,v}}{\sum_{u\in\mathcal V}\exp \vect{z}_{t,u}},\label{eq:ar-head}
+\begin{equation}\label{eq:ar-head}
+ \begin{aligned}
+  \vect{z}_t&=\vect{h}_t\mat{W}_{\mathrm{lm}}+\vect{b},\\
+  \vect{p}_\theta(x_{t+1}=v\mid x_{\leq t})
+  &=\frac{\exp z_{t,v}}{\sum_{u\in\mathcal V}\exp \vect{z}_{t,u}}.
+ \end{aligned}
 \end{equation}
 其中 $\mat{W}_{\mathrm{lm}}\in\Real^{d\times V_{\mathrm{vocab}}}$，$\vect{b}\in\Real^{V_{\mathrm{vocab}}}$ 可按结构省略。$\vect{z}_t$ 是\term{未归一化分数}{Logits}{}，与概率相差一次 Softmax。若输入嵌入表为 $\mat{E}\in\Real^{V_{\mathrm{vocab}}\times d}$，权重共享可设置 $\mat{W}_{\mathrm{lm}}=\mat{E}^{\mathrm{T}}$，但这是显式参数约束，维度相容本身推不出它。
 
@@ -83,8 +87,7 @@ $K,L_{\max}$ & 束宽与最多新增词元数，均为正整数。\\
  \node[block,below=of net] (next) {生成：末位置分布\\选择一个新词元};
  \draw[->] (head)--(loss);\draw[->] (head.south west)--(next.north east);
 \end{tikzpicture}
-\caption{相同因果网络的两种使用方式。训练利用所有有效位置的已知目标，生成读取当前前缀末位的分布。}
-\label{fig:ar-gpt-flow}
+\caption[因果网络训练与生成阶段对比]{因果网络训练与生成阶段对比。训练阶段利用所有有效位置已知目标并行监督；生成阶段读取当前前缀末位分布自回归采样新词元。}\label{fig:ar-gpt-flow}
 \end{figure}
 
 \subsection{因果性与前缀一致性}
@@ -95,7 +98,7 @@ $K,L_{\max}$ & 束宽与最多新增词元数，均为正整数。\\
 \section{教师强制与移位监督}
 
 \subsection{输入目标错位}
-\term{教师强制}{Teacher Forcing}{}在训练时始终给定数据中的真实前缀，再预测其后一个真实词元。设原序列为
+\term{教师强制}{Teacher Forcing}{}在训练时始终给定数据中的真实前缀，再预测其后一个真实词元。\emph{教师强制避免了误差在训练阶段沿时序累积}；但在实际生成时，模型必须以\emph{自身先前的预测输出}作为后续条件，由此引发训练分布与自回归生成分布的\emph{暴露偏差}（Exposure Bias）。设原序列为
 $(\mathrm{BOS},\text{我},\text{学习},\text{模型},\mathrm{EOS})$，一个明确的训练对为
 \begin{equation}
  \begin{aligned}
@@ -119,18 +122,23 @@ $(\mathrm{BOS},\text{我},\text{学习},\text{模型},\mathrm{EOS})$，一个明
  \draw[->,dashed] (in1.east)--(in2.west);
  \draw[->,dashed] (in2.east)--(in3.west);
 \end{tikzpicture}
-\caption{监督索引与因果前缀。竖直箭头给出各位置的预测对象；横向虚线表示前缀依赖，实际注意力仍读取全部允许历史。}
-\label{fig:ar-shift}
+\caption[因果注意力前缀依赖与监督移位]{因果注意力前缀依赖与监督移位。竖直箭头给出输入位置与预测对象的移位对应，横向虚线表示自回归前缀因果依赖。}\label{fig:ar-shift}
 \end{figure}
 
 移位可以由数据整理器完成，也可以由模型损失内部完成。前一种接口接收已经对齐的输入和目标；后一种接口可能接收相同的完整词元数组，再在内部使用前 $T-1$ 个分数与后 $T-1$ 个目标。两处同时移位会变成跨两步预测，两处都不移位则可能学到复制当前位置。应以明确索引式作为协议，参数名无法替代它。
 
+\begin{warning}[自回归标签移位的双重移位陷阱]
+自回归训练必须且仅能执行一次标签移位：若数据加载器已完成输入前缀与目标标签的移位对齐，而损失函数内部又调用了自动切片移位逻辑（如常见库的默认行为），训练目标将退化为跨两步预测；反之，若两处均未移位，模型将退化为当前词元的直接恒等复制。
+\end{warning}
+
 \subsection{平均负对数似然}
 给定训练文档 $x^{(b)}$，最大化其序列似然等价于最小化各条件负对数概率之和。设 $m_{bt}\in\{0,1\}$ 标记位置 $(b,t)$ 是否提供有效监督，则
-\begin{equation}
- \mathcal L(\theta)=-\frac1N\sum_{b,t}m_{bt}
- \log p_\theta(x^{(b)}_{t+1}\mid x^{(b)}_{\leq t}),\qquad
- N=\sum_{b,t}m_{bt}>0.\label{eq:ar-loss}
+\begin{equation}\label{eq:ar-loss}
+ \begin{aligned}
+  \mathcal L(\theta)&=-\frac1N\sum_{b,t}m_{bt}
+  \log p_\theta(x^{(b)}_{t+1}\mid x^{(b)}_{\leq t}),\\
+  N&=\sum_{b,t}m_{bt}>0.
+ \end{aligned}
 \end{equation}
 填充目标通常不计入 $N$，文档末尾的 EOS 若属于训练目标则计入。指令响应训练中，提示位置可以参与条件计算而不承担损失；这相当于选择监督区域，屏蔽所有提示键的做法与之不同。
 
@@ -184,8 +192,7 @@ $(\mathrm{BOS},\text{我},\text{学习},\text{模型},\mathrm{EOS})$，一个明
 
 \begin{table}[htbp]
 \centering
-\caption{大语言模型生成事实性异常分类与判定基准。}
-\label{tab:ar-factuality-criteria}
+\caption{大语言模型生成事实性异常分类}\label{tab:ar-factuality-criteria}
 \begin{tabularx}{\linewidth}{@{}lX@{}}
 \toprule 现象 & 相对于已声明参照的判定\\\midrule
 事实错误 & 可核实声明与目标时间、适用范围内的有效事实冲突。\\
@@ -216,7 +223,7 @@ $(\mathrm{BOS},\text{我},\text{学习},\text{模型},\mathrm{EOS})$，一个明
 
 评估时应同时包含可回答、不可回答和证据冲突样例，把回答拆成可核实声明，并分别标记支持、冲突与未知。答案正确率、声明级忠实度、引用精确率、正确拒答率和过度拒答率的分母不同，应分别报告；具体测量方法见\bookxref{ch:evaluation-statistics}。平均语言模型损失和词面相似度衡量各自定义的预测与文本差异，幻觉率需要声明级事实与证据标注。
 
-\begin{note}[流畅生成与可靠断言是两项能力]
+\begin{note}[生成连贯性与事实判断的边界]
 自回归模型可以对语言形式给出连贯的条件分布，事实判断还需要明确参照、可用证据、时间范围和验证规则。降低随机性可以减少答案波动；事实可靠性由证据与验证规则确定。系统应在证据不足或冲突时输出限定结论或拒答。\end{note}
 
 \section{采样分布变换}
@@ -245,8 +252,10 @@ $(\mathrm{BOS},\text{我},\text{学习},\text{模型},\mathrm{EOS})$，一个明
 由 $\frac{\dif\log Z}{\dif\beta}=\mathbb E[\vect{z}]$ 以及
 $\frac{\dif\mathbb E[\vect{z}]}{\dif\beta}=\operatorname{Var}(\vect{z})$，有
 \begin{equation}
- \frac{\dif H}{\dif\beta}=-\beta\operatorname{Var}(\vect{z}),\qquad
- \frac{\dif H}{\dif\tau}=\frac{\operatorname{Var}_{p^{(\tau)}}(\vect{z})}{\tau^3}\geq0.
+ \begin{aligned}
+  \frac{\dif H}{\dif\beta}&=-\beta\operatorname{Var}(\vect{z}),\\
+  \frac{\dif H}{\dif\tau}&=\frac{\operatorname{Var}_{p^{(\tau)}}(\vect{z})}{\tau^3}\geq0.
+ \end{aligned}
 \end{equation}
 因此在固定支持集与固定分数下，提高温度不会降低条件熵。这是关于同一时刻分布的结果；不同采样路径会产生不同前缀，最终文本的质量与多样性需在完整生成过程上测量。
 
@@ -259,17 +268,19 @@ $\frac{\dif\mathbb E[\vect{z}]}{\dif\beta}=\operatorname{Var}(\vect{z})$，有
 
 \term{核采样}{Nucleus Sampling}{Top-p}按概率从大到小排序，取累计概率至少达到 $\rho$ 的最小前缀集合\cite{holtzman2020degeneration}。若排序概率为 $p_{(1)}\geq\cdots\geq p_{(V_{\mathrm{vocab}})}$，则
 \begin{equation}
- m=\min\left\{r:\sum_{j=1}^{r}p_{(j)}\geq\rho\right\},\qquad
- \mathcal N_\rho=\{(1),\ldots,(m)\}.
+ \begin{aligned}
+  m&=\min\left\{r:\sum_{j=1}^{r}p_{(j)}\geq\rho\right\},\\
+  \mathcal N_\rho&=\{(1),\ldots,(m)\}.
+ \end{aligned}
 \end{equation}
 之后在 $\mathcal N_\rho$ 内重新归一化并采样。跨过阈值的那个候选必须保留，尤其在第一候选就超过阈值时，集合仍至少包含一个词元。Top-p 中的 $p$ 是方法名称，正文用 $\rho$ 表示阈值，以区别模型概率。
 
-Top-k 固定候选数量，Top-p 固定保留的累计概率门槛。尖锐分布下 Top-p 可能只留下一个词元，平坦分布下则可能留下很多。二者截断概率质量的几何差异如图\ref{fig:sampling-geometry-truncation}所示。二者均改变支持集，可能移除 EOS 或任务所需的低概率候选，质量上的代价需要在具体任务中衡量。
+\emph{Top-$k$ 固定保留候选总数}，而在概率分布极度扁平或尖锐时无法自适应动态伸缩；\emph{Top-$p$（核采样）固定累积概率质量门槛}，能随上下文不确定性自适应调整有效候选集。二者截断概率质量的几何差异如图\ref{fig:sampling-geometry-truncation}所示。二者均改变支持集，可能移除 EOS 或任务所需的低概率候选，质量上的代价需要在具体任务中衡量。
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.96\linewidth]{\subfix{../../figures/theory/sampling-geometry-truncation.pdf}}
-\caption{Top-$k$ 截断与 Top-$p$ 核采样的几何选择机制对比。左图展示固定候选数 $k$ 的硬截断；右图展示依据动态累积概率质量 $\rho$ 的自适应核集合划分。}\label{fig:sampling-geometry-truncation}
+\caption[Top-$k$ 与 Top-$p$ 采样截断对比]{Top-$k$ 与 Top-$p$ 采样截断对比。左图展示固定候选数 $k$ 的硬截断几何选择；右图展示依据动态累积概率质量 $\rho$ 的自适应核集合划分。}\label{fig:sampling-geometry-truncation}
 \end{figure}
 
 \subsection{采样变换顺序}
@@ -284,7 +295,7 @@ Top-k 固定候选数量，Top-p 固定保留的累计概率门槛。尖锐分�
 \end{equation}
 原分布做 Top-$2$ 得到 $(\frac{4}{7},\frac{3}{7},0,0)$；原分布做阈值 $\rho=0.75$ 的 Top-p 时，前两项之和为 $0.7$，必须保留第三项，得到 $(\frac{4}{9},\frac{1}{3},\frac{2}{9},0)$。
 
-若先降温再做同样的 Top-p，前两项的质量为 $\frac{8}{15}+\frac{3}{10}=\frac{5}{6}>0.75$，只保留两项，最终分布为 $(\frac{16}{25},\frac{9}{25},0,0)$。如果先在原分布上做 Top-p，再降温，支持集仍有三项，最终为 $(\frac{16}{29},\frac{9}{29},\frac{4}{29},0)$。因此温度与 Top-p 的次序会改变分布。温度不改变候选排序，所以在没有其他变换、并列规则相同的条件下，它与固定 Top-k 支持集选择的关系不同；一个特例不足以推出所有处理器都可交换。
+若先降温再做同样的 Top-p，前两项的质量为 $\frac{8}{15}+\frac{3}{10}=\frac{5}{6}>0.75$，只保留两项，最终分布为 $(\frac{16}{25},\frac{9}{25},0,0)$。如果先在原分布上做 Top-p，再降温，支持集仍有三项，最终为 $(\frac{16}{29},\frac{9}{29},\frac{4}{29},0)$。\keyconcept{解码处理器的调用次序不可交换：先温度缩放后做 Top-$p$ 截断，与先 Top-$p$ 截断后温度缩放会得到不同的采样支持集与概率分布。}温度不改变候选排序，所以在没有其他变换、并列规则相同的条件下，它与固定 Top-k 支持集选择的关系不同；一个特例不足以推出所有处理器都可交换。
 \end{example}
 
 \subsection{生成分布偏移}
@@ -305,7 +316,7 @@ Top-k 固定候选数量，Top-p 固定保留的累计概率门槛。尖锐分�
 构造一个有限分支概率模型：第一步 $p(a)=0.6,p(b)=0.4$；在 $a$ 后，EOS 与 $c$ 的概率各为 $0.5$；在 $b$ 后，EOS 概率为 $0.9$、$c$ 为 $0.1$；一旦产生 $c$，下一步必为 EOS。其完整序列分布为
 \begin{table}[htbp]
 \centering
-\caption{贪心解码局部最优与序列全局最优不一致示例。}\label{tab:rev-greedy-failure}
+\caption{贪心解码局部与全局概率不一致示例}\label{tab:greedy-failure}
 \begin{tabular}{lc}
 \toprule
 完整序列 & 概率\\\midrule
@@ -333,12 +344,11 @@ $b,c,\mathrm{EOS}$ & $0.4\cdot0.1\cdot1=0.04$\\
  \draw[->] (a)--(ae);\draw[->] (a)--(ac);
  \draw[->] (b)--(be);\draw[->] (b)--(bc);
 \end{tikzpicture}
-\caption{局部贪心错过完整高概率序列的概率树。节点数值为累计概率；含 $c$ 的前缀下一步以概率一结束。}
-\label{fig:ar-beam-tree}
+\caption[局部贪心解码概率树示例]{局部贪心解码概率树示例。节点数值为累计概率，展示局部最优选择 $a$ 错过全局最高概率序列分支 $(b, \mathrm{EOS})$。}\label{fig:ar-beam-tree}
 \end{figure}
 \end{example}
 
-\subsection{束搜索保留多个前缀}
+\subsection{束搜索扩展与剪枝}
 \term{束搜索}{Beam Search}{}以有限宽度 $K$ 保留候选，反复扩展与剪枝。设前缀分数为
 \begin{equation}
  s(y_{1:t})=\sum_{j=1}^{t}\log p_\theta(y_j\mid c,y_{<j}).\label{eq:ar-beam-score}
@@ -370,11 +380,11 @@ $b,c,\mathrm{EOS}$ & $0.4\cdot0.1\cdot1=0.04$\\
 \subsection{长度偏好与任务目标}
 较长路径累加更多非正项，原始序列概率常偏向某些短输出，但这不等于“序列越长概率一定更低”的跨路径结论，因为不同路径的条件概率不同。长度归一化、最小长度与重复惩罚可以改变搜索行为，同时也改变目标，它们服务的任务约束需要写明。
 
-最大概率输出与高质量输出不是同一个数学目标。开放式任务有大量合理续写，高概率路径可能重复或过于笼统；有严格约束的翻译与结构化任务也可能因长度或覆盖问题失真。解码选择应围绕任务评价，束宽增大与模型能力提升是两回事。核采样相关研究讨论的退化现象也有特定模型和任务条件，无法外推成所有任务上唯一最优策略\cite{holtzman2020degeneration}。表\ref{tab:rev-decoding-comparison}全面对比了自回归生成中的主流解码与采样策略。
+最大概率输出与高质量输出不是同一个数学目标。开放式任务有大量合理续写，高概率路径可能重复或过于笼统；有严格约束的翻译与结构化任务也可能因长度或覆盖问题失真。解码选择应围绕任务评价，束宽增大与模型能力提升是两回事。核采样相关研究讨论的退化现象也有特定模型和任务条件，无法外推成所有任务上唯一最优策略\cite{holtzman2020degeneration}。表\ref{tab:decoding-comparison}全面对比了自回归生成中的主流解码与采样策略。
 
 \begin{table}[htbp]
 \centering
-\caption{自回归语言模型主流解码与采样策略全景对比}\label{tab:rev-decoding-comparison}
+\caption{自回归语言模型主流解码与采样策略全景对比}\label{tab:decoding-comparison}
 \begin{tabularx}{\linewidth}{p{18mm}p{22mm}p{18mm}p{22mm}X}
 \toprule
 解码策略 & 核心决策机制 & 随机性与多样性 & 计算复杂度与延迟 & 典型适用场景与退化风险 \\\midrule
@@ -452,9 +462,9 @@ Min-$p$ 采样 & 截取概率大于 $p_{\max}\cdot p_{\text{base}}$ 候选 & 动
 \subsection{生成复现条件与概率语义}
 同一权重和提示不足以确定随机采样结果，还需要解码配置、随机数状态、输入模板和执行环境。固定随机种子有利于同一条件下复核，跨设备、后端或数值精度的逐词元一致则另需条件。很小的概率差异也可能使一次离散选择落到不同分支，继而改变整个后续前缀。
 
-词元概率表示模型在给定上下文中的条件偏好，与某个事实命题的置信度是两回事。对多个词元组成的回答，其中一个高概率词元也构不成整段真实性的证据。最终评价应依据任务要求，并保持模型原始分布、解码后分布和实际返回文本的区别。
+词元概率仅反映模型在当前前缀下的条件预测偏好，不可等同于客观事实命题的置信度。对于由多个词元构成的完整回答，局部词元的高生成概率并不蕴含整体陈述的客观真实性。最终评价应依据任务要求，严格区分模型原始条件分布、解码采样分布与实际返回文本之间的差异。
 
-\begin{note}[生成质量来自三个相互独立的定义]
+\begin{note}[概率模型、解码算法与任务评价的解耦]
 模型定义 $p_\theta$，解码器定义如何选择或抽样，停止协议定义输出在哪里结束。训练损失验证条件预测，采样规则决定实际输出分布，序列任务评价判断结果是否有用。三者分别描述概率拟合、输出选择和任务效果。
 \end{note}
 

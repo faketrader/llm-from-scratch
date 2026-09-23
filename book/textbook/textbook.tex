@@ -1,8 +1,10 @@
 \ifdefined\HCode
   \PassOptionsToClass{fontset=none}{ctexbook}
   \def\MyWebBook{}
+\else
+  \PassOptionsToClass{fontset=founder}{ctexbook}
 \fi
-\documentclass[UTF8,zihao=-4,twoside,openany]{ctexbook}
+\documentclass[UTF8,zihao=5,twoside,openany]{ctexbook}
 \usepackage{subfiles}
 \PassOptionsToPackage{hyperindex=false}{hyperref}
 \input{\subfix{../preamble.tex}}
@@ -12,7 +14,11 @@
 
 \ifdefined\HCode\else
 \hypersetup{pageanchor=false}
+\pdfbookmark[-1]{书前}{frontmatter}
 \input{frontmatter/cover.tex}
+\cleardoublepage
+\input{frontmatter/title-page.tex}
+\input{frontmatter/cip.tex}
 \cleardoublepage
 \fi
 
@@ -26,6 +32,7 @@
 \listoftables
 
 \mainmatter
+\partfigure{figures/theory/part1-foundations-overview.pdf}
 \part{语言模型理论基础}
 \subfile{chapters/11-introduction.tex}
 \subfile{chapters/12-probability-information.tex}
@@ -38,6 +45,7 @@
 \subfile{chapters/91-evaluation-statistics.tex}
 \subfile{chapters/92-model-application-security.tex}
 
+\partfigure{figures/theory/part2-agent-systems-overview.pdf}
 \part{应用智能体系统}
 \subfile{chapters/71-context-learning.tex}
 \subfile{chapters/72-information-retrieval.tex}
@@ -46,6 +54,7 @@
 \subfile{chapters/74-agent-architecture.tex}
 \subfile{chapters/75-agent-runtime.tex}
 
+\partfigure{figures/theory/part3-training-methods-overview.pdf}
 \part{模型训练方法}
 \subfile{chapters/14-optimization-generalization.tex}
 \subfile{chapters/31-data-engineering.tex}
@@ -58,6 +67,7 @@
 \subfile{chapters/45-preference-alignment.tex}
 \subfile{chapters/46-verifiable-reasoning.tex}
 
+\partfigure{figures/theory/part4-systems-overview.pdf}
 \part{训练推理系统}
 \subfile{chapters/32-resource-budget.tex}
 \subfile{chapters/61-compute-infrastructure.tex}
@@ -68,6 +78,7 @@
 \subfile{chapters/52-inference-algorithms.tex}
 \subfile{chapters/53-model-optimization.tex}
 
+\partfigure{figures/theory/part5-architectures-overview.pdf}
 \part{模型架构拓展}
 \subfile{chapters/25-bidirectional-mlm.tex}
 \subfile{chapters/27-mixture-experts.tex}
@@ -87,7 +98,6 @@
 \fi
 \subfile{appendices/A-tensor-shapes.tex}
 \subfile{appendices/B-resource-estimation.tex}
-\subfile{appendices/C-experiment-reporting.tex}
 
 \ifdefined\HCode
   \par\HCode{<div class="my-bibliography-start"></div>}
@@ -96,7 +106,7 @@
   \newpage
 \else
   \backmatter
-  \bookmarksetup{startatroot}
+  \pdfbookmark[-1]{书后}{backmatter}
   \input{backmatter/term-index.tex}
   \printbibliography[heading=bibintoc,title={参考文献}]
 \fi

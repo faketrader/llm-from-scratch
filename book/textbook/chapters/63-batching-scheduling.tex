@@ -8,14 +8,13 @@
 
 \bookxref{ch:incremental-decoding-cache}给出可复用状态及其容量，\bookxref{ch:inference-algorithms}给出一次执行的成本。本章将二者放入随时间变化的工作负载中。部署、连接协议与实例生命周期见\bookxref{ch:serving-architecture}。
 
-\section{请求、时间与容量的计量边界}
+\section{服务性能的计量约定}
 
 本章主要符号见表\ref{tab:batching-scheduling-symbols}。
 \begin{table}[htbp]
 \centering
-\caption{批处理调度的主要符号与计量对象。}
-\label{tab:batching-scheduling-symbols}
-\begin{tabularx}{\linewidth}{@{}lX@{}}
+\caption{批处理调度主要符号}\label{tab:batching-scheduling-symbols}
+\begin{tabular}{ll}
 \toprule
 符号 & 含义\\
 \midrule
@@ -29,20 +28,22 @@ $B,K,M$ & 单轮新计算词元预算、活动序列上限和可用缓存字节�
 $q_i,s_i,m_i$ & 单轮为请求分配的新位置数、已有上下文长度及缓存字节数。\\
 $d_i,w_j$ & 请求截止时间与租户 $j$ 的调度权重。\\
 \bottomrule
-\end{tabularx}
+\end{tabular}
 \end{table}
 
 \term{首词元时延}{Time to First Token}{TTFT}与\term{词元间时延}{Inter-Token Latency}{ITL}分别为
 \begin{equation}
- \operatorname{TTFT}_i=u_{i,1}-a_i,\qquad
- \operatorname{ITL}_{i,j}=u_{i,j}-u_{i,j-1}\quad(j\ge2).
+ \begin{aligned}
+  \operatorname{TTFT}_i&=u_{i,1}-a_i,\\
+  \operatorname{ITL}_{i,j}&=u_{i,j}-u_{i,j-1}\quad(j\ge2).
+ \end{aligned}
 \end{equation}
 请求生成至少两个词元时，其\term{平均输出词元时间}{Time per Output Token}{TPOT}定义为
 \begin{equation}
  \operatorname{TPOT}_i=\frac{u_{i,O_i}-u_{i,1}}{O_i-1}.
  \label{eq:schedule-tpot}
 \end{equation}
-因此最后一个词元到达的时延恰为 $\operatorname{TTFT}_i+(O_i-1)\operatorname{TPOT}_i$。这里的 TTFT 已包含到首次词元之间的排队，再叠加 $W_i=b_i-a_i$ 会重复计入。只有一个词元时 TPOT 不定义；无输出的失败请求进入失败统计，零时延替代不了它。
+因此最后一个词元到达的时延恰为 $\operatorname{TTFT}_i+(O_i-1)\operatorname{TPOT}_i$。这里的 TTFT 已包含到首次词元之间的排队，再叠加 $W_i=b_i-a_i$ 会重复计入。只有一个词元时 TPOT 不定义；无输出的失败请求计入失败统计，其输出时延记为未定义。
 
 客户端时间还包含网络和缓冲，工作进程内的执行时间不包含这些部分。二者都可记录，但必须说明观测位置。流式协议可能一次传输多个词元；若只能观察数据块，相应指标应称为块间隔，它与逐词元 ITL 不同。\footnote{同一请求的终止控制消息可能晚于最后一个词元；因此完整协议时延 $c_i-a_i$ 还可包括收尾开销。}
 
@@ -51,10 +52,10 @@ $d_i,w_j$ & 请求截止时间与租户 $j$ 的调度权重。\\
 \section{连续批处理}
 
 \subsection{静态批处理的容量浪费}
-\term{静态批处理}{Static Batching}{}在批次开始时确定成员，通常在当前批次退出后才加入下一组请求。已完成序列可以提前返回结果，但空出的执行位置若不能补入新请求，仍会降低资源利用率。静态批处理与禁止提前返回是两件事。
+\term{静态批处理}{Static Batching}{}在批次初始化时锁定参与请求集合，通常直至当前批次全部序列生成结束方才接纳下一组请求。在静态批处理中，请求尽管可以在遇到终止符时立即向客户端流式返回，但在整批全部请求结束前，已被释放的显存槽位与计算单元无法被新到达的请求动态填补，这种生命周期木桶效应直接导致硬件利用率随生成步数推进而显著衰减。
 
 \begin{example}
-设调度模型如下：所有预填充均已完成，一轮解码固定耗时10毫秒，最多容纳两条序列。三个请求同时到达，剩余输出长度分别为 $A=4,B=1,C=1$。静态顺序先选 $A,B$，$B$ 在10毫秒完成，$A$ 在40毫秒完成，$C$ 在50毫秒完成；平均完成时延为 $\frac{100}{3}$ 毫秒。若在第二轮将 $C$ 加入空位，则完成时间变为40、10、20毫秒，平均为 $\frac{70}{3}$ 毫秒。
+设调度模型如下：所有预填充均已完成，一轮解码固定耗时 \qty{10}{\milli\second}，最多容纳两条并发序列。三个请求同时到达，剩余输出长度分别为 $A=4,B=1,C=1$。静态批处理先组批执行 $A,B$：$B$ 在 \qty{10}{\milli\second} 完成并退出，$A$ 在 \qty{40}{\milli\second} 完成，随后调入执行 $C$ 并在 \qty{50}{\milli\second} 完成；三个请求的平均完成时延为 $\frac{10+40+50}{3}\approx \qty{33.33}{\milli\second}$。若采用动态调度，在第2轮即时将 $C$ 填补入 $B$ 释放的空闲槽位，完成时延分别优化为 \qty{40}{\milli\second}、$B$ 为 \qty{10}{\milli\second}、$C$ 为 \qty{20}{\milli\second}，平均完成时延降至 $\frac{40+10+20}{3}\approx \qty{23.33}{\milli\second}$。
 
 \begin{figure}[htbp]
 \centering
@@ -80,19 +81,17 @@ $d_i,w_j$ & 请求截止时间与租户 $j$ 的调度权重。\\
 \draw[->] (0,-3) -- (5.4,-3) node[right] {轮次};
 \foreach \x in {1,...,5}{\node at (\x-.5,-2.75) {\x};}
 \end{tikzpicture}
-\caption{在固定轮时模型下，连续批处理及时利用完成请求释放的槽位。}
-\label{fig:schedule-continuous}
+\caption[连续批处理动态迭代级调度]{连续批处理动态迭代级调度。在迭代步进调度下，新到达请求可及时复用已完成请求释放的槽位，消除静态批处理的等待空泡。}\label{fig:schedule-continuous}
 \end{figure}
 
 \term{连续批处理}{Continuous Batching}{}在迭代边界调整活动成员。Orca 将这种决策落实为迭代级调度，并根据算子特性选择批处理方式\cite{yu2022orca}。真实系统的轮时会随批大小、上下文长度和算子形状变化，故图\ref{fig:schedule-continuous}只证明该构造中的收益，与吞吐预测无关。
 \end{example}
 
-表\ref{tab:rev-batching-paradigms}对比了大语言模型推理服务中批处理调度技术的演进范式。从粗粒度的请求级同步，到步进级的连续动态插入，再到混合分块与抢占，调度机制直接决定了服务的延迟、吞吐与 SLO 达成率。
+表\ref{tab:batching-paradigms}比较了请求级批处理、逐步调整批次、分块预填充和抢占等调度方法。它们以不同粒度分配执行时间和缓存空间，延迟、吞吐与 SLO 达成率还取决于请求长度分布、到达率和设备容量。
 
 \begin{table}[htbp]
 \centering
-\caption{大语言模型推理批处理调度范式对比。}
-\label{tab:rev-batching-paradigms}
+\caption{推理批处理调度粒度与机制对比}\label{tab:batching-paradigms}
 \begin{tabularx}{\linewidth}{@{}lXXXX@{}}
 \toprule
 调度范式 & 调度决策粒度 & 核心机制与状态管理 & 资源利用与延迟表现 & 典型适用场景与限制 \\
@@ -106,17 +105,19 @@ $d_i,w_j$ & 请求截止时间与租户 $j$ 的调度权重。\\
 \end{tabularx}
 \end{table}
 
-\subsection{长度分桶与等待窗口}
+\subsection{静态批处理}
 若内核把同批 $n$ 条序列填充到最大长度 $P_{\max}$，线性层与显式完整平方注意力矩阵的长度利用率分别为
 \begin{equation}
- \eta_{\mathrm{linear}}=\frac{\sum_iP_i}{nP_{\max}},\qquad
- \eta_{\mathrm{attention}}=\frac{\sum_iP_i^2}{nP_{\max}^2}.
+ \begin{aligned}
+  \eta_{\mathrm{linear}}&=\frac{\sum_iP_i}{nP_{\max}},\\
+  \eta_{\mathrm{attention}}&=\frac{\sum_iP_i^2}{nP_{\max}^2}.
+ \end{aligned}
 \end{equation}
 变长分块内核可跳过部分填充计算，实际利用率应按执行位置统计。
 
 \term{长度分桶}{Length Bucketing}{}把相近长度放入同一执行组，减少形状差异。但等待相近请求会增加时延。动态聚批应同时设置最大等待时间与最大批量：任一条件触发就执行。仅为填满批次持续等待，会在低流量下恶化 TTFT。桶边界附近的长度抖动还可能造成低占用桶，应与\bookxref{ch:inference-algorithms}[中的形状分桶]中的编译缓存共同设计。
 
-\section{分块预填充与多资源预算}
+\section{分块预填充}
 
 \subsection{分块预填充的上下文边界}
 \term{分块预填充}{Chunked Prefill}{}将一个提示的新增位置分多轮处理，每块仍读取合法历史状态；它改变执行时序，不必改变模型可见上下文。SARATHI 研究了预填充分块与解码共同组批的执行方式\cite{agrawal2023sarathi}。具体分块长度须服从设备、批次和服务目标，论文中的某个配置只是对应那些条件的一组取值。
@@ -127,10 +128,12 @@ $d_i,w_j$ & 请求截止时间与租户 $j$ 的调度权重。\\
  \label{eq:schedule-pairs}
 \end{equation}
 推导是将第 $r$ 个新查询可见的 $s_i+r$ 个键对 $r=1,\ldots,q_i$ 求和。每块重读历史会产生搬运与启动开销；块越小，交互机会越多，总时间是否更短还取决于这些开销。解码通常每序列新增一个位置，预填充则可新增许多位置，因此一个简单预算是
-\begin{equation}
- \sum_i q_i\le B,\qquad |\mathcal A|\le K,\qquad
- \sum_{p\in\mathcal P_{\rm live}}\operatorname{bytes}(p)+M_{\rm workspace}\le M.
- \label{eq:schedule-budgets}
+\begin{equation}\label{eq:schedule-budgets}
+ \begin{aligned}
+  \sum_i q_i &\le B,\\
+  |\mathcal A| &\le K,\\
+  \sum_{p\in\mathcal P_{\rm live}}\operatorname{bytes}(p)+M_{\rm workspace} &\le M.
+ \end{aligned}
 \end{equation}
 其中 $\mathcal P_{\rm live}$ 是实际驻留物理页集合，共享前缀只计一次。临时工作区要在可用容量中扣除，设备总显存与 KV 预算之间还差着权重和工作区。
 
@@ -138,78 +141,70 @@ $d_i,w_j$ & 请求截止时间与租户 $j$ 的调度权重。\\
 
 \begin{example}
 \begin{assumption}
-以下资源算例假设普通非共享 KV，每词元缓存为64 KiB，页包含16个词元；设备分区已扣除权重与工作区，可用 KV 为64 MiB。实际缓存公式应依据模型层数、键值头数、精度和并行分片确定，缓存预算使用对应模型的实际维度。
+以下资源算例假设普通非共享 KV 缓存，每词元键值状态占用 \qty{64}{\kibi\byte}，单个物理页容纳 $16$ 个词元（即每物理页容量为 \qty{1}{\mebi\byte}）；设备显存扣除模型权重与运行时临时工作区后，分配给 KV 缓存的可用预算为 \qty{64}{\mebi\byte}（即 $64$ 个物理页）。实际缓存公式应依据网络层数、键值头数、数值精度及张量并行切分度确定。
 \end{assumption}
 
-每页为1 MiB。两条活动序列长度分别为257、255，需 $17+16=33$ 页。若为它们各解码一步，长度变为258、256，仍为33页。此轮另处理一个新请求的256词元提示块，需要16页，共49页；若该请求声明最终最多使用1024位置，则其完整上界需64页，与已有33页合计97页，超出64页容量，三者无法同时完整驻留。
+系统当前有两条活动序列，历史长度分别为 $257$ 与 $255$ 个词元，分别占用 $\lceil 257/16\rceil=17$ 页与 $\lceil 255/16\rceil=16$ 页，合计占用 $33$ 页。若本轮为二者各解码一步，序列长度增长为 $258$ 与 $256$，物理页数依然维持 $33$ 页不变。此时调度器尝试并发处理一个新到达请求的 $256$ 词元前缀提示块，需要即时分配 $16$ 页，单步显存需求为 $33+16=49$ 页（满足 $\le 64$ 页预算）。然而，若该新请求声明的最大生成长度上限为 $1024$ 词元，其生命周期峰值需占用 $64$ 页，与既有序列峰值累加达 $97$ 页，远超 $64$ 页物理上限，三者无法全部无阻塞驻留至完成。
 
-单轮执行检查当前容量，请求接纳还要考虑后续增长。系统可选择保守地预留完整上界，也可动态增长并提供可兑现的抢占、换出或等待策略。按平均输出长度接纳时，超出容量的请求需要等待、抢占或换出。页级管理通过减少碎片和共享前缀提高容量利用率\cite{kwon2023pagedattention}。
+单轮执行仅需核验瞬时显存水位，而请求级准入控制则必须预估序列全生命周期的显存增长。调度系统既可采取悲观保守策略按最大长度上限预留显存，也可采取乐观超售策略允许动态申请，并在物理显存耗尽时依赖明确的挂起换出（Swap-out）或重算机制进行保底。基于分页映射的虚拟内存管理可从根本上消除外部内存碎片，并支持多请求间的公共系统前缀物理共享\cite{kwon2023pagedattention}。
 \end{example}
 
 \subsection{预填充与解码的优先级}
-始终优先解码可以降低活动请求的词元间隔，代价是等待提示长期得不到首词元。始终优先新提示又可能使活动输出停顿。可为预填充保留最低服务份额，并在交互轮时预算下分配剩余额度；当多个目标冲突时，应记录超额负载和拒绝，平均吞吐数掩盖不了其中的取舍。
+若策略始终绝对优先满足解码请求，可有效压低已接纳请求的词元间时延（ITL），但会导致排队中的新请求长时间得不到首次响应（TTFT 严重劣化）。反之，若始终抢占执行新到提示词元，正处于自回归阶段的长输出将被频繁挂起中断。\keyconcept{调度预填充偏向优化首词元时延（TTFT），调度增量解码偏向优化词元间时延（ITL）；分块预填充通过限定单轮新词元计算预算，实现两类异质负载的平滑时钟复用。}工业级引擎通常为预填充设定每轮计算词元预算（Chunk Budget）上限，在确保单轮解码迭代时延不超标的前提下分配剩余算力；多目标冲突时的调度策略权衡应通过细粒度的分位数指标加以度量。
 
-\section{排队关系的推导与适用条件}
+\section{排队模型}
 
-\subsection{Little 关系来自驻留面积}
-Little 关系联系长期平均人数、吞吐与驻留时间\cite{little1961queue}。下面从样本路径面积说明其机制。对观察区间 $[0,H]$，系统内请求数可以写成指示函数之和：
+\subsection{Little 定律的推导}
+Little 定律建立了系统稳态平均队长、请求到达率与平均逗留时间之间的恒等关系\cite{little1961queue}。设观察时间窗口为 $[0,H]$，系统内瞬时请求数表示为时间指示函数的求和：
 \begin{equation}
  N(t)=\sum_i\mathbf1\{a_i\le t<c_i\}.
 \end{equation}
-交换有限求和与积分，得到
+对两端积分并交换求和次序：
 \begin{equation}
  \int_0^H N(t)\,dt
  =\sum_i |[a_i,c_i)\cap[0,H]|.
  \label{eq:schedule-area}
 \end{equation}
-右侧为每个请求在观察窗内的驻留时间。若系统稳定，长期到达率存在，边界截断对单位时间的贡献趋于零，则除以 $H$ 并令 $H\to\infty$，得到
-\begin{equation}
- \overline N=\lambda\mathbb E[T],\qquad
- \overline N_q=\lambda\mathbb E[W_q].
- \label{eq:schedule-little}
+等式右侧为各请求在观察窗内的逗留时间累加。当系统处于统计稳态且长期平均到达率存在时，边界截断误差随 $H\to\infty$ 趋近于零。两端同除以 $H$ 并取极限，可得经典关系式：
+\begin{equation}\label{eq:schedule-little}
+ \begin{aligned}
+  \overline N&=\lambda\mathbb E[T],\\
+  \overline N_q&=\lambda\mathbb E[W_q].
+ \end{aligned}
 \end{equation}
-第二式对等待状态重复相同面积论证。LLM 请求可能在多轮之间反复等待，此时 $W_q$ 应包括所有被统计的等待区间；它与首次执行前的 $W_i$ 不必相等。
+其中第二式对等待队列区间重复应用相同面积分解所得。在连续批处理中，请求在迭代间歇可能多次处于等待显存的状态，$W_q$ 涵盖全周期的排队总耗时，大于首词元发射前的初始等待时间 $W_i$。
 
-式\eqref{eq:schedule-little}不要求泊松到达或指数服务，但要求人数、吞吐和时间来自同一系统边界与同一请求总体。将被拒请求计入到达率、却只对接纳请求计算驻留时间，等式便失去对应关系。例如稳定系统每秒完成20个请求，平均驻留0.4秒，则平均系统内请求数为8；尾延迟和队列上限还需结合驻留分布与突发负载确定。
+式\eqref{eq:schedule-little}对到达间隔与服务时间的分布形式无先验假设，但要求队长、吞吐率与时延基于同一样本统计边界。若计算到达率时计入了被准入控制拒绝的请求，却仅对成功接纳的请求统计驻留时间，等式将发生统计失真。例如某稳定服务节点平均每秒处理完成 $20$ 个请求，端到端平均驻留时间为 \qty{0.4}{\second}，则系统内平均在途请求数恒为 $\overline{N}=20\times 0.4=8$ 条。
 
-\subsection{M/M/1 模型解释高利用率风险}
+\subsection{M/M/1 队列与长尾分布}
 \begin{assumption}
-设到达为速率 $\lambda$ 的泊松过程，单服务台独立服务时间服从速率 $\mu$ 的指数分布，先到先服务、无限等待空间且无放弃，$\rho=\frac{\lambda}{\mu}<1$。该模型用于解释机制；连续批处理的服务率随活动集合变化，这些条件对它只是近似。
+假设请求到达服从强度为 $\lambda$ 的独立泊松过程，单处理单元的服务时间服从参数为 $\mu$ 的负指数分布，采用先到先服务（FCFS）且等待队列容量无上限，系统稳态服务利用率满足 $\rho=\frac{\lambda}{\mu}<1$。该连续时间马尔可夫链模型用于揭示排队延迟的非线性增长规律。
 \end{assumption}
 
-令稳态系统人数概率为 $\pi_n$。相邻状态的概率流平衡给出 $\lambda\pi_n=\mu\pi_{n+1}$，因此 $\pi_n=\rho^n\pi_0$。利用几何级数归一化得
-\begin{equation}
- \pi_n=(1-\rho)\rho^n,\qquad
- \mathbb E[N]=\sum_{n\ge0}n(1-\rho)\rho^n=\frac{\rho}{1-\rho}.
+记系统内包含 $n$ 个请求的稳态概率为 $\pi_n$。由细致平衡条件（Detailed Balance）$\lambda\pi_n=\mu\pi_{n+1}$，解得几何分布形式 $\pi_n=(1-\rho)\rho^n$。系统内平均请求数与平均排队等待时间为
+\begin{equation}\label{eq:schedule-mm1-mean}
+ \begin{aligned}
+  \mathbb E[N]&=\frac{\rho}{1-\rho},\\
+  \mathbb E[T]&=\frac{1}{\mu-\lambda},\\
+  \mathbb E[W_q]&=\frac{\rho}{\mu-\lambda}.
+ \end{aligned}
 \end{equation}
-结合式\eqref{eq:schedule-little}，有
-\begin{equation}
- \mathbb E[T]=\frac1{\mu-\lambda},\qquad
- \mathbb E[W_q]=\frac{\rho}{\mu-\lambda}.
- \label{eq:schedule-mm1-mean}
-\end{equation}
-后式从总时间减去平均服务时间 $\frac{1}{\mu}$ 得到。当 $\rho$ 接近1，等待呈非线性增长；高负载率会增加排队代价。
+当利用率 $\rho\to 1$ 时，平均等待时延呈高阶双曲发散；高利用率以长尾排队时延的急速恶化为代价。
 
-还可以推导完整逗留时间尾部。独立泊松到达在到达前看到的状态分布为时间稳态分布：直观上，任一短区间发生到达的概率 $\lambda\,dt$ 不因当时状态改变，因此不会额外偏向某状态。到达看到 $n$ 个请求时，自身完成需等待 $n+1$ 个独立指数服务阶段；其中正在服务者的剩余时间利用无记忆性处理。于是对 $z\ge0$，
-\begin{align}
- \mathbb E[\conste{}^{-zT}]
- &=\sum_{n\ge0}(1-\rho)\rho^n
- \left(\frac\mu{\mu+z}\right)^{n+1}\\
- &=\frac{\mu-\lambda}{\mu-\lambda+z}.
-\end{align}
-这是速率 $\mu-\lambda$ 的指数分布的拉普拉斯变换，故
-\begin{equation}
- \Pr(T>t)=\conste{}^{-(\mu-\lambda)t},\qquad
- t_{0.99}=\frac{\log100}{\mu-\lambda}.
- \label{eq:schedule-mm1-tail}
+在 PASTA（Poisson Arrivals See Time Averages）性质下，新到达请求看到的系统状态精确等同于时间平均稳态分布。到达时系统中已有 $n$ 个在途请求，该请求完成需经历 $n+1$ 个参数为 $\mu$ 的独立指数服务阶段（首个请求的剩余服务时间由无记忆性保证）。对拉普拉斯变换求逆可得逗留时间的概率密度函数与分位数解析解：
+\begin{equation}\label{eq:schedule-mm1-tail}
+ \begin{aligned}
+  \Pr(T>t)&=\conste{}^{-(\mu-\lambda)t},\\
+  t_{0.99}&=\frac{\log 100}{\mu-\lambda}\approx \frac{4.605}{\mu-\lambda}.
+ \end{aligned}
 \end{equation}
-若 $\mu=100$ 请求每秒，$\lambda=80$，平均逗留50毫秒，p99约230毫秒；到达率升至95时，二者分别为200和921毫秒。到达率增加使系统接近饱和，尾延迟明显增长。
+若系统服务能力为 $\mu=100\ \text{req/s}$，在到达率 $\lambda=80\ \text{req/s}$ 下（$\rho=0.8$），平均时延为 \qty{50}{\milli\second}，P99 尾部时延约为 \qty{230}{\milli\second}；当到达率上升至 $\lambda=95\ \text{req/s}$ 时（$\rho=0.95$），平均时延激增至 \qty{200}{\milli\second}，P99 尾部时延恶化至 \qty{921}{\milli\second}。
 
-\begin{note}[服务曲线的测量口径]
-批处理的请求共享服务轮次，长输出又使驻留长度分布发生变化。服务率应采用对应负载下的请求完成率。实际系统应使用按长度、阶段和负载测得的服务曲线，必要时以到达轨迹驱动离散事件模型，并用独立观测校准。
+\begin{note}[服务曲线的动态演化与测量基准]
+在 LLM 推理场景中，多请求共享前向批量导致服务时间随在途批量、上下文长度及自回归步数非线性变化。理论排队模型中的服务率应以基准负载下的实测完成率为准。生产环境容量规划须采用基于实测轨迹的离散事件仿真（DES），结合实际输入输出长度分布校准长尾服务曲线。
 \end{note}
 
-\section{准入、期限与背压}
+\section{请求准入控制}
 
 \term{准入控制}{Admission Control}{}发生在承诺接受任务的边界。至少要核查模型与租户配额、请求体与长度上限、缓存增长、队列空间和期限。可以用
 \begin{equation}
@@ -232,13 +227,12 @@ Little 关系联系长期平均人数、吞吐与驻留时间\cite{little1961que
 \draw[->,dashed] (d.south) -- ++(0,-.6) -| (a.south);
 \node[below=8mm of b,align=center] {容量不足、取消和期限到达向上游传播};
 \end{tikzpicture}
-\caption{每一层均有有限预算，释放信号与容量信号形成反馈。}
-\label{fig:schedule-backpressure}
+\caption[多级请求队列背压反馈回路]{多级请求队列背压反馈回路。各处理层级设定有限容量预算，下游负载与队列释放信号向上游形成背压反馈以防止显存过载。}\label{fig:schedule-backpressure}
 \end{figure}
 
 突发到达时，队列吸收的只是暂时差额，永久性不足仍需扩容解决。若一段时间内输入速率为 $\lambda_b$、有效完成速率为 $\mu_b<\lambda_b$，持续 $\tau$ 秒，则新增积压粗估为 $(\lambda_b-\mu_b)\tau$。这是流体近似，忽略随机波动；突发形状和请求工作量另需计入。扩容有加载延迟时，尚未就绪的设备尚未构成即时服务能力。
 
-\section{公平性与可恢复的抢占}
+\section{抢占调度}
 \optional
 \subsection{公平调度的分配单位}
 \term{先到先服务}{First-Come, First-Served}{FCFS}简单且可解释，但长请求可能造成\term{队首阻塞}{Head-of-Line Blocking}{HOL Blocking}。按最短作业优先在已知独立作业时长等条件下改善平均等待，而输出长度未知，估计误差和长作业饥饿会削弱其适用性。
@@ -250,7 +244,7 @@ Little 关系联系长期平均人数、吞吐与驻留时间\cite{little1961que
 \term{老化}{Aging}{}随等待增加优先级，可缓解饥饿；持续超载时，到达工作量超过服务能力，任何优先级策略都会积累无法按时完成的请求。截止时间优先的经典最优性依赖单处理器等前提，本系统还具有缓存驻留、多资源约束和不可抢占设备片段，这些前提并不成立。
 
 \subsection{抢占成本}
-\term{抢占}{Preemption}{}应发生在安全的迭代边界。已完成输出保持不变，未提交候选与执行状态按明确规则处理。若丢弃缓存，恢复需重算已提交前缀；若换出，则需传输及恢复页映射，并确认模型修订、位置和缓存格式一致。
+\term{抢占}{Preemption}{}应发生在安全的迭代边界。已完成输出保持不变，未提交候选与执行状态按明确规则处理。若丢弃缓存，恢复需\emph{重算}已提交前缀；若\emph{换出}，则需传输及恢复页映射，并确认模型修订、位置和缓存格式一致。
 
 设重算成本为 $C_r$，换出和换入共需移动 $2m$ 字节，有效传输带宽为 $b$，另有同步成本 $C_s$。粗略比较 $C_r$ 与 $\frac{2m}{b}+C_s$ 有助于选择，而链路竞争与恢复时设备占用还会改变两者的实际大小。频繁抢占会产生反复重算，使观测到的忙碌增加而有效完成减少。应记录重算词元与原始词元的比例，并设置冷却或最小执行份额。
 
@@ -261,19 +255,19 @@ Little 关系联系长期平均人数、吞吐与驻留时间\cite{little1961que
 \item 增加各租户信用，更新活动解码与等待预填充的期限、年龄与成本估计。
 \item 为交互解码与等待预填充分别保留最低服务份额；按权重、期限及年龄选择候选。
 \item 对候选确定 $q_i$，同时检查新词元、序列槽、物理页、工作区和轮时预算。无法容纳时考虑其他可行候选，避免无限队首阻塞。
-\item 对本轮计划原子预留页与状态版本。若预留失败，撤销该计划并重新选择；部分成功的预留构不成可执行计划。
+\item 对本轮计划原子预留页与状态版本。若预留失败，撤销并回滚该计划，重新选择候选；仅当所有依赖资源均预留成功时方可转入执行。
 \item 执行一轮；按实际进度提交缓存和输出，按实际计费规则扣减信用，保留尚未完成者。
 \item 记录排队、批形状、资源、重算和输出阻塞；若不存在可行计划，等待资源事件或执行明确的拒绝、抢占策略，禁止空转。
 \end{enumerate}
 \end{algorithm}
 
-\section{尾延迟与有效容量}
+\section{服务容量评估}
 
 请求级 TPOT 平均值会掩盖单次长停顿，也与把所有 ITL 汇总后的均值不同：后者让长输出拥有更大权重。应分别报告请求级分布与词元级分布，并说明权重。输入长度、输出长度、缓存命中、租户和模型修订都可能形成不同的时延切片。
 
-\term{开放环负载}{Open-Loop Load}{}按独立于完成速度的计划提交请求，能够显露过载积压；\term{闭合环负载}{Closed-Loop Load}{}在固定并发用户收到响应后再提交，其到达率会在服务变慢时自行下降。两种模型回答不同问题。若原目标是固定外部到达流，测试却在每个响应后才继续，就会遗漏拥塞期间本应到达的请求，这种测量偏差常称为\term{协调遗漏}{Coordinated Omission}{}。闭合环测量因此回答不了开放环的过载问题。外部突发稳定性应使用开放环负载及对应到达过程测量。
+\term{开放环负载}{Open-Loop Load}{}按独立于完成速度的预设时间表提交请求，可直接显露系统在过载下的排队积压；\term{闭合环负载}{Closed-Loop Load}{}由固定并发用户在收到前序响应后方提交下一请求，其到达率随服务端处理延迟增加而自适应下降。若使用闭合环测试模拟外部固定到达流，由于客户端在延迟剧增时停止发送，拥塞期间本应到达的请求将被平抑或遗漏，这种测量偏差称为\term{协调遗漏}{Coordinated Omission}{}。因此，评估系统承载容量与突发抗压能力须基于\emph{开放环负载}及对应的到达过程。
 
-将满足质量与时延目标的成功请求数除以观察时长，可定义该目标下的\term{有效吞吐}{Goodput}{}。例如某观察窗口内共提交1000个请求，拒绝100个、失败50个、成功850个，其中700个满足所有目标，窗口100秒，则提交率10、成功吞吐8.5、有效吞吐7请求每秒。若只在成功者中报告满足率，得到 $\frac{700}{850}$；若从所有提交者看，则是70\%。两者相差的正是分母。
+将满足质量与时延目标的成功请求数除以观察时长，可定义该目标下的\term{有效吞吐}{Goodput}{}。例如在时长为 $\qty{100}{\second}$ 的观察窗口内共提交 $1000$ 个请求，系统拒绝 $100$ 个、执行失败 $50$ 个、成功完成 $850$ 个；其中 $700$ 个同时满足预设的质量与 SLO 时延目标。此时请求提交率为 $\qty{10}{\text{req}/\second}$，成功吞吐为 $\qty{8.5}{\text{req}/\second}$，有效吞吐为 $\qty{7}{\text{req}/\second}$。若仅以成功请求为基准计算目标达标率，结果为 $\frac{700}{850} \approx 82.4\%$；若以全部提交请求为基准，实际达标率为 $70\%$。评估服务承载能力时须显式声明分母口径与统计边界。
 
 调度策略比较应保持模型、生成参数、输入轨迹与输出预算一致；随机生成导致工作量不同，应多次重复或使用可解释的受控长度实验。报告原始到达计划、接纳、失败、超时与取消，分别统计完成时延及各类失败比例。输出质量与长度保持一致，以比较调度收益。
 

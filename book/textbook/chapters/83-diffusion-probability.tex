@@ -8,16 +8,15 @@
 
 本章以\term{去噪扩散概率模型}{Denoising Diffusion Probabilistic Model}{DDPM}为主要构造\cite{ho2020ddpm}，逐步推导前向边缘、条件后验和训练目标，并讨论不同输出参数化与采样路径。\bookxref{ch:conditional-vision}再讨论文本条件、潜空间、网络主干和视觉生成系统，分别说明概率过程、网络结构与应用条件。
 
-\section{随机变量与前向链}
+\section{前向扩散过程}
 
 \subsection{符号与假设}
 设数据 $\vect{x}_0\in\mathbb R^D$ 服从数据分布 $q_{\mathrm{data}}$。图像可以按通道和空间位置展平为 $D$ 维向量；所有推导逐元素成立，不要求网络实际展平图像。带噪变量 $\vect{x}_1,\ldots,\vect{x}_T$ 与数据同形，$t\in\{1,\ldots,T\}$ 表示离散噪声步，$t=0$ 专指干净端点。
 
 \begin{table}[htbp]
 \centering
-\caption{扩散概率模型的主要符号。}
-\label{tab:diffusion-symbols}
-\begin{tabularx}{\linewidth}{@{}lX@{}}
+\caption{扩散概率模型主要符号}\label{tab:diffusion-symbols}
+\begin{tabular}{ll}
 \toprule 符号 & 含义\\
 \midrule
 $D,T$ & 单个样本的标量维数和前向链总步数。\\
@@ -29,7 +28,7 @@ $\widetilde{\vect{\mu}}_t,\widetilde\beta_t$ & 给定干净样本时反向条件
 $\vect{\mu}_{\vect{\theta}},\sigma_t^2$ & 模型反向条件分布的均值及固定方差。\\
 $\vect{\epsilon}_{\vect{\theta}},\widehat{\vect{x}}_0,\vect{v}_{\vect{\theta}}$ & 噪声预测、干净样本预测和速度参数化预测。\\
 \bottomrule
-\end{tabularx}
+\end{tabular}
 \end{table}
 
 \begin{assumption}[离散高斯扩散的推导条件]
@@ -38,16 +37,20 @@ $\vect{\epsilon}_{\vect{\theta}},\widehat{\vect{x}}_0,\vect{v}_{\vect{\theta}}$ 
 
 \subsection{递推扰动}
 \term{前向过程}{Forward Process}{}定义为
-\begin{equation}
- q(\vect{x}_{1:T}\mid \vect{x}_0)=\prod_{t=1}^{\mathrm{T}}q(\vect{x}_t\mid \vect{x}_{t-1}),\qquad
- q(\vect{x}_t\mid \vect{x}_{t-1})=\mathcal N(\sqrt{\alpha_t}\vect{x}_{t-1},\beta_t \mat{I}_D).
- \label{eq:diff-forward}
+\begin{equation}\label{eq:diff-forward}
+ \begin{aligned}
+  q(\vect{x}_{1:T}\mid \vect{x}_0)&=\prod_{t=1}^{\mathrm{T}}q(\vect{x}_t\mid \vect{x}_{t-1}),\\
+  q(\vect{x}_t\mid \vect{x}_{t-1})&=\mathcal N(\sqrt{\alpha_t}\vect{x}_{t-1},\beta_t \mat{I}_D).
+ \end{aligned}
 \end{equation}
 等价的采样表示为 $\vect{x}_t=\sqrt{\alpha_t}\vect{x}_{t-1}+\sqrt{\beta_t}\vect{\xi}_t$，其中 $\vect{\xi}_t\sim\mathcal N(0,\mat{I}_D)$。前一状态被缩放后再叠加噪声，使单位方差高斯保持单位方差；一般数据的方差则随累计日程变化。
 
 若原数据均值与协方差分别为 $\vect{\mu}_0,\mat{\Sigma}_0$，则后面将得到
 \begin{equation}
- \mathbb E[\vect{x}_t]=a_t\vect{\mu}_0,\qquad \operatorname{Cov}(\vect{x}_t)=\bar\alpha_t\mat{\Sigma}_0+(1-\bar\alpha_t)\mat{I}_D.
+ \begin{aligned}
+  \mathbb E[\vect{x}_t]&=a_t\vect{\mu}_0,\\
+  \operatorname{Cov}(\vect{x}_t)&=\bar\alpha_t\mat{\Sigma}_0+(1-\bar\alpha_t)\mat{I}_D.
+ \end{aligned}
 \end{equation}
 因此噪声化会逐渐削弱原数据的均值、尺度和相关结构。只有累计信号足够小，末端分布才适合用标准高斯近似；步数多少与这项尺度判断没有直接关系。
 
@@ -58,8 +61,7 @@ $\vect{\epsilon}_{\vect{\theta}},\widehat{\vect{x}}_0,\vect{v}_{\vect{\theta}}$ 
 \draw[->] (x0) to[bend left=22] node[above]{$q(\vect{x}_1\mid\vect{x}_0)$} (x1);\draw[->] (x1) to[bend left=22] node[above]{$q$} (xm);\draw[->] (xm) to[bend left=22] node[above]{$q$} (xt);\draw[->] (xt) to[bend left=22] node[above]{$q(\vect{x}_T\mid\vect{x}_{T-1})$} (noise);
 \draw[->] (noise) to[bend left=22] node[below]{$p_{\vect{\theta}}(\vect{x}_{T-1}\mid\vect{x}_T)$} (xt);\draw[->] (xt) to[bend left=22] node[below]{$p_{\vect{\theta}}$} (xm);\draw[->] (xm) to[bend left=22] node[below]{$p_{\vect{\theta}}$} (x1);\draw[->] (x1) to[bend left=22] node[below]{$p_{\vect{\theta}}(\vect{x}_0\mid\vect{x}_1)$} (x0);
 \end{tikzpicture}
-\caption{扩散模型的前向加噪马尔可夫链 $q$ 与反向去噪生成链 $p_{\vect{\theta}}$。}
-\label{fig:diffusion-markov-chain}
+\caption[扩散模型正向加噪与反向去噪过程]{扩散模型正向加噪与反向去噪过程。正向加噪马尔可夫链 $q$ 逐步注入高斯噪声，与反向参数化去噪生成链 $p_{\vect{\theta}}$ 逐步去噪生成。}\label{fig:diffusion-markov-chain}
 \end{figure}
 
 \section{前向边缘分布的闭式}
@@ -77,14 +79,16 @@ $\vect{\epsilon}_{\vect{\theta}},\widehat{\vect{x}}_0,\vect{v}_{\vect{\theta}}$ 
 用 $\beta_s=1-\alpha_s$ 将每项写成两个乘积之差，求和发生望远镜消去，得到 $V_t=1-\prod_{s=1}^t\alpha_s=1-\bar\alpha_t$。也可以使用递推 $V_t=\alpha_tV_{t-1}+\beta_t$、$V_0=0$ 归纳证明。
 
 于是\term{前向边缘分布}{Forward Marginal Distribution}{}为
-\begin{equation}
- q(\vect{x}_t\mid \vect{x}_0)=\mathcal N(a_t\vect{x}_0,b_t^2\mat{I}_D),\qquad \vect{x}_t=a_t\vect{x}_0+b_t\vect{\epsilon},\quad\vect{\epsilon}\sim\mathcal N(0,\mat{I}_D).
- \label{eq:diff-marginal}
+\begin{equation}\label{eq:diff-marginal}
+ \begin{aligned}
+  q(\vect{x}_t\mid \vect{x}_0)&=\mathcal N(a_t\vect{x}_0,b_t^2\mat{I}_D),\\
+  \vect{x}_t&=a_t\vect{x}_0+b_t\vect{\epsilon},\quad\vect{\epsilon}\sim\mathcal N(0,\mat{I}_D).
+ \end{aligned}
 \end{equation}
-式\eqref{eq:diff-marginal}的 $\vect{\epsilon}$ 表示累积扰动的归一化总噪声，与原链最后一步的 $\vect{\xi}_t$ 是两个不同的量。训练只需要某个时刻的 $(\vect{x}_0,\vect{x}_t)$，因此可以直接采样该边缘，无须先生成 $\vect{x}_1,\ldots,\vect{x}_{t-1}$。
+式\eqref{eq:diff-marginal}中的 $\vect{\epsilon}$ 为累计高斯扰动的归一化标准差变量，不同于式\eqref{eq:diff-forward}单步转移中的增量噪声 $\vect{\xi}_t$。训练仅需采样特定时间步的边缘配对 $(\vect{x}_0,\vect{x}_t)$，无需顺序迭代生成中间潜变量 $\vect{x}_1,\ldots,\vect{x}_{t-1}$。
 
 \subsection{同边缘分布的路径差异}
-固定同一对 $(\vect{x}_0,\vect{\epsilon})$，改变 $t$ 并画出 $a_t\vect{x}_0+b_t\vect{\epsilon}$，可以清楚观察信号与噪声的相对尺度。不过，这是一种共享总噪声的跨时刻耦合，与式\eqref{eq:diff-forward}独立增量前向链的样本路径是两种不同的构造。每个时刻边缘正确，所有时刻的联合分布仍需另行指定。
+固定单一样本配对 $(\vect{x}_0,\vect{\epsilon})$ 并随时间 $t$ 绘制 $a_t\vect{x}_0+b_t\vect{\epsilon}$，可直观呈现信噪比演变趋势；该轨迹表示共享同一噪声基底的确定性插值，并不对应式\eqref{eq:diff-forward}中带独立布朗增量的高斯链样本路径。边缘分布的逐时刻一致性并不等价于联合概率路径的同一性。
 
 这一差别对采样器尤其重要：训练可以只依赖边缘加噪配对，而不同反向生成路径可能共享这些训练配对。后面的 DDIM 正是利用这种区分构造不同的采样过程。
 
@@ -145,7 +149,7 @@ $A_t$ 是标量精度，$\vect{h}_t\in\mathbb R^D$。配方为
 两项系数来自精度加权，与图像插值比例的凑配无关；二者之和一般也不为1。
 
 \subsection{端点退化}
-$t=1$ 时，给定 $\vect{x}_0$ 就已经知道 $\vect{x}_{t-1}$，所以该条件分布是集中在 $\vect{x}_0$ 的点质量。式\eqref{eq:diff-postvar}形式上给出零方差，表示退化，与可直接取对数的普通高斯密度是两种情形。训练把这一端点单独写成数据重建项；采样端点也应依据明确输出约定处理。\footnote{若数据是离散像素，严格像素概率需要将连续密度在对应像素区间积分；连续高斯密度的取值与离散像素概率是两个不同的量。本章先采用连续数据口径讲解概率构造。}
+当 $t=1$ 时，给定 $\vect{x}_0$ 则条件变量 $\vect{x}_{t-1}=\vect{x}_0$ 确定退化为以 $\vect{x}_0$ 为支撑的狄拉克测度；式\eqref{eq:diff-postvar}方差趋于零，无法直接套用连续高斯 KL 散度公式。训练中将该端点分离为数据对数似然重建项，采样时则按离散网格取值约定输出。\footnote{针对离散像素数据，严格对数似然需在像素离散量化区间积分连续概率密度，而非直接取单点高斯密度值。本章统一采用连续实数概率测度口径展开推导。}
 
 \section{变分目标}
 
@@ -192,7 +196,7 @@ $L_T$ 将加噪终点与先验对齐；$L_{t-1}$ 约束每一步逆转移；$L_0
 \end{equation}
 第二部分在上述假设下与 $\vect{\theta}$ 无关，所以均值学习化为加权平方误差。如果反向方差也由网络预测，比例项与对数项一般都依赖参数，删除它们之后优化目标已不等于完整变分界。
 
-\section{噪声预测与输出参数化}
+\section{去噪模型的参数化}
 
 \subsection{噪声预测目标}
 由 $\vect{x}_t=a_t\vect{x}_0+b_t\vect{\epsilon}$ 得 $\vect{x}_0=\frac{\vect{x}_t-b_t\vect{\epsilon}}{a_t}$。将其代入式\eqref{eq:diff-postmean}，化简为
@@ -205,12 +209,13 @@ $L_T$ 将加噪终点与先验对齐；$L_{t-1}$ 约束每一步逆转移；$L_0
  \label{eq:diff-epsmean}
 \end{equation}
 两者相减并平方，得到依赖参数的逐步项
-\begin{equation}
- L_{t-1}=\mathbb E\left[w_t\|\vect{\epsilon}-\vect{\epsilon}_{\vect{\theta}}(\vect{x}_t,t)\|^2\right]+C_t,
- \qquad w_t=\frac{\beta_t^2}{2\sigma_t^2\alpha_t(1-\bar\alpha_t)}.
- \label{eq:diff-weight}
+\begin{equation}\label{eq:diff-weight}
+ \begin{aligned}
+  L_{t-1}&=\mathbb E\left[w_t\|\vect{\epsilon}-\vect{\epsilon}_{\vect{\theta}}(\vect{x}_t,t)\|^2\right]+C_t,\\
+  w_t&=\frac{\beta_t^2}{2\sigma_t^2\alpha_t(1-\bar\alpha_t)}.
+ \end{aligned}
 \end{equation}
-这里期望包含干净数据和加噪变量；$C_t$ 与均值参数无关。该公式说明噪声预测来自概率目标的重新参数化，与“辨认图像中某个可唯一分离的随机纹理”是两回事。
+这里期望包含干净数据和加噪变量；$C_t$ 与均值参数无关。噪声预测由概率目标重新参数化得到：网络根据带噪输入和时间步估计加噪变量，同一带噪输入可以对应不同的干净样本与噪声组合。
 
 \subsection{简化损失的权重效应}
 常用\term{简化噪声损失}{Simplified Noise Loss}{}为
@@ -224,9 +229,9 @@ $L_T$ 将加噪终点与先验对齐；$L_{t-1}$ 约束每一步逆转移；$L_0
 \begin{equation}
  \sum_{t=2}^{\mathrm{T}}\mathbb E[\ell_t]=\mathbb E_{t\sim r}\left[\frac{\ell_t}{r_t}\right],
 \end{equation}
-其中 $r$ 在 $\{2,\ldots,T\}$ 上归一化，$\ell_t=w_t\|\vect{\epsilon}-\vect{\epsilon}_{\vect{\theta}}\|^2$。改变抽样分布却不补偿 $\frac{1}{r_t}$，会改变目标，而不仅改变方差。批内再除以 $D$ 是损失尺度约定；报告损失时必须说明是每样本平方和还是每元素均值。
+其中 $r$ 在 $\{2,\ldots,T\}$ 上归一化，$\ell_t=w_t\|\vect{\epsilon}-\vect{\epsilon}_{\vect{\theta}}\|^2$。改变抽样分布却不补偿 $\frac{1}{r_t}$，会\emph{改变目标}，而不仅改变方差。批内再除以 $D$ 是损失尺度约定；报告损失时必须说明是每样本平方和还是每元素均值。
 
-\begin{note}[网络学习的是条件统计量]
+\begin{note}[均方误差目标下的条件期望解与随机细节恢复边界]
 给定 $\vect{x}_t,t$，平方损失的总体最优预测为 $\mathbb E[\vect{\epsilon}\mid \vect{x}_t,t]$。因为 $\vect{x}_0$ 未知，同一个带噪输入可能来自多个干净样本，训练过程中某次独立噪声抽样的全部随机细节超出了网络的恢复能力。生成从先验采样，并通过学习的条件转移构造数据样本。
 \end{note}
 
@@ -239,11 +244,13 @@ $L_T$ 将加噪终点与先验对齐；$L_{t-1}$ 约束每一步逆转移；$L_0
 \end{equation}
 该参数化见渐进蒸馏研究\cite{salimans2022progressive}。因 $a_t^2+b_t^2=1$，有一个正交变换及其逆：
 \begin{equation}
- \begin{bmatrix}\vect{x}_t\\\vect{v}\end{bmatrix}=
- \begin{bmatrix}a_t&b_t\\-b_t&a_t\end{bmatrix}
- \begin{bmatrix}\vect{x}_0\\\vect{\epsilon}\end{bmatrix},\qquad
- \widehat{\vect{x}}_0=a_t\vect{x}_t-b_t\vect{v}_{\vect{\theta}},\quad
- \widehat{\vect{\epsilon}}=b_t\vect{x}_t+a_t\vect{v}_{\vect{\theta}}.
+ \begin{aligned}
+  \begin{bmatrix}\vect{x}_t\\\vect{v}\end{bmatrix}&=
+  \begin{bmatrix}a_t&b_t\\-b_t&a_t\end{bmatrix}
+  \begin{bmatrix}\vect{x}_0\\\vect{\epsilon}\end{bmatrix},\\
+  \widehat{\vect{x}}_0&=a_t\vect{x}_t-b_t\vect{v}_{\vect{\theta}},\\
+  \widehat{\vect{\epsilon}}&=b_t\vect{x}_t+a_t\vect{v}_{\vect{\theta}}.
+ \end{aligned}
 \end{equation}
 令 $a=\cos\phi,b=\sin\phi$，则对固定 $(\vect{x}_0,\vect{\epsilon})$，$\frac{\mathrm d\vect{x}}{\mathrm d\phi}=-b\vect{x}_0+a\vect{\epsilon}=\vect{v}$。这里的速度是相对于角度 $\phi$ 的导数。线性流匹配使用另一条路径，其速度为 $\vect{\epsilon}-\vect{x}_0$。
 
@@ -255,14 +262,13 @@ $L_T$ 将加噪终点与先验对齐；$L_{t-1}$ 约束每一步逆转移；$L_0
  \quad
  \|\widehat{\vect{\epsilon}}-\vect{\epsilon}\|^2=a_t^2\|\vect{v}_{\vect{\theta}}-\vect{v}\|^2.
 \end{equation}
-因此等权预测 $\vect{x}_0$、$\vect{\epsilon}$ 或 $\vect{v}$ 隐含不同时间权重。靠近 $a_t=0$ 时，从噪声预测除以 $a_t$ 恢复 $\vect{x}_0$ 可能放大误差；靠近 $b_t=0$ 时，从 $\vect{x}_0$ 反推噪声也有相应问题。有限精度、端点选择和裁剪规则均属于采样协议。三种核心参数化目标的数学形式与数值性质对比见表\ref{tab:rev-diffusion-objectives}。
+因此等权预测 $\vect{x}_0$、$\vect{\epsilon}$ 或 $\vect{v}$ 隐含不同时间权重。靠近 $a_t=0$ 时，从噪声预测除以 $a_t$ 恢复 $\vect{x}_0$ 可能放大误差；靠近 $b_t=0$ 时，从 $\vect{x}_0$ 反推噪声也有相应问题。有限精度、端点选择和裁剪规则均属于采样协议。三种核心参数化目标的数学形式与数值性质对比见表\ref{tab:diffusion-objectives}。
 
 \begin{table}[htbp]
 \centering
 \small
 \setlength{\tabcolsep}{3pt}
-\caption{扩散模型不同输出参数化形式与数值性质对比。}
-\label{tab:rev-diffusion-objectives}
+\caption{扩散模型不同参数化训练目标对比}\label{tab:diffusion-objectives}
 \begin{tabularx}{\linewidth}{@{}p{1.8cm}p{1.6cm}p{2.2cm}p{2.2cm}X@{}}
 \toprule
 参数化方案 & 网络输出 & 重构 $\widehat{\vect{x}}_0$ & 重构 $\widehat{\vect{\epsilon}}$ & 数值特性与端点稳定性 \\
@@ -274,7 +280,7 @@ $L_T$ 将加噪终点与先验对齐；$L_{t-1}$ 约束每一步逆转移；$L_0
 \end{tabularx}
 \end{table}
 
-\section{时间条件与训练路径}
+\section{扩散模型的训练}
 
 时间条件告诉网络当前噪声尺度。可以把离散 $t$ 映射到正弦和余弦特征，再通过多层感知机注入主干，也可以使用对数信噪比 $\lambda_t=\log\left(\frac{a_t^2}{b_t^2}\right)$。索引相同但日程不同，会对应不同恢复任务；模型输入的时间单位、归一化与日程必须共同确定。端点处对数信噪比可能发散，应采用训练定义的有限范围或专门端点处理。
 
@@ -295,21 +301,20 @@ $L_T$ 将加噪终点与先验对齐；$L_{t-1}$ 约束每一步逆转移；$L_0
 \draw[->] (random)-|(net);
 \draw[->] (random)-|(loss);
 \end{tikzpicture}
-\caption{扩散模型的闭式加噪与去噪网络训练闭环。无需遍历中间时间步即可计算任意时刻的监督信号。}
-\label{fig:diffusion-training-loop}
+\caption[扩散模型闭式采样与训练闭环]{扩散模型闭式采样与训练闭环。利用重参数化高斯性质闭式采样任意时间步加噪图像，去噪网络预测噪声并反向传播更新。}\label{fig:diffusion-training-loop}
 \end{figure}
 
 \begin{algorithm}[噪声预测训练]
 \AlgoInput{数据分布、固定日程、预测类型、时间采样分布和损失权重。}
 \AlgoOutput{训练后的预测网络。}
 \begin{myalgorithmic}[1]
-\State Draw a clean sample $\vect{x}_0$ and apply fixed preprocessing; independently draw time $t$ and standard Gaussian noise $\vect{\epsilon}$
-\State Construct $\vect{x}_t=a_t\vect{x}_0+b_t\vect{\epsilon}$ directly from the cumulative schedule without running the complete forward chain
-\State Feed $\vect{x}_t$ with the specified time conditioning; construct target $\vect{\epsilon}$, $\vect{x}_0$, or $a_t\vect{\epsilon}-b_t\vect{x}_0$ according to the prediction type
-\State Compute weights from the selected target and time-sampling rule, then backpropagate and update parameters; complete variational training also includes the corresponding endpoint and variance terms
-\State After the prescribed training-step count or an explicitly defined stopping condition, emit the weights together with the schedule, prediction type, and data-scale configuration
+\State 抽取干净样本 $\vect{x}_0$ 并施加固定预处理；独立抽取时间 $t$ 与标准高斯噪声 $\vect{\epsilon}$
+\State 直接由累积日程构造 $\vect{x}_t=a_t\vect{x}_0+b_t\vect{\epsilon}$，无需运行完整前向马尔可夫链
+\State 输入带指定时间条件的 $\vect{x}_t$；依据预测类型构造目标 $\vect{\epsilon}$、$\vect{x}_0$ 或 $a_t\vect{\epsilon}-b_t\vect{x}_0$
+\State 依据选定目标与时间采样规则计算权重，随后反向传播并更新参数；完整变分训练还包含相应端点与方差项
+\State 达到预定训练步数或明确定义的停止条件后，输出模型权重，连同日程、预测类型与数据尺度配置
 \end{myalgorithmic}
-不变量为目标与采样噪声来自同一配对、时间与累计日程一致、所有样本使用相同预处理约定。训练步数与扩散时间步是两种不同计数。
+不变量包括：监督目标与输入扰动源于同一噪声实例、时间步嵌入与累计方差日程严格同步、批内样本遵循统一输入归一化尺度。优化迭代步数（Training Steps）与连续扩散时间坐标（Diffusion Timesteps）相互解耦，分别计量参数更新与噪声衰减尺度。
 \end{algorithm}
 
 \section{DDIM 采样}
@@ -319,7 +324,7 @@ $L_T$ 将加噪终点与先验对齐；$L_{t-1}$ 约束每一步逆转移；$L_0
 \begin{equation}
  \vect{x}_{t-1}=\vect{\mu}_{\vect{\theta}}(\vect{x}_t,t)+\sigma_t\vect{\xi}_t,\qquad \vect{\xi}_t\sim\mathcal N(0,\mat{I}_D).
 \end{equation}
-内部步骤的随机变量应重新抽取。常见样本生成在 $t=1$ 使用确定的输出均值，不再加入噪声；如果模型定义了非退化的输出似然，则严格从该似然抽样与直接取输出均值是两种约定，需要分别说明。
+反向递推内部步骤的高斯扰动须独立重新采样。在生成终端 $t=1$，工程实现通常直接取后验条件均值输出以降低背景纹理噪声；若严格遵循概率生成规范，则应在终端似然区间内完成一次显式采样，实际部署时应统一声明所采用的截断协议。
 
 选择 $\sigma_t^2=\widetilde\beta_t$ 或其他方差会改变采样过程。只删除部分训练时间索引而继续沿用原来的相邻单步 $\alpha_t,\beta_t$ 更新，系数与时间网格就对不上了。跨步转移需要按两个保留时间之间的累计系数重建。
 
@@ -336,7 +341,7 @@ $L_T$ 将加噪终点与先验对齐；$L_{t-1}$ 约束每一步逆转移；$L_0
 \end{equation}
 在此范围及合法日程下，根号项非负。若给定真实 $\vect{x}_0$ 且 $\widehat{\vect{\epsilon}}=\frac{\vect{x}_t-a_t\vect{x}_0}{b_t}$，新状态噪声由两个独立标准高斯的线性组合构成，方差相加为 $b_s^2$，所以保留 $q(\vect{x}_s\mid \vect{x}_0)$ 边缘。这种构造对各时间的联合分布另有选择，与前向马尔可夫链的联合分布可以不同。
 
-$\eta=0$ 时，没有额外随机项，给定初始噪声、网络及时间网格后路径确定。相邻时间且 $\eta=1$ 时，方差成为 $\widetilde\beta_t$，均值与对应后验均值参数化一致。跨步 $\eta=1$ 则对应重构后的粗粒度系数，与完整原链逐时间的中间模型调用是两回事。
+$\eta=0$ 时，没有额外随机项，给定初始噪声、网络及时间网格后路径确定。相邻时间且 $\eta=1$ 时，方差成为 $\widetilde\beta_t$，均值与对应后验均值参数化一致。跨步 $\eta=1$ 则使用重构后的粗粒度系数，仅在选定时间点调用模型，其轨迹一般不同于完整原链的逐步采样轨迹。
 
 采样质量由网络误差、离散化路径与时间覆盖共同决定。减少时间步时，应在既定模型上评估采样质量与计算成本。\footnote{确定性采样仍以随机初始噪声为输入，因而输出整体仍可构成分布。确定性指给定初始状态后的映射，不表示所有请求生成同一结果。}
 
@@ -344,18 +349,18 @@ $\eta=0$ 时，没有额外随机项，给定初始噪声、网络及时间网�
 \AlgoInput{训练后的网络、兼容日程、预测类型、递减时间网格和更新规则。}
 \AlgoOutput{生成样本。}
 \begin{myalgorithmic}[1]
-\State Validate that the time grid is strictly decreasing and that the schedule and prediction type are compatible; fix the inference configuration
-\State Draw $\vect{x}_T$ from the specified terminal prior
-\For{each adjacent pair $(t,s)$ in the finite time grid, with $t>s\ge0$}
-  \State Feed $\vect{x}_t,t$ to the network and convert its output into the noise or clean-sample estimate required by the update rule
-  \State Compute the update mean and nonnegative variance from the coefficients for $(t,s)$
-  \If{the stochastic sampling rule is active and the current transition requires noise}
-    \State Draw fresh independent noise and update $\vect{x}_s$ using the specified variance
+\State 校验时间网格严格递减，且日程与预测类型兼容；固定推理配置
+\State 从指定的终端先验中抽取 $\vect{x}_T$
+\For{each 有限时间网格中满足 $t>s\ge0$ 的相邻时间对 $(t,s)$}
+  \State 将 $\vect{x}_t,t$ 送入网络，并将其输出转换为更新规则所需的噪声或干净样本估计
+  \State 依据 $(t,s)$ 对应的系数计算更新均值与非负方差
+  \If{随机采样规则处于激活状态且当前转移需要噪声}
+    \State 抽取独立新噪声并依据指定方差更新 $\vect{x}_s$
   \Else
-    \State Update $\vect{x}_s$ using the deterministic or endpoint rule
+    \State 按确定性或端点规则更新 $\vect{x}_s$
   \EndIf
 \EndFor
-\State \Return the generated sample after inverse preprocessing or downstream decoding
+\State \Return 经逆预处理或下游解码后的生成样本
 \end{myalgorithmic}
 不变量为时间严格递减、状态与系数对应、预测类型兼容、方差非负。生成路径不读取真实 $x_0$，也不通过生成循环执行参数训练。
 \end{algorithm}
@@ -363,30 +368,30 @@ $\eta=0$ 时，没有额外随机项，给定初始噪声、网络及时间网�
 \begin{example}
 
 取日程 $\beta_1=0.1,\beta_2=0.2$，则 $\alpha_1=0.9,\alpha_2=0.8$、$\bar\alpha_1=0.9,\bar\alpha_2=0.72$。设 $x_0=1$，边缘噪声 $\epsilon=0.5$，得到
-\begin{equation}
+\begin{equation*}
  x_2=\sqrt{0.72}+0.5\sqrt{0.28}\approx1.11310.
-\end{equation}
+\end{equation*}
 条件后验精度为 $A_2=\frac{0.8}{0.2}+\frac{1}{0.1}=14$，所以 $\widetilde\beta_2=\frac{1}{14}\approx0.071429$。线性项为
-\begin{equation}
- h_2=\frac{\sqrt{0.8}}{0.2}x_2+\frac{\sqrt{0.9}}{0.1},
- \qquad\widetilde\mu_2=\frac{h_2}{14}\approx1.03320.
-\end{equation}
-也可由噪声形式计算 $\widetilde\mu_2=\frac{x_2-\frac{0.2\times0.5}{\sqrt{0.28}}}{\sqrt{0.8}}$，得到同一均值。这个后验仍有非零方差，与直接恢复 $x_0=1$ 是两种结果。
+\begin{align*}
+ h_2&=\frac{\sqrt{0.8}}{0.2}x_2+\frac{\sqrt{0.9}}{0.1},\\
+ \widetilde\mu_2&=\frac{h_2}{14}\approx1.03320.
+\end{align*}
+亦可由噪声参数化式直接求得 $\widetilde\mu_2=\frac{x_2-\frac{0.2\times0.5}{\sqrt{0.28}}}{\sqrt{0.8}}\approx1.03320$。由于后验方差 $\widetilde\beta_2=\frac{1}{14}$ 保持非零，该单步反向估计输出带噪均值状态，而非直接收敛至确定性真值 $x_0=1$。
 
 若网络预测 $\widehat\epsilon=0.4$，其均值误差为
-\begin{equation}
+\begin{equation*}
  \mu_\theta-\widetilde\mu_2=\frac{0.2(0.5-0.4)}{\sqrt{0.8}\sqrt{0.28}}\approx0.04226.
-\end{equation}
+\end{equation*}
 选择 $\sigma_2^2=\widetilde\beta_2$，高斯方差项为零，KL 仅为
-\begin{equation}
+\begin{equation*}
  \frac{(0.04226)^2}{\frac{2}{14}}\approx0.0125.
-\end{equation}
+\end{equation*}
 噪声权重同样给出 $w_2=\frac{0.2^2}{[2(\frac{1}{14})(0.8)(0.28)]}=1.25$，乘噪声误差平方 $(0.1)^2$ 得 $0.0125$。
 
 再以真实噪声估计考察 $2\to1$ 更新。DDIM 在 $\eta=0$ 时给出 $x_1=\sqrt{0.9}+\sqrt{0.1}\times0.5\approx1.10680$；$\eta=1$ 时更新均值约为 $1.03320$，标准差为 $\sqrt{\frac{1}{14}}$。两者采用不同的耦合：前者选择共享总噪声的确定性耦合，后者采用具有条件方差的路径。本例取两步日程，末端累计信号系数 $\bar\alpha_2=0.72$，标准高斯先验与该末端分布仍有较大差距。
 \end{example}
 
-\section{误差边界和参数化一致性}
+\section{扩散模型的误差分析}
 
 前向闭式检查扰动分布，训练损失评价加权回归目标；似然、感知质量与多样性按各自指标评估。反向采样每一步依赖前一步生成状态，模型可能在偏离训练边缘的区域继续运行，误差在那里按相互独立的单步噪声求和会低估实际偏差。
 

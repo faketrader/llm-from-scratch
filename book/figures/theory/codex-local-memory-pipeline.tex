@@ -1,0 +1,29 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{ctex}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,backgrounds}
+\input{diagram_styles.tex}
+\begin{document}
+\begin{tikzpicture}[my picture,node distance=8mm and 10mm]
+
+\node[neutral,text width=25mm] (guidance) {项目与全局指令\\\scriptsize \texttt{AGENTS.md}};
+\node[compute,text width=23mm,right=of guidance] (merge) {作用域合并\\\scriptsize 形成适用指令 $I_t$};
+
+\node[interface,text width=25mm,below=13mm of guidance] (inputs) {记忆候选来源\\\scriptsize 合格历史任务、人工更正};
+\node[compute,text width=23mm,right=of inputs] (consolidate) {后台抽取与归并\\\scriptsize 脱敏、去重、冲突处理};
+\node[storage,text width=23mm,right=of consolidate] (store) {本地记忆状态\\\scriptsize 摘要、条目、来源证据};
+\node[compute,text width=23mm,right=of store] (retrieve) {按任务检索\\\scriptsize 形成召回记忆 $M_t$};
+\node[block,text width=24mm,right=of retrieve] (context) {当轮任务上下文\\\scriptsize $q_t,I_t,M_t,O_t$};
+
+\draw[data arrow] (guidance) -- (merge);
+\draw[data arrow] (merge.east) -| (context.north);
+\draw[data arrow] (inputs) -- (consolidate) -- (store) -- (retrieve) -- (context);
+
+\node[neutral,text width=31mm,below=10mm of store] (controls) {读取与贡献控制\\\scriptsize 会话开关、全局配置};
+\draw[control arrow] (controls.west) -| (consolidate.south);
+\draw[control arrow] (controls.east) -| (retrieve.south);
+
+\node[group,fit=(guidance)(merge),label={[title]above:稳定指令路径}] {};
+\node[group,fit=(inputs)(consolidate)(store)(retrieve)(controls),label={[title]above:可召回记忆路径}] {};
+
+\end{tikzpicture}
+\end{document}
