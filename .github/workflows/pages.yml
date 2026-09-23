@@ -19,15 +19,15 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     container:
-      image: danteev/texlive:2026-09-01@sha256:9a20c37c672a5466670609f550a2a04e99368fc94e33f5287b174fe8519eb6a6
+      image: danteev/texlive:2026-09-01
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '24'
       - name: Restore generated figure PDFs
         id: figure-cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        uses: actions/cache@v6
         with:
           path: book/figures/theory/*.pdf
           key: texlive-20260901-figures-${{ hashFiles('book/figures/theory/*.tex', 'book/my-math.sty', 'book/my-fontset.tex', 'Makefile') }}
@@ -35,14 +35,14 @@ jobs:
         if: steps.figure-cache.outputs.cache-hit == 'true'
         run: find book/figures/theory -maxdepth 1 -type f -name '*.pdf' -exec touch {} +
       - name: Install pnpm
-        run: npm install --global pnpm@12.4.2
+        run: npm install --global pnpm@12
       - name: Install web dependencies
         run: make web/node_modules/.my-installed
       - name: Typecheck web
         run: pnpm --dir web typecheck
       - name: Build web
         run: make -j2 web
-      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: dist/web
   deploy:
@@ -55,7 +55,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - uses: actions/configure-pages@v6
       - name: Deploy
         id: deployment
-        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+        uses: actions/deploy-pages@v5
