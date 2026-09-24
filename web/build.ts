@@ -1,4 +1,4 @@
-import { cpSync, mkdirSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { ROOT, OUT, WORK, CACHE, TEXTBOOK_WORK, WORKBOOK_WORK } from "./build/paths.ts";
 import { ensurePdfInputs, conversion } from "./build/conversion.ts";
@@ -11,6 +11,7 @@ import { collectSearch, renderTerms } from "./build/indexes.ts";
 import { copyAssets, copyVendorAssets, copyClientAssets } from "./build/assets.ts";
 import { validateSite } from "./build/validate.ts";
 import { EXTRA_PAGES, TERMS_PAGE } from "./build/extra-pages.ts";
+import { pdfFileName } from "./build/version.ts";
 
 function main(): void {
   ensurePdfInputs();
@@ -24,6 +25,10 @@ function main(): void {
   attachReferences(parsed.chapters, parsed.document);
   parseWorkbook(workbookHtml, parsed.chapters);
   rewriteLinks(parsed.chapters, buildOwners(parsed.chapters));
+
+  for (const name of readdirSync(OUT)) {
+    if (name.endsWith(".html")) rmSync(join(OUT, name));
+  }
 
   for (const chapter of parsed.chapters) {
     writeFileSync(join(OUT, chapter.slug), renderChapter(chapter, parsed.chapters));
@@ -50,8 +55,11 @@ function main(): void {
   copyClientAssets();
   copyAssets(join(TEXTBOOK_WORK, "build"));
   copyAssets(join(WORKBOOK_WORK, "build"));
-  cpSync(join(ROOT, "dist/textbook.pdf"), join(OUT, "textbook.pdf"));
-  cpSync(join(ROOT, "dist/workbook.pdf"), join(OUT, "workbook.pdf"));
+  for (const name of readdirSync(OUT)) {
+    if (/^(?:textbook|workbook)(?:-[\d.-]+)?\.pdf$/.test(name)) rmSync(join(OUT, name));
+  }
+  cpSync(join(ROOT, "dist/textbook.pdf"), join(OUT, pdfFileName("textbook")));
+  cpSync(join(ROOT, "dist/workbook.pdf"), join(OUT, pdfFileName("workbook")));
   copyVendorAssets();
   validateSite(OUT);
   console.log(`Published ${parsed.chapters.length} chapters`);

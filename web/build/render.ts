@@ -7,6 +7,13 @@ import { bookNavigation } from "./navigation.ts";
 import { rewriteBookReferences } from "./references.ts";
 import { clientAssetVersion } from "./assets.ts";
 import { shiftHeadings } from "./dom.ts";
+import { pdfFileName } from "./version.ts";
+
+function updatePdfLinks($: cheerio.CheerioAPI): void {
+  for (const book of ["textbook", "workbook"] as const) {
+    $(`a[href='${book}.pdf']`).attr("href", pdfFileName(book));
+  }
+}
 
 function template(name: string): string {
   return readFileSync(join(TEMPLATES, name), "utf8");
@@ -15,6 +22,7 @@ function template(name: string): string {
 function page(contentTemplate?: string): cheerio.CheerioAPI {
   const $ = cheerio.load(template("layout.html"));
   if (contentTemplate) $("main#chapter").html(template(contentTemplate));
+  updatePdfLinks($);
   for (const name of ["styles.css", "mathjax-config.js", "app.js"]) {
     const attribute = name.endsWith(".css") ? "href" : "src";
     $(`[${attribute}='${name}']`).attr(attribute, `${name}?v=${clientAssetVersion(name)}`);
@@ -93,6 +101,7 @@ export function renderHome(chapters: Chapter[]): string {
   $("main#chapter").html(template("home.html")
     .replaceAll("{{firstChapter}}", chapters[0].slug)
     .replaceAll("{{navigation}}", bookNavigation(chapters)));
+  updatePdfLinks($);
   $("#menu-toggle").remove();
   return $.html();
 }

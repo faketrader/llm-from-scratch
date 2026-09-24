@@ -43,6 +43,7 @@ web/
 │   ├── navigation.ts     # 全书和章内导航
 │   ├── indexes.ts        # 搜索与术语索引
 │   ├── render.ts         # 将内容填入页面模板
+│   ├── version.ts        # 从书稿读取 PDF 下载版本
 │   ├── assets.ts         # 浏览器资源、样式和供应商资源
 │   └── validate.ts       # 页面结构、链接、锚点与搜索校验
 ├── templates/            # layout、home、chapter、extra HTML
@@ -54,6 +55,7 @@ web/
 `convert.ts` 提前生成可缓存的 TeX4ht 转换结果；`build.ts` 复用转换结果，依次执行提取、引用绑定、渲染、资源发布与校验。构建模块通过 `types.ts` 共享数据结构；浏览器模块只依赖浏览器 API。首页、章节和附加页各自从公共布局生成。
 
 样式按 `assets.ts` 中声明的顺序合并成一个 `styles.css`，保持层叠顺序。浏览器使用原生 ES 模块，构建时为入口及其导入加上内容版本号。发布文件名与页面地址由构建层统一生成。
+网页下载的两册 PDF 使用 `book/preamble.tex` 中的书稿版本命名，例如 `textbook-0.1.0-20260924.pdf`；本地 `dist/textbook.pdf` 和 `dist/workbook.pdf` 保持固定文件名。
 
 ## 验证
 
