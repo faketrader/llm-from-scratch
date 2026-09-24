@@ -33,11 +33,6 @@ export function normalizeContent(chapter: Chapter): void {
       image.attr("alt", item.find("figcaption").text().trim());
     }
   });
-  $("table").each((_, table) => {
-    if (!$(table).parent().hasClass("table-scroll")) {
-      $(table).wrap('<div class="table-scroll"></div>');
-    }
-  });
   $("img").each((_, node) => {
     const image = $(node);
     const source = image.attr("src") ?? "";

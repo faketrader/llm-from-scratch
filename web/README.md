@@ -23,6 +23,8 @@ make serve-web
 
 `web/tex4ht/tex4ht.cfg` 配置 HTML 语义标签、脚注与 XeLaTeX 的 CJK Unicode 输出；`web/tex4ht/make4ht.mk4` 编排 LaTeX/Biber 编译。
 
+网页转换命中内容指纹时直接复用 HTML；需要重新转换时，先使成功标记失效并清空对应册的转换目录，再完成多轮编译。这样，中断产生的不完整 AUX、XREF 等文件不会进入下一次编译，PDF 构建缓存不受影响。
+
 ## 代码组织
 
 ```text

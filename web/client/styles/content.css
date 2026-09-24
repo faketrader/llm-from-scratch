@@ -185,10 +185,14 @@ td > p,
 th > p {
   margin: 0;
 }
-tr:first-child {
+table > thead > tr,
+table:not(:has(> thead)) > tbody > tr:first-child {
   background: #f2f4ed;
 }
-tr:last-child td {
+thead th {
+  font-weight: 650;
+}
+table > tbody > tr:last-child td {
   border-bottom: 0;
 }
 blockquote {

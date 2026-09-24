@@ -1,6 +1,35 @@
 import * as cheerio from "cheerio";
 import type { AnyNode } from "domhandler";
 
+export function normalizeTables($: cheerio.CheerioAPI): void {
+  $("table.longtable").each((_, node) => {
+    const table = $(node);
+    // TeX4ht emits booktabs rules and longtable head/foot spacing as empty rows.
+    table.children("tbody").children("tr").each((__, row) => {
+      const item = $(row);
+      if (!item.text().trim() && !item.find("img, svg, math, input, [rowspan], a[id]").length) {
+        item.remove();
+      }
+    });
+    if (!table.children("thead").length) {
+      const header = table.children("tbody").children("tr").first();
+      if (header.length) {
+        header.children("td").each((__, cell) => {
+          cell.tagName = "th";
+          $(cell).attr("scope", "col");
+        });
+        const head = $("<thead></thead>").append(header);
+        table.children("tbody").first().before(head);
+      }
+    }
+  });
+  $("table").each((_, table) => {
+    if (!$(table).parent().hasClass("table-scroll")) {
+      $(table).wrap('<div class="table-scroll"></div>');
+    }
+  });
+}
+
 export function shiftHeadings($: cheerio.CheerioAPI): void {
   $("h3").each((_, node) => { node.tagName = "h4"; });
   $("h2").not(".chapterHead").each((_, node) => { node.tagName = "h3"; });

@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync, statSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { extname, join } from "node:path";
 import { ROOT, CACHE, TEX4HT } from "./paths.ts";
 import { filesUnder, inputFingerprint, run } from "./files.ts";
@@ -29,6 +29,9 @@ function conversionInputs(entry: "textbook" | "workbook"): string[] {
 function convertBook(entry: "textbook" | "workbook", work: string): string {
   const sourceDir = join(ROOT, "book", entry);
   const buildDir = join(work, "build");
+  // Each uncached conversion runs the full multi-pass pipeline. Do not read
+  // partial AUX/XREF files left by an interrupted previous conversion.
+  rmSync(buildDir, { recursive: true, force: true });
   mkdirSync(buildDir, { recursive: true });
   run(
     "make4ht",
@@ -70,6 +73,7 @@ export function conversion(entry: "textbook" | "workbook", work: string): string
     console.log(`Reusing ${entry} web conversion`);
     return html;
   }
+  rmSync(stamp, { force: true });
   const output = convertBook(entry, work);
   mkdirSync(CACHE, { recursive: true });
   writeFileSync(stamp, fingerprint);

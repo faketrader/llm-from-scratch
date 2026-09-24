@@ -6,7 +6,7 @@ import type { Chapter } from "./types.ts";
 import { bookNavigation } from "./navigation.ts";
 import { rewriteBookReferences } from "./references.ts";
 import { clientAssetVersion } from "./assets.ts";
-import { shiftHeadings } from "./dom.ts";
+import { normalizeTables, shiftHeadings } from "./dom.ts";
 import { pdfFileName } from "./version.ts";
 
 function updatePdfLinks($: cheerio.CheerioAPI): void {
@@ -73,6 +73,7 @@ export function renderChapter(chapter: Chapter, chapters: Chapter[]): string {
   pager.push(next ? `<a href="${next.slug}">${next.title} →</a>` : "<span></span>");
   pager.push("</div>");
   $("main > footer").before(pager.join(""));
+  normalizeTables($);
   return $.html();
 }
 
@@ -89,6 +90,7 @@ export function renderExtra(title: string, content: string, chapters: Chapter[])
   $(".chapter-heading h1").text(title);
   $("#chapter-content").html(article.root().html() ?? "");
   rewriteBookReferences($, chapters);
+  normalizeTables($);
   return $.html();
 }
 
